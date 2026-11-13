@@ -53,3 +53,19 @@ internal class AssemblyResult {
   [ProtoMember(2)]
   public string[] Args = [];
 }
+
+/// <summary>Client to server: take the fixed piece at a position off. Carries the position only; the held tool and the sneak are read on the server.</summary>
+[ProtoContract]
+internal class AssemblyTakeOff {
+  [ProtoMember(1)]
+  public int X;
+
+  [ProtoMember(2)]
+  public int Y;
+
+  [ProtoMember(3)]
+  public int Z;
+
+  [ProtoMember(4)]
+  public int Dimension;
+}

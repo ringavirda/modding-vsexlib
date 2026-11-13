@@ -3,7 +3,9 @@ using System.Linq;
 using ExpandedLib.Helpers;
 using ExpandedLib.Networks;
 using Vintagestory.API.Common;
+using Vintagestory.API.Config;
 using Vintagestory.API.MathTools;
+using Vintagestory.API.Server;
 using Vintagestory.API.Util;
 
 namespace ExpandedLib.Assembling;
@@ -19,6 +21,9 @@ internal static class HandAssemblyServer {
   internal const string Unloaded = "exlib-handassembly-unloaded";
   internal const string Occupied = "exlib-handassembly-occupied";
   internal const string Refused = "exlib-handassembly-refused";
+  internal const string Fixed = "exlib-handassembly-fixed";
+  internal const string NotFixed = "exlib-handassembly-notfixed";
+  internal const string NeedsToolMain = "exlib-handassembly-needstoolmain";
 
   // Blocks added to the player's picking range.
   private const float RangeSlack = 1f;
@@ -127,6 +132,108 @@ internal static class HandAssemblyServer {
     Place(world, player, candidate, selection, cell, placed, spent, spec);
     return null;
   }
+
+  /// <summary>Takes the fixed piece at the packet's position off; a block that is not a network node counts as fixed whatever its record holds, and one with no record returns only itself: it and the fasteners of every joint it was part of go to the player, and the cell clears.</summary>
+  /// <param name="world">The server world.</param>
+  /// <param name="player">The sending player; the tool is read from the active hotbar slot.</param>
+  /// <param name="take">The packet; nothing in it is trusted but the position.</param>
+  /// <returns>Null when the piece was taken off; otherwise the refusal to send, with nothing changed.</returns>
+  public static AssemblyResult? TakeOff(
+    IWorldAccessor world,
+    IPlayer player,
+    AssemblyTakeOff take
+  ) {
+    IBlockAccessor accessor = world.BlockAccessor;
+    var cell = new BlockPos(take.X, take.Y, take.Z, take.Dimension);
+    if (!InRange(player, cell))
+      return Refusal(OutOfRange);
+    if (
+      !world.Claims.TryAccess(player, cell, EnumBlockAccessFlags.BuildOrBreak)
+    )
+      return Refusal(Claimed);
+
+    Block block = accessor.GetBlock(cell);
+    BEBehaviorAssembled? record = BEBehaviorAssembled.At(accessor, cell);
+    if (
+      HandAssemblySpec.Of(block) is not { } spec
+      || (block is BlockNetworkNode && record is not { Fixed: true })
+    )
+      return Refusal(NotFixed);
+
+    bool creative = HandAssemblyGate.IsCreative(player);
+    ItemSlot toolSlot = player.InventoryManager.ActiveHotbarSlot;
+    if (!creative && !HoldsTool(toolSlot, spec.Tool))
+      return Refusal(NeedsToolMain, ToolName(world, spec.Tool));
+    if (!player.Entity.Controls.Sneak)
+      return Refusal(Fixed);
+
+    var returned = new List<ItemStack>();
+    if (record != null)
+      returned.AddRange(record.Spent.Select(s => s.Clone()));
+    foreach (BlockFacing face in BlockFacing.ALLFACES) {
+      BEBehaviorAssembled? neighbour = BEBehaviorAssembled.At(
+        accessor,
+        cell.AddCopy(face)
+      );
+      if (neighbour?.FastenerAt(face.Opposite) is not { } joint)
+        continue;
+      returned.Add(joint.Clone());
+      neighbour.SetFastener(face.Opposite, null);
+      neighbour.Blockentity.MarkDirty();
+    }
+
+    bool givesPiece =
+      block is not BlockNetworkNode node || !node.IsCrackedAt(world, cell);
+    if (givesPiece)
+      returned.AddRange(block.GetDrops(world, cell, player) ?? []);
+
+    if (block is BlockNetworkNode)
+      world
+        .Api.ModLoader.GetModSystem<BlockNetworkModSystem>()
+        .RemoveNode(accessor, cell);
+    accessor.SetBlock(0, cell);
+    accessor.TriggerNeighbourBlockUpdate(cell);
+
+    if (creative)
+      return null;
+    toolSlot.Itemstack.Collectible.DamageItem(world, player.Entity, toolSlot);
+    foreach (ItemStack stack in returned)
+      if (!player.InventoryManager.TryGiveItemstack(stack, true))
+        world.SpawnItemEntity(stack, player.Entity.Pos.XYZ);
+    return null;
+  }
+
+  /// <summary>Clears the fastener each neighbour of <paramref name="cell"/> holds for its joint toward it; the fasteners are lost.</summary>
+  /// <param name="world">The accessor to read the neighbours from.</param>
+  /// <param name="cell">The position of the piece that is gone.</param>
+  internal static void ClearRecordsToward(IBlockAccessor world, BlockPos cell) {
+    foreach (BlockFacing face in BlockFacing.ALLFACES) {
+      BEBehaviorAssembled? neighbour = BEBehaviorAssembled.At(
+        world,
+        cell.AddCopy(face)
+      );
+      if (neighbour?.FastenerAt(face.Opposite) == null)
+        continue;
+      neighbour.SetFastener(face.Opposite, null);
+      neighbour.Blockentity.MarkDirty();
+    }
+  }
+
+  /// <summary>Shows <paramref name="player"/> the line of a placement failure code.</summary>
+  /// <param name="world">The world, for naming a tool.</param>
+  /// <param name="player">The player to tell.</param>
+  /// <param name="code">The failure code; its line is <c>game:placefailure-</c> and the code.</param>
+  /// <param name="args">The arguments the line formats.</param>
+  internal static void Tell(
+    IWorldAccessor world,
+    IServerPlayer player,
+    string code,
+    params string[] args
+  ) =>
+    player.SendIngameError(
+      code,
+      Lang.Get("game:placefailure-" + code, args.Cast<object>().ToArray())
+    );
 
   /// <summary>Places the first candidate of the aim, fixed and with no fastener recorded; the vanilla creative path.</summary>
   /// <returns>False, with <paramref name="failureCode"/> set, when the aim offers no placement.</returns>

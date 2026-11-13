@@ -35,6 +35,14 @@ public class BEBehaviorAssembled(BlockEntity blockentity)
     set => Set(JointKey, value);
   }
 
+  /// <summary>The record of the part at <paramref name="pos"/>.</summary>
+  /// <returns>The record, or null when the block there has no block entity carrying one.</returns>
+  internal static BEBehaviorAssembled? At(IBlockAccessor world, BlockPos pos) =>
+    world.GetBlockEntity(pos)?.GetBehavior<BEBehaviorAssembled>();
+
+  /// <summary>The stacks of every joint this part's record holds.</summary>
+  internal IReadOnlyCollection<ItemStack> Spent => [.. _fasteners.Values];
+
   private static string FaceKey(BlockFacing face) => JointKey + face.Code;
 
   private void Set(string key, ItemStack? stack) {

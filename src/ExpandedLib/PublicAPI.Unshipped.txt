@@ -829,3 +829,5 @@ override ExpandedLib.Assembling.BEBehaviorAssembled.ToTreeAttributes(Vintagestor
 override ExpandedLib.Assembling.BlockBehaviorHandAssembly.TryPlaceBlock(Vintagestory.API.Common.IWorldAccessor! world, Vintagestory.API.Common.IPlayer! byPlayer, Vintagestory.API.Common.ItemStack! itemstack, Vintagestory.API.Common.BlockSelection! blockSel, ref Vintagestory.API.Common.EnumHandling handling, ref string! failureCode) -> bool
 override ExpandedLib.Assembling.HandAssemblyModSystem.StartClientSide(Vintagestory.API.Client.ICoreClientAPI! api) -> void
 override ExpandedLib.Assembling.HandAssemblyModSystem.StartServerSide(Vintagestory.API.Server.ICoreServerAPI! api) -> void
+virtual ExpandedLib.Networks.BlockNetworkNode.IsCrackedAt(Vintagestory.API.Common.IWorldAccessor! world, Vintagestory.API.MathTools.BlockPos! pos) -> bool
+virtual ExpandedLib.Networks.BlockNetworkNode.WrenchFixed(Vintagestory.API.Common.IWorldAccessor! world, Vintagestory.API.MathTools.BlockPos! pos, Vintagestory.API.Common.BlockSelection! selection) -> bool

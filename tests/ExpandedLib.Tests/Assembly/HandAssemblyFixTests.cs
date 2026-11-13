@@ -476,7 +476,7 @@ public class HandAssemblyFixTests {
     ) { }
   }
 
-  private sealed class AsmPipe : BlockNetworkNode, IHandAssemblyPart {
+  internal sealed class AsmPipe : BlockNetworkNode, IHandAssemblyPart {
     private readonly string? _refusing;
     private readonly string? _refusalCode;
 
@@ -495,7 +495,14 @@ public class HandAssemblyFixTests {
 
     public override string NetworkType => "test";
 
+    public bool Cracked { get; set; }
+
     public override Dictionary<string, string[]> AllowedOrientations { get; }
+
+    protected internal override bool IsCrackedAt(
+      IWorldAccessor world,
+      BlockPos pos
+    ) => Cracked;
 
     public bool Allows(
       IWorldAccessor world,
@@ -512,7 +519,7 @@ public class HandAssemblyFixTests {
     }
   }
 
-  private sealed class Scene {
+  internal sealed class Scene {
     private const string Factory = "test.asm";
     private readonly TestWorld _world;
     private readonly Dictionary<string, Block> _variants = [];

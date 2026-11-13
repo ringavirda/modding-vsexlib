@@ -11,6 +11,7 @@ using ExpandedLib.Structures;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.MathTools;
+using Vintagestory.API.Server;
 using Vintagestory.GameContent;
 
 namespace ExpandedLib.Networks;
@@ -258,6 +259,17 @@ public abstract class BlockNetworkNode
         beNet.PossibleOrientations = finalChoices;
         beNet.MarkDirty(true);
       }
+    } else if (
+        Orientation != null
+        && HandAssemblySpec.Of(this) != null
+        && BEBehaviorAssembled.At(world.BlockAccessor, blockPos) is { } record
+        && world.BlockAccessor.GetBlockEntity(blockPos)
+          is BlockEntityNetworkNode beSet
+      ) {
+      beSet.Orientation = Orientation;
+      beSet.PossibleOrientations = [Orientation];
+      record.Fixed = true;
+      beSet.MarkDirty(true);
     } else {
       RecalculateAndSyncOrientations(world, blockPos);
     }
@@ -393,7 +405,7 @@ public abstract class BlockNetworkNode
       .Distinct()
       .Count() == 1;
 
-  /// <summary>Recalculates this block's valid orientations when a neighbour changes and breaks it when unsupported: no connected network neighbours and no solid surface to attach to.</summary>
+  /// <summary>Recalculates this block's valid orientations when a neighbour changes, unless hand assembly fixed it, and breaks it when unsupported: no connected network neighbours and no solid surface to attach to.</summary>
   public override void OnNeighbourBlockChange(
     IWorldAccessor world,
     BlockPos pos,
@@ -430,13 +442,14 @@ public abstract class BlockNetworkNode
       world.BlockAccessor.BreakBlock(pos, null);
   }
 
-  /// <summary>Removes this block's position from the network graph, then calls the base break logic.</summary>
+  /// <summary>Removes this block's position from the network graph and clears the fastener records its neighbours hold toward it, then calls the base break logic. A fixed piece's own fasteners are lost with it.</summary>
   public override void OnBlockBroken(
     IWorldAccessor world,
     BlockPos pos,
     IPlayer byPlayer,
     float dropQuantityMultiplier = 1
   ) {
+    HandAssemblyServer.ClearRecordsToward(world.BlockAccessor, pos);
     world
       .Api.ModLoader.GetModSystem<BlockNetworkModSystem>()
       .RemoveNode(world.BlockAccessor, pos);
@@ -458,6 +471,17 @@ public abstract class BlockNetworkNode
     IWorldAccessor world = byEntity.World;
     BlockPos pos = blockSel.Position;
     BlockEntity? be = world.BlockAccessor.GetBlockEntity(pos);
+
+    if (BEBehaviorAssembled.At(world.BlockAccessor, pos)?.Fixed == true) {
+      if (
+        world.Side == EnumAppSide.Server
+        && !byEntity.Controls.Sneak
+        && !WrenchFixed(world, pos, blockSel)
+        && byEntity is EntityPlayer { Player: IServerPlayer player }
+      )
+        HandAssemblyServer.Tell(world, player, HandAssemblyServer.Fixed);
+      return;
+    }
 
     if (!CanWrenchRotate(world, pos))
       return;
@@ -523,6 +547,23 @@ public abstract class BlockNetworkNode
       ((INetworkMember)this).NetworkTypeAt(world.BlockAccessor, pos)
     );
   }
+
+  /// <summary>Serves a plain wrench click on a fixed piece; the wrench wears either way.</summary>
+  /// <param name="world">The server world.</param>
+  /// <param name="pos">The piece's position.</param>
+  /// <param name="selection">The aim of the click.</param>
+  /// <returns>True when the click did something, so the player needs no message; false by default.</returns>
+  protected internal virtual bool WrenchFixed(
+    IWorldAccessor world,
+    BlockPos pos,
+    BlockSelection selection
+  ) => false;
+
+  /// <summary>Whether the piece at <paramref name="pos"/> is cracked beyond re-making, so taking it off returns its fasteners and not the piece; false by default.</summary>
+  protected internal virtual bool IsCrackedAt(
+    IWorldAccessor world,
+    BlockPos pos
+  ) => false;
 
   /// <summary>Returns the orientation cycle a wrench rotates through at <paramref name="pos"/>: recomputed from topology for full cubes, or read from the block entity for thin-profile pipes.</summary>
   protected string[] GetWrenchOrientations(IWorldAccessor world, BlockPos pos) {
@@ -904,7 +945,7 @@ public abstract class BlockNetworkNode
     Cuboidi attachmentArea
   ) => HasConnectorAt(blockFace);
 
-  /// <summary>Recomputes the valid orientations for the block at <paramref name="pos"/>, updates the block entity, and swaps it out when the current orientation has become invalid.</summary>
+  /// <summary>Recomputes the valid orientations for the block at <paramref name="pos"/>, updates the block entity, and swaps it out when the current orientation has become invalid. A piece hand assembly fixed keeps its token and is left as it is.</summary>
   public virtual void RecalculateAndSyncOrientations(
     IWorldAccessor world,
     BlockPos pos
@@ -918,6 +959,8 @@ public abstract class BlockNetworkNode
       world.BlockAccessor.GetBlockEntity(pos)
       is not BlockEntityNetworkNode beNet
     )
+      return;
+    if (BEBehaviorAssembled.At(world.BlockAccessor, pos)?.Fixed == true)
       return;
 
     string[] finalChoices = netBlock.ComputeValidOrientations(

@@ -5,7 +5,7 @@ using Vintagestory.API.Server;
 
 namespace ExpandedLib.Assembling;
 
-/// <summary>Carries hand assembly's fixes: the client sends an <c>AssemblyFix</c> on the <c>exlib:assembly</c> channel and the server places the part or answers an <c>AssemblyResult</c>.</summary>
+/// <summary>Carries hand assembly's fixes and take-offs: the client sends an <c>AssemblyFix</c> or an <c>AssemblyTakeOff</c> on the <c>exlib:assembly</c> channel and the server places or takes off the part, or answers an <c>AssemblyResult</c>.</summary>
 [EditorBrowsable(EditorBrowsableState.Never)]
 public class HandAssemblyModSystem : ModSystem {
   internal const string ChannelName = "exlib:assembly";
@@ -18,6 +18,7 @@ public class HandAssemblyModSystem : ModSystem {
     api
       .Network.RegisterChannel(ChannelName)
       .RegisterMessageType<AssemblyFix>()
+      .RegisterMessageType<AssemblyTakeOff>()
       .RegisterMessageType<AssemblyResult>();
 
   /// <inheritdoc/>
@@ -26,8 +27,20 @@ public class HandAssemblyModSystem : ModSystem {
     _serverChannel = api
       .Network.RegisterChannel(ChannelName)
       .RegisterMessageType<AssemblyFix>()
+      .RegisterMessageType<AssemblyTakeOff>()
       .RegisterMessageType<AssemblyResult>()
-      .SetMessageHandler<AssemblyFix>(OnFix);
+      .SetMessageHandler<AssemblyFix>(OnFix)
+      .SetMessageHandler<AssemblyTakeOff>(OnTakeOff);
+  }
+
+  private void OnTakeOff(IServerPlayer player, AssemblyTakeOff take) {
+    AssemblyResult? refusal = HandAssemblyServer.TakeOff(
+      _sapi!.World,
+      player,
+      take
+    );
+    if (refusal != null)
+      _serverChannel!.SendPacket(refusal, player);
   }
 
   private void OnFix(IServerPlayer player, AssemblyFix fix) {

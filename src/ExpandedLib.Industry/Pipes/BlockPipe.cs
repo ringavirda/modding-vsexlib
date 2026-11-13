@@ -4,6 +4,7 @@ using ExpandedLib.Definitions;
 using ExpandedLib.Networks;
 using ExpandedLib.Registries;
 using Vintagestory.API.Common;
+using Vintagestory.API.MathTools;
 
 namespace ExpandedLib.Industry.Pipes;
 
@@ -363,6 +364,42 @@ public partial class BlockPipe
   /// neighbour is always accepted.</summary>
   public override bool AcceptsNeighbour(Block neighbour) =>
     neighbour is not BlockPipe other || other.JointFamily == JointFamily;
+
+  #endregion
+
+  #region Fixed pieces
+
+  /// <summary>Re-makes a joint of this piece that weeps on the physical pipe run, closing the weep.</summary>
+  protected internal override bool WrenchFixed(
+    IWorldAccessor world,
+    BlockPos pos,
+    BlockSelection selection
+  ) =>
+    FlowRunAt(world, pos) is { } run
+    && run.Store.RemakeAt(run.Store.IndexOf(NodeKey.Centre(pos)));
+
+  /// <summary>Whether a joint of this piece is cracked on the physical pipe run.</summary>
+  protected internal override bool IsCrackedAt(
+    IWorldAccessor world,
+    BlockPos pos
+  ) =>
+    FlowRunAt(world, pos) is { } run
+    && (
+      run.Store.DamageOf(run.Store.IndexOf(NodeKey.Centre(pos)))
+      & PipeFlowStore.CrackedBit
+    ) != 0;
+
+  private static PipeFlowNetwork? FlowRunAt(IWorldAccessor world, BlockPos pos) {
+    NodeKey key = NodeKey.Centre(pos);
+    return
+      world
+        .Api.ModLoader.GetModSystem<BlockNetworkModSystem>()
+        .GetNetworkAt(key)
+        is PipeFlowNetwork run
+      && run.Store.Nodes.ContainsKey(key)
+      ? run
+      : null;
+  }
 
   #endregion
 
