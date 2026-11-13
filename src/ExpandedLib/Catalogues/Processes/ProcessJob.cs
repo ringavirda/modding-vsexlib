@@ -18,6 +18,7 @@ namespace ExpandedLib.Catalogues;
 /// <param name="MinTier">Temper floor of the tool the job needs. 0 when any will do.</param>
 /// <param name="Seconds">How long one job takes. Never 0.</param>
 /// <param name="Strokes">Strokes the machine makes on a piece before the job completes. At least one.</param>
+/// <param name="InputCount">Pieces of <paramref name="Input"/> the machine takes before the job starts. At least one.</param>
 public sealed record ProcessJob(
   string Input,
   string Output,
@@ -27,7 +28,8 @@ public sealed record ProcessJob(
   float MinTorque,
   int MinTier = 0,
   float Seconds = ProcessJob.DefaultSeconds,
-  int Strokes = 1
+  int Strokes = 1,
+  int InputCount = 1
 ) {
   /// <summary>What a job takes when it declares no time of its own.</summary>
   public const float DefaultSeconds = 1f;
@@ -55,9 +57,9 @@ public sealed record ProcessJobSet(
   string Machine,
   ProcessJob[] Jobs
 ) {
-  /// <summary>The schema this parser writes and reads up to. Schema 2 adds <c>strokes</c>; a schema 1
-  /// file reads with one stroke a job.</summary>
-  public const int CurrentSchema = 2;
+  /// <summary>The schema this parser writes and reads up to. Schema 2 adds <c>strokes</c> and schema 3
+  /// <c>inputCount</c>; an older file reads with one stroke and one input piece a job.</summary>
+  public const int CurrentSchema = 3;
 
   /// <summary>Parses and validates one job-set declaration. Returns false with a human-readable
   /// <paramref name="error"/> on any malformed field.</summary>
@@ -110,6 +112,13 @@ public sealed record ProcessJobSet(
         return false;
       }
 
+      int inputCount = jobNode["inputCount"].AsInt(1);
+      if (inputCount < 1) {
+        error =
+          $"{machine}: the job on '{input}' declares an 'inputCount' of {inputCount}, which is less than one";
+        return false;
+      }
+
       float stage = jobNode["stage"].AsFloat(-1f);
       float seconds = jobNode["seconds"].AsFloat(ProcessJob.DefaultSeconds);
       jobs.Add(
@@ -125,7 +134,8 @@ public sealed record ProcessJobSet(
           seconds > 0f
             ? seconds
             : ProcessJob.DefaultSeconds,
-          strokes
+          strokes,
+          inputCount
         )
       );
     }

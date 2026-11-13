@@ -56,7 +56,9 @@ public static class ItemDie {
     return null;
   }
 
-  /// <summary>One die's job, as the nested attribute a variant carries.</summary>
+  /// <summary>One die's job, as the nested attribute a variant carries; <paramref name="strokes"/> is
+  /// how many strokes the machine makes on a piece before the job completes and
+  /// <paramref name="inputCount"/> how many pieces of <paramref name="input"/> it takes first.</summary>
   public static object Job(
     string machine,
     string input,
@@ -64,7 +66,9 @@ public static class ItemDie {
     int count = 1,
     int minTier = 0,
     double minTorque = 0,
-    double seconds = ProcessJob.DefaultSeconds
+    double seconds = ProcessJob.DefaultSeconds,
+    int strokes = 1,
+    int inputCount = 1
   ) =>
     new {
       machinejob = new {
@@ -80,6 +84,8 @@ public static class ItemDie {
             minTier,
             minTorque,
             seconds,
+            strokes,
+            inputCount,
           },
         },
       },
