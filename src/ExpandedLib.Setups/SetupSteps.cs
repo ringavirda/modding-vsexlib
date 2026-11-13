@@ -120,6 +120,7 @@ internal static class SetupSteps {
     ],
     ["use"] =
     [
+      "id",
       "at",
       "with",
       "offHand",

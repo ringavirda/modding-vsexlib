@@ -17,7 +17,7 @@ namespace ExpandedLib.Tests.Setups;
 [Collection("Setups")]
 public class SetupHoldTests
 {
-  private static readonly string FixturePath = Path.Combine(
+  internal static readonly string FixturePath = Path.Combine(
     RepoPaths.Root,
     "tests",
     "ExpandedLib.Tests",
@@ -60,6 +60,7 @@ public class SetupHoldTests
       .RegisterClass("SetupHoldEmber", typeof(SetupHoldEmber))
       .RegisterBlockEntityFactory("SetupHoldEmber", () => new SetupHoldEmber())
       .RegisterClass("SetupHoldWand", typeof(SetupHoldWand))
+      .RegisterClass("SetupHoldPlacer", typeof(SetupHoldPlacer))
       .RegisterClass("SetupHoldBox", typeof(SetupHoldBox))
       .RegisterBlockEntityFactory("SetupHoldBox", () => new SetupHoldBox());
     SetupTickOrderTests.RegisterTick(w, []);

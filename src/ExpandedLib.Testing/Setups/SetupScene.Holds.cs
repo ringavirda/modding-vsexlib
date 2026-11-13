@@ -137,6 +137,10 @@ public sealed partial class SetupScene
       : null;
     if (offHand != null)
       Draw(step.Path, offHand);
+    Dictionary<BlockPos, int>? before =
+      step.Id == null
+        ? null
+        : World.SolidBlocks.ToDictionary(b => b.Key, b => b.Value.BlockId);
     EnumHandHandling handling = Player.UseHeld(
       at,
       null,
@@ -163,6 +167,24 @@ public sealed partial class SetupScene
         step.Path,
         $"{heldCode} did not take the use at {Describe(at)}."
       );
+    if (step.Id != null)
+      RecordUsePlaced(step, before!);
+  }
+
+  private void RecordUsePlaced(SetupStep step, Dictionary<BlockPos, int> before)
+  {
+    List<(BlockPos Pos, bool Entity)> appeared =
+    [
+      .. World
+        .SolidBlocks.Where(b =>
+          before.GetValueOrDefault(b.Key, 0) != b.Value.BlockId
+        )
+        .Select(b => (b.Key.Copy(), World.GetBlockEntity(b.Key) != null)),
+    ];
+    BlockPos placed =
+      SetupUsePlaced.Of(appeared, step.Id!, out string? problem)
+      ?? throw Fail(step.Path, problem!);
+    Record(step.Id!, placed, World.GetBlock(placed));
   }
 
   private void IgniteStep(SetupStep step)
