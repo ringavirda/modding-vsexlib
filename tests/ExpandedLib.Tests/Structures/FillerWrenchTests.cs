@@ -8,7 +8,8 @@ using Xunit;
 namespace ExpandedLib.Tests;
 
 /// <summary>A wrench on a filler cell: vanilla's wrench asks the clicked block for
-/// <see cref="IWrenchOrientable"/>, and the filler answers with its principal's rotation.</summary>
+/// <see cref="IWrenchOrientable"/>, and the filler answers with its principal's rotation; a
+/// firestarter or torch asks for <see cref="IIgnitable"/> and gets the principal's.</summary>
 public class FillerWrenchTests {
   private static readonly BlockPos PrincipalPos = new(4, 4, 4);
   private static readonly BlockPos EastCell = new(5, 4, 4);
@@ -70,6 +71,50 @@ public class FillerWrenchTests {
     );
   }
 
+  // Fails when the filler answers no ignition, or hands the principal the filler's cell.
+  [Fact]
+  public void A_firestarter_on_a_filler_lights_the_principal_at_its_own_cell() {
+    var burner = new Burner();
+    TestWorld world = NewWorld(burner);
+
+    IIgnitable? ignitable = world
+      .GetBlock(EastCell)
+      .GetInterface<IIgnitable>(world.World, EastCell);
+    EnumIgniteState state = ignitable!.OnTryIgniteBlock(null!, EastCell, 2f);
+    EnumHandling handling = EnumHandling.PassThrough;
+    ignitable.OnTryIgniteBlockOver(null!, EastCell, 2f, ref handling);
+
+    Assert.Equal(EnumIgniteState.IgniteNow, state);
+    Assert.Equal(PrincipalPos, burner.TriedAt);
+    Assert.Equal(PrincipalPos, burner.OverAt);
+  }
+
+  // Fails when a filler of a principal that is not ignitable answers ignition anyway.
+  [Fact]
+  public void A_filler_of_a_principal_that_is_not_ignitable_answers_no_ignition() {
+    TestWorld world = NewWorld(new Block());
+
+    Assert.Null(
+      world.GetBlock(EastCell).GetInterface<IIgnitable>(world.World, EastCell)
+    );
+  }
+
+  // Fails when a filler that names no principal, or whose principal is gone, answers ignition.
+  [Fact]
+  public void An_orphaned_filler_answers_no_ignition() {
+    TestWorld world = NewWorld(new Burner());
+    BlockPos unlinked = EastCell.EastCopy();
+    world.Place(unlinked, world.Filler, new BlockEntityStructureFiller());
+    world.Accessor.SetBlock(0, PrincipalPos);
+
+    Assert.Null(
+      world.GetBlock(unlinked).GetInterface<IIgnitable>(world.World, unlinked)
+    );
+    Assert.Null(
+      world.GetBlock(EastCell).GetInterface<IIgnitable>(world.World, EastCell)
+    );
+  }
+
   private static TestWorld NewWorld(Block principal) {
     var world = new TestWorld();
     TestBlocks.Configure(principal, "test:principal", 71);
@@ -83,6 +128,34 @@ public class FillerWrenchTests {
 
   private static BlockSelection Selection(BlockPos cell) =>
     new() { Position = cell.Copy(), Face = BlockFacing.UP };
+
+  private sealed class Burner : Block, IIgnitable {
+    public BlockPos? TriedAt;
+    public BlockPos? OverAt;
+
+    public EnumIgniteState OnTryIgniteBlock(
+      EntityAgent byEntity,
+      BlockPos pos,
+      float secondsIgniting
+    ) {
+      TriedAt = pos.Copy();
+      return EnumIgniteState.IgniteNow;
+    }
+
+    public void OnTryIgniteBlockOver(
+      EntityAgent byEntity,
+      BlockPos pos,
+      float secondsIgniting,
+      ref EnumHandling handling
+    ) => OverAt = pos.Copy();
+
+    public EnumIgniteState OnTryIgniteStack(
+      EntityAgent byEntity,
+      BlockPos pos,
+      ItemSlot slot,
+      float secondsIgniting
+    ) => EnumIgniteState.NotIgnitable;
+  }
 
   private sealed class Turnable : Block, IWrenchOrientable {
     public BlockPos? TurnedAt;

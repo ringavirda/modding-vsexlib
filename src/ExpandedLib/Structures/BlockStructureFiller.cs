@@ -304,10 +304,11 @@ public partial class BlockStructureFiller
       pb.OnBlockInteractStop(secondsUsed, world, byPlayer, psel);
   }
 
-  /// <summary>Answers a wrench (<see cref="IWrenchOrientable"/>) with the principal's rotation,
-  /// run with the selection moved to the principal's cell, so a wrench on any cell turns the whole
-  /// structure; null for an orphaned cell or a principal that does not orient. Every other
-  /// interface is answered as <see cref="Block.GetInterface{T}"/> answers it. On 1.22 the filler always answers <see cref="ICustomSelectionBoxRender"/>.</summary>
+  /// <summary>Answers a wrench (<see cref="IWrenchOrientable"/>) and a flame (<see cref="IIgnitable"/>)
+  /// with the principal's, run at the principal's cell, so either on any cell acts on the whole
+  /// structure; null for an orphaned cell or a principal without the interface. Every other
+  /// interface is answered as <see cref="Block.GetInterface{T}"/> answers it. On 1.22 the filler
+  /// always answers <see cref="ICustomSelectionBoxRender"/>.</summary>
   public override T GetInterface<T>(IWorldAccessor world, BlockPos pos) {
     if (
       typeof(T) == typeof(IWrenchOrientable)
@@ -316,6 +317,13 @@ public partial class BlockStructureFiller
       && pb.GetInterface<IWrenchOrientable>(world, pp) is { } principal
     )
       return (T)(object)new PrincipalWrench(principal, pp);
+    if (
+      typeof(T) == typeof(IIgnitable)
+      && pos != null
+      && TryGetPrincipal(world, pos, out pp, out pb)
+      && pb.GetInterface<IIgnitable>(world, pp) is { } ignitable
+    )
+      return (T)(object)new PrincipalIgnitable(ignitable, pp);
     return base.GetInterface<T>(world, pos);
   }
 
@@ -338,6 +346,38 @@ public partial class BlockStructureFiller
       BlockSelection blockSel,
       int dir
     ) => principal.Rotate(byEntity, Repoint(blockSel, principalPos), dir);
+  }
+
+  private sealed class PrincipalIgnitable(
+    IIgnitable principal,
+    BlockPos principalPos
+  ) : IIgnitable {
+    public EnumIgniteState OnTryIgniteBlock(
+      EntityAgent byEntity,
+      BlockPos pos,
+      float secondsIgniting
+    ) => principal.OnTryIgniteBlock(byEntity, principalPos, secondsIgniting);
+
+    public void OnTryIgniteBlockOver(
+      EntityAgent byEntity,
+      BlockPos pos,
+      float secondsIgniting,
+      ref EnumHandling handling
+    ) =>
+      principal.OnTryIgniteBlockOver(
+        byEntity,
+        principalPos,
+        secondsIgniting,
+        ref handling
+      );
+
+    public EnumIgniteState OnTryIgniteStack(
+      EntityAgent byEntity,
+      BlockPos pos,
+      ItemSlot slot,
+      float secondsIgniting
+    ) =>
+      principal.OnTryIgniteStack(byEntity, principalPos, slot, secondsIgniting);
   }
 
   public override float OnGettingBroken(
