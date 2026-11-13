@@ -312,6 +312,43 @@ internal sealed class SetupSpin(BlockEntity be) : BlockEntityBehavior(be)
   }
 }
 
+internal sealed class SetupHoldGiver : Block
+{
+  public int Laid;
+  public float LaidTemperature;
+  public int Spilled;
+
+  public override bool OnBlockInteractStart(
+    IWorldAccessor world,
+    IPlayer byPlayer,
+    BlockSelection blockSel
+  )
+  {
+    ItemSlot slot = byPlayer.InventoryManager.ActiveHotbarSlot;
+    if (!slot.Empty)
+    {
+      Laid++;
+      LaidTemperature = slot.Itemstack.Collectible.GetTemperature(
+        world,
+        slot.Itemstack
+      );
+      slot.TakeOut(1);
+      return true;
+    }
+    var given = new ItemStack(
+      world.GetItem(new AssetLocation("setuphold:wand"))
+    );
+    given.Collectible.SetTemperature(
+      world,
+      given,
+      Attributes["temperature"].AsFloat()
+    );
+    if (!byPlayer.InventoryManager.TryGiveItemstack(given, true))
+      Spilled++;
+    return true;
+  }
+}
+
 internal sealed class SetupHoldBox : BlockEntityContainer
 {
   private readonly InventoryGeneric _inventory = new(2, null, null, null);
