@@ -238,6 +238,27 @@ public class HandAssemblyFixedTests {
     scene.AssertStillFixed(Cell);
   }
 
+  // Fails when the packet's dimension is used: the piece stands in the player's own, whatever the packet says.
+  [Fact]
+  public void A_take_off_reads_the_players_dimension_not_the_packets() {
+    var scene = TwoPieces();
+
+    Assert.Null(
+      HandAssemblyServer.TakeOff(
+        scene.World.World,
+        scene.Player.Player,
+        new AssemblyTakeOff {
+          X = North.X,
+          Y = North.Y,
+          Z = North.Z,
+          Dimension = 1,
+        }
+      )
+    );
+
+    Assert.Equal(0, scene.World.GetBlock(North).Id);
+  }
+
   // Fails when the sneak is not required.
   [Fact]
   public void A_take_off_without_sneaking_is_refused() {

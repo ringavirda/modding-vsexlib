@@ -74,6 +74,34 @@ public class HandAssemblyFixTests {
     Assert.Equal(1, scene.Parts);
   }
 
+  // Fails when the packet's dimension is used: the aimed cell is in the player's own, whatever the packet says.
+  [Fact]
+  public void A_fix_reads_the_players_dimension_not_the_packets() {
+    var scene = Scene.Standing(["ns"]);
+    scene.Bolts(10);
+
+    AssemblyResult? result = HandAssemblyServer.Fix(
+      scene.World.World,
+      scene.Player.Player,
+      new AssemblyFix {
+        X = Ground.X,
+        Y = Ground.Y,
+        Z = Ground.Z,
+        Dimension = 1,
+        Face = BlockFacing.UP.Index,
+        HitX = 0.5,
+        HitY = 0.5,
+        HitZ = 0.5,
+        Slot = 0,
+        PartCode = scene.Player.ActiveSlot.Itemstack!.Block.Code.ToString(),
+        CandidateCode = "test:pipe-ns",
+      }
+    );
+
+    Assert.Null(result);
+    Assert.NotEqual(0, scene.World.GetBlock(Cell).Id);
+  }
+
   // Fails when the tool in the off hand is not checked.
   [Fact]
   public void A_fix_without_the_tool_in_the_off_hand_is_refused_and_nothing_is_taken() {

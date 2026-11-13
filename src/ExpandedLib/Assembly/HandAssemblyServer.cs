@@ -31,7 +31,7 @@ internal static class HandAssemblyServer {
   /// <summary>Fixes the candidate <paramref name="fix"/> names.</summary>
   /// <param name="world">The server world.</param>
   /// <param name="player">The sending player.</param>
-  /// <param name="fix">The packet; nothing in it is trusted but the aim, the slot and the codes.</param>
+  /// <param name="fix">The packet; nothing in it is trusted but the aim, the slot and the codes; the dimension is the player's own.</param>
   /// <returns>Null when the part was placed; otherwise the refusal to send, with nothing taken.</returns>
   public static AssemblyResult? Fix(
     IWorldAccessor world,
@@ -51,7 +51,7 @@ internal static class HandAssemblyServer {
       GameMath.Clamp(fix.Face, 0, BlockFacing.ALLFACES.Length - 1)
     ];
     var selection = new BlockSelection {
-      Position = new BlockPos(fix.X, fix.Y, fix.Z, fix.Dimension),
+      Position = new BlockPos(fix.X, fix.Y, fix.Z, player.Entity.Pos.Dimension),
       Face = face,
       HitPosition = new Vec3d(fix.HitX, fix.HitY, fix.HitZ),
     };
@@ -136,7 +136,7 @@ internal static class HandAssemblyServer {
   /// <summary>Takes the fixed piece at the packet's position off; a block that is not a network node counts as fixed whatever its record holds, and one with no record returns only itself: it and the fasteners of every joint it was part of go to the player, and the cell clears.</summary>
   /// <param name="world">The server world.</param>
   /// <param name="player">The sending player; the tool is read from the active hotbar slot.</param>
-  /// <param name="take">The packet; nothing in it is trusted but the position.</param>
+  /// <param name="take">The packet; nothing in it is trusted but the position; the dimension is the player's own.</param>
   /// <returns>Null when the piece was taken off; otherwise the refusal to send, with nothing changed.</returns>
   public static AssemblyResult? TakeOff(
     IWorldAccessor world,
@@ -144,7 +144,7 @@ internal static class HandAssemblyServer {
     AssemblyTakeOff take
   ) {
     IBlockAccessor accessor = world.BlockAccessor;
-    var cell = new BlockPos(take.X, take.Y, take.Z, take.Dimension);
+    var cell = new BlockPos(take.X, take.Y, take.Z, player.Entity.Pos.Dimension);
     if (!InRange(player, cell))
       return Refusal(OutOfRange);
     if (
