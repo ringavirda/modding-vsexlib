@@ -214,6 +214,9 @@ internal sealed class SetupFileModel {
   /// that names one.</summary>
   public bool RecordsOwn { get; private set; } = true;
 
+  /// <summary>Whether the case is a variant of the file's main case; a variant hands nothing on.</summary>
+  public bool IsVariant { get; private set; }
+
   public IReadOnlyList<string> TickOrders { get; private set; } = [];
 
   /// <summary>Every id a step or a legend entry places, with the code it places when it
@@ -1092,6 +1095,7 @@ internal sealed class SetupFileModel {
     ];
     model.RecordName = variant.Record ?? Setup;
     model.RecordsOwn = variant.Record != null;
+    model.IsVariant = true;
     HashSet<string> gone =
     [
       .. variant.Drop,

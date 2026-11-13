@@ -213,7 +213,7 @@ public sealed partial class SetupScene
     try
     {
       _pack.CheckStanding(standing);
-      if (Model.Fails == null)
+      if (!Model.IsVariant)
         _pack.CheckEnds();
     }
     catch (InvalidOperationException e)

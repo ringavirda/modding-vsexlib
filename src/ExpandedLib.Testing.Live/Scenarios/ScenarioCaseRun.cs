@@ -138,7 +138,7 @@ internal sealed class ScenarioCaseRun(
       }
       if (failure == null) {
         try {
-          PackLedger.Finish(ctx, scenario.Model.Fails != null);
+          PackLedger.Finish(ctx, scenario.Model.IsVariant);
         } catch (StepFailure e) {
           failedAt = steps.Count + 1;
           failure = Report(failedAt, "pack", "ends", e.Message, e.Suspect);
