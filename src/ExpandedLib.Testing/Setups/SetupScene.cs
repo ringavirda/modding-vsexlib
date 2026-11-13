@@ -34,6 +34,8 @@ public sealed partial class SetupScene : IDisposable
     ["timespeed"] =
       "the fake world has no calendar speed to run a span of server clock through",
     ["climate"] = "the fake world has no weather to hold a climate with",
+    ["assemble"] = "the fake world has no player to fix a part with",
+    ["takeoff"] = "the fake world has no player to take a piece off with",
   };
 
   private const string NoPowerSource =
@@ -271,7 +273,16 @@ public sealed partial class SetupScene : IDisposable
               step.Path,
               "\"place\" by the player is refused: the fake world has no player to place with."
             );
-          RefuseKeys(step.Path, body, "complete", "materials", "tree");
+          RefuseKeys(
+            step.Path,
+            body,
+            "complete",
+            "materials",
+            "tree",
+            "face",
+            "arms",
+            "turn"
+          );
           break;
         case "expect":
           if (body["drops"] != null)

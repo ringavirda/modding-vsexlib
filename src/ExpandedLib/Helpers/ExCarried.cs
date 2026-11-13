@@ -45,6 +45,17 @@ internal static class ExCarried {
     return taken;
   }
 
+  /// <summary>What the hotbar and the backpack hold, summed over their slots.</summary>
+  /// <param name="player">The player whose inventories are read.</param>
+  /// <returns>The item or block count by full collectible code; empty slots are skipped.</returns>
+  public static Dictionary<string, int> Totals(IPlayer player) {
+    var totals = new Dictionary<string, int>();
+    foreach (ItemSlot slot in Slots(player))
+      if (slot.Itemstack?.Collectible.Code is { } code)
+        totals[code.ToString()] = totals.GetValueOrDefault(code.ToString()) + slot.StackSize;
+    return totals;
+  }
+
   private static bool Matches(ItemSlot slot, string code) =>
     slot.Itemstack?.Collectible.Code is { } found
     && WildcardUtil.Match(code, found.ToString());

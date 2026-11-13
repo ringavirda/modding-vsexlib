@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using ExpandedLib.Assembling;
 using ExpandedLib.Definitions;
 using ExpandedLib.Networks;
 using ExpandedLib.Scenarios;
@@ -226,7 +227,7 @@ internal static class SetupLayoutWalk {
       laid,
       clicks,
       i => {
-        if (wanted[i] is { } faces)
+        if (wanted[i] is { } faces && HandAssemblySpec.Of(blocks[i]) == null)
           Turn(ctx, wrench, laid[i], faces);
       }
     );
