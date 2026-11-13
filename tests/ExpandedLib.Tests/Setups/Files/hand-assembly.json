@@ -1,0 +1,35 @@
+{
+  "setup": "hand-assembly",
+  "description": "Pipe straights fixed by hand: placed with arms, stepped to a candidate, refused without the tool, taken off.",
+  "mods": ["platedpipes"],
+  "steps": [
+    {
+      "place": {
+        "id": "first",
+        "code": "platedpipes:pipe-plated-straight-we",
+        "at": [0, 0, 0],
+        "face": "u",
+        "arms": "ew"
+      }
+    },
+    {
+      "assemble": {
+        "id": "second",
+        "code": "platedpipes:pipe-plated-straight-we",
+        "at": [1, 0, 0],
+        "steps": 1
+      }
+    },
+    {
+      "assemble": {
+        "code": "platedpipes:pipe-plated-straight-we",
+        "at": [2, 0, 0],
+        "fails": "exlib-handassembly-needstool"
+      }
+    },
+    { "expect": { "at": [0, 0, 0], "asm": "fixed", "equals": true } },
+    { "takeoff": { "at": [1, 0, 0] } }
+  ],
+  "seconds": 10,
+  "record": {}
+}
