@@ -45,13 +45,15 @@ public static class HandAssemblyCandidates {
 
     var offered = new List<(AssemblyCandidate Candidate, int Declared)>();
     int declared = 0;
-    foreach ((Block block, string token, string? turn) in Variants(
-      world,
-      player,
-      part,
-      selection,
-      target
-    )) {
+    foreach (
+      (Block block, string token, string? turn) in Variants(
+        world,
+        player,
+        part,
+        selection,
+        target
+      )
+    ) {
       declared++;
       IReadOnlyList<BlockFacing> arms =
         (block as BlockNetworkNode)?.GetConnectorFaces() ?? [];
@@ -64,22 +66,24 @@ public static class HandAssemblyCandidates {
       if (!PartAllows(part, world, target.Cell, block))
         continue;
 
-      offered.Add((
-        new AssemblyCandidate(
-          block,
-          token,
-          turn,
-          arms,
-          [
-            .. arms.Where(face =>
-              CrossingAt(world.BlockAccessor, target.Cell, face, block)
+      offered.Add(
+        (
+          new AssemblyCandidate(
+            block,
+            token,
+            turn,
+            arms,
+            [
+              .. arms.Where(face =>
+                CrossingAt(world.BlockAccessor, target.Cell, face, block)
                 != Crossing.Mates
-            ),
-          ],
-          JointsMade(world.BlockAccessor, target.Cell, block)
-        ),
-        declared
-      ));
+              ),
+            ],
+            JointsMade(world.BlockAccessor, target.Cell, block)
+          ),
+          declared
+        )
+      );
     }
 
     return Order(offered, target, player);
@@ -96,8 +100,8 @@ public static class HandAssemblyCandidates {
   ) =>
     candidate is BlockNetworkNode node
       ? (node.GetConnectorFaces() ?? []).Count(face =>
-          CrossingAt(world, cell, face, candidate) == Crossing.Mates
-        )
+        CrossingAt(world, cell, face, candidate) == Crossing.Mates
+      )
       : 1;
 
   /// <summary>Whether the block across <paramref name="face"/> of <paramref name="cell"/> offers a crossing <paramref name="part"/> mates: the same network type, a connector back, and a shared joint family.</summary>
@@ -170,14 +174,17 @@ public static class HandAssemblyCandidates {
     BlockPos cell,
     Block candidate
   ) {
-    IEnumerable<IHandAssemblyPart> refiners =
-      part is IHandAssemblyPart own
-        ? [own, .. part.BlockBehaviors.OfType<IHandAssemblyPart>()]
-        : part.BlockBehaviors.OfType<IHandAssemblyPart>();
+    IEnumerable<IHandAssemblyPart> refiners = part is IHandAssemblyPart own
+      ? [own, .. part.BlockBehaviors.OfType<IHandAssemblyPart>()]
+      : part.BlockBehaviors.OfType<IHandAssemblyPart>();
     return refiners.All(r => r.Allows(world, cell, candidate, out _));
   }
 
-  private static IEnumerable<(Block Block, string Token, string? Turn)> Variants(
+  private static IEnumerable<(
+    Block Block,
+    string Token,
+    string? Turn
+  )> Variants(
     IWorldAccessor world,
     IPlayer player,
     Block part,
@@ -191,13 +198,18 @@ public static class HandAssemblyCandidates {
       string key = BlockBehaviorExOrientable.OrientationVariant;
       IEnumerable<string> tokens =
         orientable?.Scheme.Tokens ?? node.AllowedOrientations.Values.First();
-      if (node.Type != null && node.AllowedOrientations.TryGetValue(node.Type, out var allowed))
+      if (
+        node.Type != null
+        && node.AllowedOrientations.TryGetValue(node.Type, out var allowed)
+      )
         tokens = tokens.Where(allowed.Contains);
 
       bool turns = part.Variant.ContainsKey(TurnVariant);
       foreach (string token in tokens) {
         if (!turns) {
-          Block? variant = world.BlockAccessor.GetBlock(part.CodeWithVariant(key, token));
+          Block? variant = world.BlockAccessor.GetBlock(
+            part.CodeWithVariant(key, token)
+          );
           if (variant != null)
             yield return (variant, token, null);
           continue;
@@ -211,7 +223,10 @@ public static class HandAssemblyCandidates {
         foreach (string turn in TurnsAbout(axis, target.Cell, player)) {
           Block? variant = world.BlockAccessor.GetBlock(
             part.CodeWithVariants(
-              new Dictionary<string, string> { [key] = token, [TurnVariant] = turn }
+              new Dictionary<string, string> {
+                [key] = token,
+                [TurnVariant] = turn,
+              }
             )
           );
           if (variant != null)
@@ -221,7 +236,9 @@ public static class HandAssemblyCandidates {
     } else if (orientable != null) {
       string first = orientable.TokenFor(player, selection);
       foreach (
-        string token in orientable.Scheme.Tokens.OrderBy(t => t == first ? 0 : 1)
+        string token in orientable.Scheme.Tokens.OrderBy(t =>
+          t == first ? 0 : 1
+        )
       ) {
         Block? variant = world.BlockAccessor.GetBlock(
           part.CodeWithVariant(orientable.VariantKey, token)
@@ -283,11 +300,11 @@ public static class HandAssemblyCandidates {
     double OpenArmLook(AssemblyCandidate c) {
       return c.OpenArms.Count > 0
         ? c.OpenArms.Max(f =>
-            Math.Round(
-              f.Normali.X * view.X + f.Normali.Y * view.Y + f.Normali.Z * view.Z,
-              4
-            )
+          Math.Round(
+            f.Normali.X * view.X + f.Normali.Y * view.Y + f.Normali.Z * view.Z,
+            4
           )
+        )
         : double.NegativeInfinity;
     }
 

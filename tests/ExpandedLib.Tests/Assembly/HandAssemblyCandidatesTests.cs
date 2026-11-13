@@ -28,7 +28,10 @@ public class HandAssemblyCandidatesTests {
     var scene = Scene.Standing(["ne", "nes", "ns", "we", "ud"]);
     scene.Pipe(Cell.AddCopy(BlockFacing.NORTH), "ns");
 
-    var offered = scene.Offer(Cell.AddCopy(BlockFacing.NORTH), BlockFacing.SOUTH);
+    var offered = scene.Offer(
+      Cell.AddCopy(BlockFacing.NORTH),
+      BlockFacing.SOUTH
+    );
 
     Assert.Equal(["ns", "ne", "nes"], Tokens(offered));
   }
@@ -146,11 +149,18 @@ public class HandAssemblyCandidatesTests {
   [Fact]
   public void A_replaceable_aimed_cell_is_the_target_cell_and_a_solid_one_offsets_by_the_face() {
     var scene = Scene.Standing(["ns"]);
-    var grass = TestBlocks.Configure(new Block { Replaceable = 7000 }, "game:grass", 80);
+    var grass = TestBlocks.Configure(
+      new Block { Replaceable = 7000 },
+      "game:grass",
+      80
+    );
     scene.World.Place(Ground, grass);
 
     HandAssemblyTarget onGrass = scene.Target(Ground, BlockFacing.UP);
-    scene.World.Place(Ground, TestBlocks.Configure(new Block(), "game:rock", 81));
+    scene.World.Place(
+      Ground,
+      TestBlocks.Configure(new Block(), "game:rock", 81)
+    );
     HandAssemblyTarget onRock = scene.Target(Ground, BlockFacing.UP);
 
     Assert.Equal(Ground, onGrass.Cell);
@@ -256,9 +266,16 @@ public class HandAssemblyCandidatesTests {
       World.Place(pos, _pipes.Neighbour(token, family));
 
     public HandAssemblyTarget Target(BlockPos aimed, BlockFacing face) =>
-      HandAssemblyTarget.Resolve(World.Accessor, Select(aimed, face), _pipes.Held);
+      HandAssemblyTarget.Resolve(
+        World.Accessor,
+        Select(aimed, face),
+        _pipes.Held
+      );
 
-    public IReadOnlyList<AssemblyCandidate> Offer(BlockPos aimed, BlockFacing face) =>
+    public IReadOnlyList<AssemblyCandidate> Offer(
+      BlockPos aimed,
+      BlockFacing face
+    ) =>
       HandAssemblyCandidates.Of(
         World.World,
         Player.Player,
@@ -276,7 +293,15 @@ public class HandAssemblyCandidatesTests {
 
   /// <summary>The variants of one held part, registered in the world, and neighbours of other joint families.</summary>
   private sealed class Pipes {
-    private static readonly string[] TurnLetters = ["u", "d", "n", "e", "s", "w"];
+    private static readonly string[] TurnLetters =
+    [
+      "u",
+      "d",
+      "n",
+      "e",
+      "s",
+      "w",
+    ];
     private readonly TestWorld _world;
     private readonly string[] _tokens;
     private readonly string? _refusing;
@@ -304,7 +329,9 @@ public class HandAssemblyCandidatesTests {
       Held = _variants[(tokens[0], turns ? "u" : null)];
       if (orientable) {
         var behaviour = new BlockBehaviorExOrientable(Held);
-        behaviour.Initialize(new JsonObject(JToken.Parse("""{"mode":"horizontal"}""")));
+        behaviour.Initialize(
+          new JsonObject(JToken.Parse("""{"mode":"horizontal"}"""))
+        );
         Held.BlockBehaviors = [behaviour];
         Held.CollectibleBehaviors = [behaviour];
         foreach (Block other in _variants.Values.Where(b => b != Held)) {
@@ -316,7 +343,8 @@ public class HandAssemblyCandidatesTests {
 
     public Block Held { get; }
 
-    public Block Variant(string token, string? turn) => _variants[(token, turn)];
+    public Block Variant(string token, string? turn) =>
+      _variants[(token, turn)];
 
     public Block Neighbour(string token, string family) =>
       Node(token, null, family, $"test:neighbour-{family}-{token}");
@@ -329,7 +357,12 @@ public class HandAssemblyCandidatesTests {
         ("side", token)
       );
 
-    private Block Node(string token, string? turn, string family, string? code = null) {
+    private Block Node(
+      string token,
+      string? turn,
+      string family,
+      string? code = null
+    ) {
       (string, string)[] variants =
         turn == null
           ? [("orientation", token)]
@@ -347,7 +380,12 @@ public class HandAssemblyCandidatesTests {
     private readonly string _family;
     private readonly string? _refusing;
 
-    public PipeNode(string token, string family, string[] tokens, string? refusing) {
+    public PipeNode(
+      string token,
+      string family,
+      string[] tokens,
+      string? refusing
+    ) {
       Type = "mixed";
       Orientation = token;
       _family = family;
@@ -380,7 +418,11 @@ public class HandAssemblyCandidatesTests {
 
 internal static class AssemblyPlayerExtensions {
   /// <summary>Stands the player three cells from <paramref name="cell"/> on its <paramref name="side"/>.</summary>
-  public static void StandAt(this TestPlayer player, BlockPos cell, BlockFacing side) =>
+  public static void StandAt(
+    this TestPlayer player,
+    BlockPos cell,
+    BlockFacing side
+  ) =>
     player.Entity.Pos.SetPos(
       cell.X + 0.5 + (side.Normali.X * 3),
       cell.Y + 0.5,
@@ -389,6 +431,11 @@ internal static class AssemblyPlayerExtensions {
 
   /// <summary>Turns the player to look along <paramref name="facing"/>.</summary>
   public static void Looking(this TestPlayer player, BlockFacing facing) =>
-    player.Entity.Pos.Yaw = new[] { 0f, GameMath.PIHALF, GameMath.PI, GameMath.PI + GameMath.PIHALF }
-      .First(yaw => BlockFacing.HorizontalFromYaw(yaw) == facing);
+    player.Entity.Pos.Yaw = new[]
+    {
+      0f,
+      GameMath.PIHALF,
+      GameMath.PI,
+      GameMath.PI + GameMath.PIHALF,
+    }.First(yaw => BlockFacing.HorizontalFromYaw(yaw) == facing);
 }

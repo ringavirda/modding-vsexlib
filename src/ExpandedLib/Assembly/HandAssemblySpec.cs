@@ -6,7 +6,11 @@ namespace ExpandedLib.Assembling;
 /// <param name="Tool">Item code of the tool held in the off hand, wildcards allowed.</param>
 /// <param name="Fastener">Item code of the fastener a joint spends.</param>
 /// <param name="PerJoint">Count of <paramref name="Fastener"/> items one joint spends, at least 1.</param>
-public sealed record HandAssemblySpec(string Tool, string Fastener, int PerJoint) {
+public sealed record HandAssemblySpec(
+  string Tool,
+  string Fastener,
+  int PerJoint
+) {
   /// <summary>The attribute key the spec is stored under.</summary>
   public const string AttributeKey = "handAssembly";
 

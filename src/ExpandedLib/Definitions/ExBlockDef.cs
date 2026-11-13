@@ -568,13 +568,22 @@ public sealed class ExBlockDef : IExDef {
   /// <exception cref="ArgumentOutOfRangeException"><paramref name="perJoint"/> is below 1.</exception>
   public ExBlockDef HandAssembly(string tool, string fastener, int perJoint) {
     if (perJoint < 1)
-      throw new ArgumentOutOfRangeException(nameof(perJoint), perJoint, "A joint spends at least one fastener.");
+      throw new ArgumentOutOfRangeException(
+        nameof(perJoint),
+        perJoint,
+        "A joint spends at least one fastener."
+      );
 
     Attribute(
       Assembling.HandAssemblySpec.AttributeKey,
-      new { tool, fastener, perJoint }
+      new {
+        tool,
+        fastener,
+        perJoint,
+      }
     );
-    NestedArray("behaviors").Insert(0, new JObject { ["name"] = "HandAssembly" });
+    NestedArray("behaviors")
+      .Insert(0, new JObject { ["name"] = "HandAssembly" });
     if (_root["entityClass"] == null)
       EntityClass<Assembling.BlockEntityAssembled>();
     return EntityBehavior<Assembling.BEBehaviorAssembled>();

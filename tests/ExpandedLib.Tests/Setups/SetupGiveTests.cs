@@ -175,8 +175,9 @@ public class SetupGiveTests
   [Fact]
   public void A_select_by_code_of_an_item_no_slot_holds_fails_the_step()
   {
-    InvalidOperationException error = Assert.Throws<InvalidOperationException>(() =>
-      SetupHoldTests.Build("[" + SelectCode("setuphold:wand") + "]")
+    InvalidOperationException error = Assert.Throws<InvalidOperationException>(
+      () =>
+        SetupHoldTests.Build("[" + SelectCode("setuphold:wand") + "]")
     );
 
     Assert.Contains("no hotbar slot holds setuphold:wand", error.Message);
@@ -188,8 +189,9 @@ public class SetupGiveTests
   [InlineData("{}")]
   public void A_select_takes_one_of_slot_and_code(string body)
   {
-    InvalidOperationException error = Assert.Throws<InvalidOperationException>(() =>
-      SetupHoldTests.Build("[{\"select\": " + body + "}]")
+    InvalidOperationException error = Assert.Throws<InvalidOperationException>(
+      () =>
+        SetupHoldTests.Build("[{\"select\": " + body + "}]")
     );
 
     Assert.Contains("takes one of \"slot\" and \"code\"", error.Message);

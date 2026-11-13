@@ -279,7 +279,11 @@ public sealed partial class SetupScene
       string code = (string)step.Body["code"]!;
       int found = SetupSlotExpect.SlotHolding(
         code,
-        [.. Enumerable.Range(0, TestPlayer.HotbarSlots).Select(Player.StackInSlot)],
+        [
+          .. Enumerable
+            .Range(0, TestPlayer.HotbarSlots)
+            .Select(Player.StackInSlot),
+        ],
         TestPlayer.HotbarSlots
       );
       return found >= 0
