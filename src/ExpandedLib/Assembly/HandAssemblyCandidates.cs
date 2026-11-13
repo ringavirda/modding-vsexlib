@@ -173,11 +173,23 @@ public static class HandAssemblyCandidates {
     IWorldAccessor world,
     BlockPos cell,
     Block candidate
+  ) => PartRefusal(part, world, cell, candidate) == null;
+
+  /// <summary>The refusal <paramref name="part"/> gives a placement through <see cref="IHandAssemblyPart.Allows"/>.</summary>
+  /// <returns>Null when every refiner accepts; otherwise the failure code the first refusing one gave, or <c>exlib-handassembly-refused</c> when it gave none.</returns>
+  internal static string? PartRefusal(
+    Block part,
+    IWorldAccessor world,
+    BlockPos cell,
+    Block candidate
   ) {
     IEnumerable<IHandAssemblyPart> refiners = part is IHandAssemblyPart own
       ? [own, .. part.BlockBehaviors.OfType<IHandAssemblyPart>()]
       : part.BlockBehaviors.OfType<IHandAssemblyPart>();
-    return refiners.All(r => r.Allows(world, cell, candidate, out _));
+    foreach (IHandAssemblyPart refiner in refiners)
+      if (!refiner.Allows(world, cell, candidate, out string? failureCode))
+        return failureCode ?? HandAssemblyServer.Refused;
+    return null;
   }
 
   private static IEnumerable<(

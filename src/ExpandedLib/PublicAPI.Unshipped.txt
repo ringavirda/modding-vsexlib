@@ -784,12 +784,20 @@ ExpandedLib.Assembling.AssemblyCandidate.Turn.get -> string?
 ExpandedLib.Assembling.AssemblyCandidate.Turn.init -> void
 ExpandedLib.Assembling.BEBehaviorAssembled
 ExpandedLib.Assembling.BEBehaviorAssembled.BEBehaviorAssembled(Vintagestory.API.Common.BlockEntity! blockentity) -> void
+ExpandedLib.Assembling.BEBehaviorAssembled.FastenerAt(Vintagestory.API.MathTools.BlockFacing! face) -> Vintagestory.API.Common.ItemStack?
+ExpandedLib.Assembling.BEBehaviorAssembled.Fixed.get -> bool
+ExpandedLib.Assembling.BEBehaviorAssembled.Fixed.set -> void
+ExpandedLib.Assembling.BEBehaviorAssembled.Joint.get -> Vintagestory.API.Common.ItemStack?
+ExpandedLib.Assembling.BEBehaviorAssembled.Joint.set -> void
+ExpandedLib.Assembling.BEBehaviorAssembled.SetFastener(Vintagestory.API.MathTools.BlockFacing! face, Vintagestory.API.Common.ItemStack? stack) -> void
 ExpandedLib.Assembling.BlockBehaviorHandAssembly
 ExpandedLib.Assembling.BlockBehaviorHandAssembly.BlockBehaviorHandAssembly(Vintagestory.API.Common.Block! block) -> void
 ExpandedLib.Assembling.BlockBehaviorHandAssembly.Spec.get -> ExpandedLib.Assembling.HandAssemblySpec?
 ExpandedLib.Assembling.BlockEntityAssembled
 ExpandedLib.Assembling.BlockEntityAssembled.BlockEntityAssembled() -> void
 ExpandedLib.Assembling.HandAssemblyCandidates
+ExpandedLib.Assembling.HandAssemblyModSystem
+ExpandedLib.Assembling.HandAssemblyModSystem.HandAssemblyModSystem() -> void
 ExpandedLib.Assembling.HandAssemblySpec
 ExpandedLib.Assembling.HandAssemblySpec.Fastener.get -> string!
 ExpandedLib.Assembling.HandAssemblySpec.Fastener.init -> void
@@ -816,3 +824,8 @@ static ExpandedLib.Assembling.HandAssemblyCandidates.Of(Vintagestory.API.Common.
 static ExpandedLib.Assembling.HandAssemblyCandidates.OffersCrossing(Vintagestory.API.Common.IBlockAccessor! world, Vintagestory.API.MathTools.BlockPos! cell, Vintagestory.API.MathTools.BlockFacing! face, Vintagestory.API.Common.Block! part) -> bool
 static ExpandedLib.Assembling.HandAssemblySpec.Of(Vintagestory.API.Common.Block! block) -> ExpandedLib.Assembling.HandAssemblySpec?
 static ExpandedLib.Assembling.HandAssemblyTarget.Resolve(Vintagestory.API.Common.IBlockAccessor! world, Vintagestory.API.Common.BlockSelection! selection, Vintagestory.API.Common.Block! part) -> ExpandedLib.Assembling.HandAssemblyTarget
+override ExpandedLib.Assembling.BEBehaviorAssembled.FromTreeAttributes(Vintagestory.API.Datastructures.ITreeAttribute! tree, Vintagestory.API.Common.IWorldAccessor! worldAccessForResolve) -> void
+override ExpandedLib.Assembling.BEBehaviorAssembled.ToTreeAttributes(Vintagestory.API.Datastructures.ITreeAttribute! tree) -> void
+override ExpandedLib.Assembling.BlockBehaviorHandAssembly.TryPlaceBlock(Vintagestory.API.Common.IWorldAccessor! world, Vintagestory.API.Common.IPlayer! byPlayer, Vintagestory.API.Common.ItemStack! itemstack, Vintagestory.API.Common.BlockSelection! blockSel, ref Vintagestory.API.Common.EnumHandling handling, ref string! failureCode) -> bool
+override ExpandedLib.Assembling.HandAssemblyModSystem.StartClientSide(Vintagestory.API.Client.ICoreClientAPI! api) -> void
+override ExpandedLib.Assembling.HandAssemblyModSystem.StartServerSide(Vintagestory.API.Server.ICoreServerAPI! api) -> void

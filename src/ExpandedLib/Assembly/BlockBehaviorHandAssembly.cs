@@ -13,4 +13,32 @@ public class BlockBehaviorHandAssembly : BlockBehavior {
 
   /// <summary>The tool and fasteners the block declares, or null when its attribute is missing.</summary>
   public HandAssemblySpec? Spec => HandAssemblySpec.Of(block);
+
+  /// <summary>Refuses a survival placement outside the assembly handler and, in creative, places the aim's first candidate fixed.</summary>
+  public override bool TryPlaceBlock(
+    IWorldAccessor world,
+    IPlayer byPlayer,
+    ItemStack itemstack,
+    BlockSelection blockSel,
+    ref EnumHandling handling,
+    ref string failureCode
+  ) {
+    if (HandAssemblyGate.Refuses(world, byPlayer, itemstack, ref failureCode)) {
+      handling = EnumHandling.PreventSubsequent;
+      return false;
+    }
+    if (
+      !HandAssemblyGate.PlacesFirst(
+        world,
+        byPlayer,
+        itemstack,
+        blockSel,
+        ref failureCode,
+        out bool placed
+      )
+    )
+      return true;
+    handling = EnumHandling.PreventSubsequent;
+    return placed;
+  }
 }

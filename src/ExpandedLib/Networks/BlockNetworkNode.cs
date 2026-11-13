@@ -2,6 +2,7 @@ using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
+using ExpandedLib.Assembling;
 using ExpandedLib.Blocks;
 using ExpandedLib.Definitions;
 using ExpandedLib.Helpers;
@@ -97,6 +98,13 @@ public abstract class BlockNetworkNode
   /// <summary>Drops every pending placement choice; run when a world starts loading.</summary>
   internal static void ResetForWorld() => _tempOrientationsStore.Clear();
 
+  /// <summary>Sets the orientation choices the next placement at <paramref name="pos"/> stores on its block entity, as <see cref="TryPlaceBlock"/> does before it places.</summary>
+  internal static void StoreChoices(
+    IWorldAccessor world,
+    BlockPos pos,
+    string[] choices
+  ) => _tempOrientationsStore[(world, pos.Copy())] = choices;
+
   /// <summary>
   /// Determines the best orientation for this block at the target position by
   /// examining neighbouring network blocks, then delegates to <c>DoPlaceBlock</c>.
@@ -108,6 +116,19 @@ public abstract class BlockNetworkNode
     BlockSelection blockSel,
     ref string failureCode
   ) {
+    if (HandAssemblyGate.Refuses(world, byPlayer, itemstack, ref failureCode))
+      return false;
+    if (
+      HandAssemblyGate.PlacesFirst(
+        world,
+        byPlayer,
+        itemstack,
+        blockSel,
+        ref failureCode,
+        out bool placedFirst
+      )
+    )
+      return placedFirst;
     if (!world.BlockAccessor.GetBlock(blockSel.Position).IsReplacableBy(this)) {
       failureCode = "notreplaceable";
       return false;
