@@ -6,6 +6,7 @@ using System.Reflection;
 using ExpandedLib.Assembling;
 using ExpandedLib.Blocks;
 using ExpandedLib.Industry.MechanicalPower;
+using ExpandedLib.Scenarios;
 using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
 using Vintagestory.API.Config;

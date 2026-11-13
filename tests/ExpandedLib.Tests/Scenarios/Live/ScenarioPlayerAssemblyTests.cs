@@ -83,13 +83,8 @@ public class ScenarioPlayerAssemblyTests {
     var ns = Candidate("t:ns", 1, null, BlockFacing.NORTH, BlockFacing.SOUTH);
     var we = Candidate("t:we", 2, null, BlockFacing.EAST, BlockFacing.WEST);
 
-    Assert.Same(
-      we,
-      HandAssemblyPlay.Choose([ns, we], new AssemblyPick(Arms: "ew"))
-    );
-    Assert.Null(
-      HandAssemblyPlay.Choose([ns, we], new AssemblyPick(Arms: "ud"))
-    );
+    Assert.Same(we, new AssemblyPick(Arms: "ew").Choose([ns, we]));
+    Assert.Null(new AssemblyPick(Arms: "ud").Choose([ns, we]));
   }
 
   // Fails when the turn filter is dropped, so a fitting's first turn is taken whatever the pick names.
@@ -98,10 +93,7 @@ public class ScenarioPlayerAssemblyTests {
     var first = Candidate("t:a", 1, "n");
     var second = Candidate("t:b", 2, "e");
 
-    Assert.Same(
-      second,
-      HandAssemblyPlay.Choose([first, second], new AssemblyPick(Turn: "e"))
-    );
+    Assert.Same(second, new AssemblyPick(Turn: "e").Choose([first, second]));
   }
 
   // Fails when the right-clicks do not step on, or do not wrap to the first after the last.
@@ -114,14 +106,8 @@ public class ScenarioPlayerAssemblyTests {
       Candidate("t:c", 3),
     ];
 
-    Assert.Same(
-      list[1],
-      HandAssemblyPlay.Choose(list, new AssemblyPick(Steps: 1))
-    );
-    Assert.Same(
-      list[0],
-      HandAssemblyPlay.Choose(list, new AssemblyPick(Steps: 3))
-    );
+    Assert.Same(list[1], new AssemblyPick(Steps: 1).Choose(list));
+    Assert.Same(list[0], new AssemblyPick(Steps: 3).Choose(list));
   }
 
   // Fails when assemble ignores its steps: the first candidate goes down, not the one stepped to.

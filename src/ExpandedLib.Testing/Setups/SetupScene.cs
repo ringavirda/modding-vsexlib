@@ -2,6 +2,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using ExpandedLib.Assembling;
 using ExpandedLib.Blocks;
 using ExpandedLib.Catalogues;
 using ExpandedLib.Config;
@@ -34,8 +35,6 @@ public sealed partial class SetupScene : IDisposable
     ["timespeed"] =
       "the fake world has no calendar speed to run a span of server clock through",
     ["climate"] = "the fake world has no weather to hold a climate with",
-    ["assemble"] = "the fake world has no player to fix a part with",
-    ["takeoff"] = "the fake world has no player to take a piece off with",
   };
 
   private const string NoPowerSource =
@@ -273,16 +272,7 @@ public sealed partial class SetupScene : IDisposable
               step.Path,
               "\"place\" by the player is refused: the fake world has no player to place with."
             );
-          RefuseKeys(
-            step.Path,
-            body,
-            "complete",
-            "materials",
-            "tree",
-            "face",
-            "arms",
-            "turn"
-          );
+          RefuseKeys(step.Path, body, "complete", "materials", "tree");
           break;
         case "expect":
           if (body["drops"] != null)
@@ -710,6 +700,12 @@ public sealed partial class SetupScene : IDisposable
         case "repeat":
           RepeatStep(step);
           break;
+        case "assemble":
+          AssembleStep(step);
+          break;
+        case "takeoff":
+          TakeOffStep(step);
+          break;
       }
       foreach (var (code, count) in step.Gives)
         _pack?.Give(code, count);
@@ -721,9 +717,25 @@ public sealed partial class SetupScene : IDisposable
   {
     Block block = Resolve((string)step.Body["code"]!, step.Path);
     BlockPos at = At(step, "at");
-    Put(block, at, step.Path);
+    Block placed = block;
+    if (HandAssemblySpec.Of(block) != null)
+    {
+      PutByHand(
+        block,
+        at,
+        step.Path,
+        new AssemblyPick(
+          Arms: (string?)step.Body["arms"],
+          Turn: (string?)step.Body["turn"]
+        ),
+        FaceOf(step, (string?)step.Body["face"])
+      );
+      placed = World.GetBlock(at);
+    }
+    else
+      Put(block, at, step.Path);
     if (step.Id != null)
-      Record(step.Id, at, block);
+      Record(step.Id, at, placed);
     if ((string?)step.Body["complete"] == "all")
       Complete(at, step.Path);
     RaisePlacedInBeltPath(at);

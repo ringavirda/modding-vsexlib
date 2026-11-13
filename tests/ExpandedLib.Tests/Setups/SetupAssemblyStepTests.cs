@@ -60,12 +60,12 @@ public class SetupAssemblyStepTests {
       "exlib/case",
       FixtureText(),
       "hand-assembly.json",
-      ["platedpipes"],
+      ["setupasm"],
       "1.22"
     );
 
     Assert.Equal(
-      ["place", "assemble", "assemble", "expect", "takeoff"],
+      ["place", "assemble", "assemble", "expect", "expect", "takeoff"],
       scenario.Model.Steps.Select(s => s.Kind)
     );
     Assert.All(
@@ -74,38 +74,90 @@ public class SetupAssemblyStepTests {
     );
   }
 
-  // Fails when the harness reader runs a step that needs a player, so a file with assemble passes there unseen.
-  [Theory]
-  [InlineData("assemble", "the fake world has no player to fix a part with")]
-  [InlineData(
-    "takeoff",
-    "the fake world has no player to take a piece off with"
-  )]
-  public void The_harness_reader_refuses_the_steps_that_need_a_player(
-    string kind,
-    string reason
-  ) {
-    string body =
-      kind == "assemble"
-        ? "{\"code\": \"platedpipes:pipe-plated-straight-we\", \"at\": [0, 0, 0]}"
-        : "{\"at\": [0, 0, 0]}";
-    SetupFile file = SetupFile.Parse(
-      "{\"setup\": \"t\", \"description\": \"d\", \"mods\": [\"platedpipes\"], \"steps\": [{\""
-        + kind
-        + "\": "
-        + body
-        + "}], \"seconds\": 10, \"record\": {}}",
-      "t.json"
+  private static readonly string FixturePath = Path.Combine(
+    RepoPaths.Root,
+    "tests",
+    "ExpandedLib.Tests",
+    "Setups",
+    "Fixtures",
+    "SetupAsm"
+  );
+
+  private static SetupScene BuildInline(string steps, string layout = "") =>
+    SetupScene.Build(
+      SetupFile.Parse(
+        "{\"setup\": \"t\", \"description\": \"d\", \"mods\": [\"setupasm\"], "
+          + layout
+          + "\"steps\": "
+          + steps
+          + ", \"seconds\": 10, \"record\": {}}",
+        "t.json"
+      ),
+      [FixturePath]
     );
 
+  private static BEBehaviorAssembled RecordAt(
+    SetupScene scene,
+    int x,
+    int y,
+    int z
+  ) =>
+    scene
+      .World.GetBlockEntity(new BlockPos(x, y, z))!
+      .GetBehavior<BEBehaviorAssembled>();
+
+  // Fails when place, assemble or takeoff, run by the harness reader, skip the server's handler: a part is
+  // then set by the world and holds no record, no fastener is spent, or the piece stays after its take-off.
+  [Fact]
+  public void The_fixture_setup_runs_as_a_harness_row() {
+    using SetupScene scene = SetupScene.Build(
+      SetupFile.Load(
+        Path.Combine(
+          RepoPaths.Root,
+          "tests",
+          "ExpandedLib.Tests",
+          "Setups",
+          "Files",
+          "hand-assembly.json"
+        )
+      ),
+      [FixturePath]
+    );
+
+    Assert.True(RecordAt(scene, 0, 0, 0).Fixed);
+    Assert.Equal(0, scene.World.GetBlock(new BlockPos(1, 0, 0)).Id);
+    Assert.Equal(0, scene.World.GetBlock(new BlockPos(2, 0, 0)).Id);
+    Assert.Equal(["granted 2 setupasm:bolt for hand assembly"], scene.StandIns);
+  }
+
+  // Fails when a run of an opted-in block is laid by the world, so its cells are not fixed.
+  [Fact]
+  public void The_cells_of_a_run_of_an_opted_in_block_are_fixed_by_hand() {
+    using SetupScene scene = BuildInline(
+      """
+      [{ "run": { "id": "r", "code": "setupasm:pipe-straight-we",
+         "from": [0, 0, 0], "to": [2, 0, 0],
+         "family": ["setupasm:pipe-straight-*"],
+         "open": [{ "at": [0, 0, 0], "face": "w" }, { "at": [2, 0, 0], "face": "e" }] } }]
+      """
+    );
+
+    for (int x = 0; x < 3; x++)
+      Assert.True(RecordAt(scene, x, 0, 0).Fixed);
+  }
+
+  // Fails when a part whose candidates the arms leave empty is fixed anyway, or its refusal is not read.
+  [Fact]
+  public void An_assemble_that_no_candidate_answers_fails_the_step() {
     Exception e = Assert.ThrowsAny<Exception>(() =>
-      SetupScene.Build(
-        file,
-        [Path.Combine(RepoPaths.Root, "samples", "PlatedPipes")]
+      BuildInline(
+        """
+        [{ "assemble": { "code": "setupasm:pipe-straight-we", "at": [0, 0, 0], "arms": "es", "fails": "exlib-handassembly-needstool" } }]
+        """
       )
     );
 
-    Assert.Contains(reason, e.Message);
+    Assert.Contains("harness-nocandidate", e.Message);
   }
 
   // Fails when the fixed flag is read as anything but the record's.

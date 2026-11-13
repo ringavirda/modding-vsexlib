@@ -8,44 +8,13 @@ using Vintagestory.API.MathTools;
 
 namespace ExpandedLib.Testing.Live;
 
-/// <summary>Which of a part's candidates a placement takes. Each set field narrows the list the
-/// server offers; <paramref name="Steps"/> then counts the right-clicks that step on from the first
-/// left, wrapping after the last.</summary>
-/// <param name="Block">Code of the variant to take, or null for any.</param>
-/// <param name="Arms">The faces the variant couples on as letters in <see cref="BlockFacing.ALLFACES"/> order (n e s w u d), or null for any.</param>
-/// <param name="Turn">The face letter a fitting's part points to, or null for any.</param>
-/// <param name="Steps">Right-clicks before the fix, 0 or more.</param>
-internal sealed record AssemblyPick(
-  string? Block = null,
-  string? Arms = null,
-  string? Turn = null,
-  int Steps = 0
-);
-
 /// <summary>The scenario player's hand assembly: a held part with its tool in the off hand fixed
 /// through the server's own handler, and a fixed piece taken off with the tool in the main hand.
 /// The tool is drawn from the case's pack; the fasteners are drawn from it under
 /// <c>scope: "all"</c> and granted otherwise.</summary>
 internal static class HandAssemblyPlay {
   /// <summary>The refusal code of a click that offers no candidate the pick names.</summary>
-  public const string NoCandidate = "harness-nocandidate";
-
-  /// <summary>The candidate <paramref name="pick"/> names among <paramref name="candidates"/>.</summary>
-  /// <returns>The candidate, or null when the pick's filters leave none.</returns>
-  public static AssemblyCandidate? Choose(
-    IReadOnlyList<AssemblyCandidate> candidates,
-    AssemblyPick pick
-  ) {
-    List<AssemblyCandidate> left =
-    [
-      .. candidates.Where(c =>
-        (pick.Block == null || c.Block.Code.ToString() == pick.Block)
-        && (pick.Arms == null || SetupRunFamily.Letters(c.Arms) == pick.Arms)
-        && (pick.Turn == null || c.Turn == pick.Turn)
-      ),
-    ];
-    return left.Count == 0 ? null : left[pick.Steps % left.Count];
-  }
+  public const string NoCandidate = AssemblyPick.NoCandidate;
 
   /// <summary>The refusal as a failure line: its code and arguments.</summary>
   public static string Describe(AssemblyResult result) =>
@@ -101,7 +70,7 @@ internal static class HandAssemblyPlay {
         part,
         selection
       );
-      if (Choose(offered, pick) is not { } chosen)
+      if (pick.Choose(offered) is not { } chosen)
         return new AssemblyResult {
           Code = NoCandidate,
           Args =
