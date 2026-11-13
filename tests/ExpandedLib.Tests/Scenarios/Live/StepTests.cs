@@ -300,6 +300,20 @@ public class StepTests {
     );
   }
 
+  /// <summary>Fails when a hand's durability is dropped on the way to its stack (the insert, interact, break and
+  /// window steps read their stack there).</summary>
+  [Fact]
+  public void A_held_object_with_a_durability_makes_a_worn_stack() {
+    LiveFixture fixture = VesselFixture();
+    ItemStack stack = StepValues.Held(
+      fixture.Context,
+      Newtonsoft.Json.Linq.JObject.Parse(
+        """{ "stack": "game:charcoal", "durability": 17 }"""
+      )
+    );
+    Assert.Equal(17, stack.Attributes.GetInt("durability", -1));
+  }
+
   /// <summary>Fails when a content on a stack that is no liquid container is let through, or blames the
   /// mod instead of the scenario.</summary>
   [Fact]

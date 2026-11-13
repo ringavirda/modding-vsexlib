@@ -100,6 +100,7 @@ internal static class SetupSteps {
       "stack",
       "count",
       "temperature",
+      "durability",
       "slot",
       "content",
       "litres",
