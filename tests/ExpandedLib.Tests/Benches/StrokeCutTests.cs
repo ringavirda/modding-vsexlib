@@ -18,8 +18,7 @@ public class StrokeCutTests {
     float travel,
     float ratio,
     float arc
-  ) =>
-    Assert.Equal(arc, StrokeCut.Arc(depth, travel, ratio), 2);
+  ) => Assert.Equal(arc, StrokeCut.Arc(depth, travel, ratio), 2);
 
   [Fact]
   public void Torque_is_the_energy_over_the_arc() {
@@ -50,6 +49,5 @@ public class StrokeCutTests {
     float start,
     float advance,
     float share
-  ) =>
-    Assert.Equal(share, StrokeCut.CutShare(start, advance, 6f, 0.92f), 2);
+  ) => Assert.Equal(share, StrokeCut.CutShare(start, advance, 6f, 0.92f), 2);
 }
