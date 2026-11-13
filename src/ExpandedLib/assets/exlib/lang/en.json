@@ -169,5 +169,13 @@
   "sandstation-coldshut": "Cold shut: the feed stopped part way, so pieces of this cast will be scrap.",
   "metalstate-liquid": "liquid",
   "fitsoneblock-toolong": "Longer than one block.",
-  "metalstate-hardened": "hardened"
+  "metalstate-hardened": "hardened",
+  "handassembly-hud-head": "{0}/{1} {2}:",
+  "handassembly-hud-joins": "joins {0}",
+  "handassembly-hud-nojoins": "joins nothing",
+  "handassembly-hud-open": "open {0}",
+  "handassembly-hud-cost": "{0} {1}, {2} carried",
+  "handassembly-hud-none": "No placement fits here.",
+  "blockhelp-handassembly-step": "Next placement",
+  "blockhelp-handassembly-fix": "Hold to fix the part"
 }

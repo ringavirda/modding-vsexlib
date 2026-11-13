@@ -14,12 +14,15 @@ public class HandAssemblyModSystem : ModSystem {
   private IServerNetworkChannel? _serverChannel;
 
   /// <inheritdoc/>
-  public override void StartClientSide(ICoreClientAPI api) =>
-    api
+  public override void StartClientSide(ICoreClientAPI api) {
+    IClientNetworkChannel channel = api
       .Network.RegisterChannel(ChannelName)
       .RegisterMessageType<AssemblyFix>()
       .RegisterMessageType<AssemblyTakeOff>()
       .RegisterMessageType<AssemblyResult>();
+    var client = new HandAssemblyClient(api, channel);
+    channel.SetMessageHandler<AssemblyResult>(client.ShowResult);
+  }
 
   /// <inheritdoc/>
   public override void StartServerSide(ICoreServerAPI api) {

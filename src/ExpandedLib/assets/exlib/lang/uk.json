@@ -169,5 +169,13 @@
   "sandstation-coldshut": "Холодний спай: подача переривалась, частини цієї відливки підуть на брухт.",
   "metalstate-liquid": "рідкий",
   "fitsoneblock-toolong": "Довше за один блок.",
-  "metalstate-hardened": "затверділий"
+  "metalstate-hardened": "затверділий",
+  "handassembly-hud-head": "{0}/{1} {2}:",
+  "handassembly-hud-joins": "з'єднує: {0}",
+  "handassembly-hud-nojoins": "нічого не з'єднує",
+  "handassembly-hud-open": "відкрито: {0}",
+  "handassembly-hud-cost": "{0} {1}, є {2}",
+  "handassembly-hud-none": "Тут нічого не підходить.",
+  "blockhelp-handassembly-step": "Наступне положення",
+  "blockhelp-handassembly-fix": "Утримувати, щоб закріпити деталь"
 }

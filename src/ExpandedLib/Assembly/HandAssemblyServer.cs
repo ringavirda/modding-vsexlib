@@ -277,7 +277,7 @@ internal static class HandAssemblyServer {
   internal static string ToolName(IWorldAccessor world, string pattern) =>
     ItemName(world, pattern).ToLowerInvariant();
 
-  private static string FastenerName(IWorldAccessor world, string code) =>
+  internal static string FastenerName(IWorldAccessor world, string code) =>
     ItemName(world, code);
 
   private static string ItemName(IWorldAccessor world, string pattern) =>
@@ -288,7 +288,7 @@ internal static class HandAssemblyServer {
       ? new ItemStack(item).GetName()
       : pattern;
 
-  private static bool HoldsTool(ItemSlot slot, string pattern) =>
+  internal static bool HoldsTool(ItemSlot slot, string pattern) =>
     slot.Itemstack?.Collectible.Code is { } code
     && WildcardUtil.Match(pattern, code.ToString());
 
