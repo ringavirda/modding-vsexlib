@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using ExpandedLib.Assembling;
 using ExpandedLib.Helpers;
 using ExpandedLib.Networks;
 using ExpandedLib.Scenarios;
@@ -125,6 +126,37 @@ internal sealed class RunStep : ScenarioStep {
     BlockFacing face,
     out string? failure
   );
+
+  /// <summary>A placement that sends an opted-in block (one that declares <c>handAssembly</c>) to
+  /// <paramref name="assembled"/> and every other block to <paramref name="plain"/>.</summary>
+  public static PlayerPlace Routed(PlayerPlace plain, PlayerPlace assembled) =>
+    (Block block, BlockPos at, BlockFacing face, out string? failure) =>
+      (HandAssemblySpec.Of(block) != null ? assembled : plain)(
+        block,
+        at,
+        face,
+        out failure
+      );
+
+  /// <summary>The placement <paramref name="player"/> lays a run with: the plain click, and for an
+  /// opted-in block hand assembly of the very variant given.</summary>
+  public static PlayerPlace Placer(
+    ScenarioContext ctx,
+    ScenarioPlayer player
+  ) =>
+    Routed(
+      player.Place,
+      (Block block, BlockPos at, BlockFacing face, out string? failure) =>
+        player.Assemble(
+          ctx,
+          block,
+          at,
+          face,
+          new AssemblyPick(Block: block.Code.ToString()),
+          out failure,
+          out _
+        )
+    );
 
   /// <summary>Turns the block at an absolute cell one step with the wrench.</summary>
   /// <param name="at">The absolute cell of the block.</param>
@@ -271,7 +303,7 @@ internal sealed class RunStep : ScenarioStep {
       .. (o["via"] as JArray ?? []).Select(v => ctx.Position(step, v, "via")),
     ];
     List<BlockPos> cells = Path(from, via, to);
-    Lay(ctx, player.Place, [.. cells.Select(_ => block)], cells);
+    Lay(ctx, Placer(ctx, player), [.. cells.Select(_ => block)], cells);
     yield return true;
     foreach (JToken each in o["open"] as JArray ?? [])
       CheckOpen(ctx, step, (JObject)each);

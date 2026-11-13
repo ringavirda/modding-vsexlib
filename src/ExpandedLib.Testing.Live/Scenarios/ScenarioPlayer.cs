@@ -3,8 +3,10 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
+using ExpandedLib.Assembling;
 using ExpandedLib.Blocks;
 using ExpandedLib.Industry.MechanicalPower;
+using ExpandedLib.Scenarios;
 using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
 using Vintagestory.API.Config;
@@ -377,6 +379,72 @@ internal sealed class ScenarioPlayer : IHandRelease {
       return true;
     } finally {
       slot.Itemstack = null;
+      Park();
+    }
+  }
+
+  /// <summary>Fixes <paramref name="part"/> into <paramref name="at"/> by hand assembly the way a
+  /// player's click on the <paramref name="face"/> of the block beside it does, through the server's
+  /// handler (<see cref="HandAssemblyPlay.Place"/>), then parks the player again.</summary>
+  /// <param name="ctx">The running case, whose pack the tool and fasteners come from.</param>
+  /// <param name="part">The opted-in block to hold.</param>
+  /// <param name="at">The absolute cell the part goes into.</param>
+  /// <param name="face">The face of the neighbouring block the click lands on.</param>
+  /// <param name="pick">Which candidate to fix.</param>
+  /// <param name="failure">Null when the part was fixed; otherwise the refusal's line.</param>
+  /// <param name="code">The refusal's code, or null when the part was fixed.</param>
+  /// <returns>Whether the part was fixed.</returns>
+  public bool Assemble(
+    ScenarioContext ctx,
+    Block part,
+    BlockPos at,
+    BlockFacing face,
+    AssemblyPick pick,
+    out string? failure,
+    out string? code
+  ) {
+    ((IWorldPlayerData)_data).CurrentGameMode = EnumGameMode.Survival;
+    _data.FreeMove = false;
+    Vec3d hit = Hit(face);
+    Vec3i n = face.Normali;
+    Aim(
+      at,
+      new Vec3d(at.X - n.X + hit.X, at.Y - n.Y + hit.Y, at.Z - n.Z + hit.Z)
+    );
+    try {
+      AssemblyResult? refused = HandAssemblyPlay.Place(
+        ctx,
+        _server,
+        Player,
+        part,
+        at,
+        face,
+        hit,
+        pick
+      );
+      failure = refused == null ? null : HandAssemblyPlay.Describe(refused);
+      code = refused?.Code;
+      return refused == null;
+    } finally {
+      Park();
+    }
+  }
+
+  /// <summary>Takes the fixed piece at <paramref name="at"/> off by hand assembly with the tool in
+  /// the main hand and the sneak held (<see cref="HandAssemblyPlay.TakeOff"/>), then parks the
+  /// player again.</summary>
+  /// <param name="ctx">The running case, whose pack the tool comes from and the returns go to.</param>
+  /// <param name="at">The absolute cell of the piece.</param>
+  /// <returns>Null when the piece came off; otherwise the refusal's line.</returns>
+  public string? TakeOff(ScenarioContext ctx, BlockPos at) {
+    ((IWorldPlayerData)_data).CurrentGameMode = EnumGameMode.Survival;
+    _data.FreeMove = false;
+    Face(at, BlockFacing.UP);
+    try {
+      return HandAssemblyPlay.TakeOff(ctx, _server, Player, at) is { } refused
+        ? HandAssemblyPlay.Describe(refused)
+        : null;
+    } finally {
       Park();
     }
   }

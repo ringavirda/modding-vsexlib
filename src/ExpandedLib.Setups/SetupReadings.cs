@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
 using System.Reflection;
+using ExpandedLib.Assembling;
 using Newtonsoft.Json.Linq;
 using Vintagestory.API.Common;
 using Vintagestory.API.Datastructures;
@@ -276,6 +277,28 @@ internal sealed class BlockReading(SetupPosition at, string wildcard) : Reading 
   }
 
   public override string Describe => "block " + wildcard;
+}
+
+/// <summary><c>{ at, asm: what }</c>: the hand assembly record of the block at the cell. <c>fixed</c>
+/// reads whether the piece is fixed, <c>joint</c> the count of fasteners a block that is not a
+/// network node holds for its one joint, and a face letter the count of fasteners the joint made on
+/// that face holds; a count is 0 for no fastener.</summary>
+internal sealed class AsmReading(SetupPosition at, string what) : Reading {
+  public override object Read(ReadingContext ctx) {
+    BlockPos pos = at.Resolve(ctx.World);
+    BEBehaviorAssembled record =
+      ctx.World.BlockEntityAt(pos)?.GetBehavior<BEBehaviorAssembled>()
+      ?? throw new SetupReadingException($"No hand assembly record at {pos}.");
+    return what switch {
+      "fixed" => record.Fixed,
+      "joint" => (float)(record.Joint?.StackSize ?? 0),
+      _ => (float)(
+        record.FastenerAt(SetupLayout.FaceOf(what)!)?.StackSize ?? 0
+      ),
+    };
+  }
+
+  public override string Describe => "asm " + what;
 }
 
 /// <summary><c>{ at, network: type, member?, or? }</c>: the network at the cell, its state's
@@ -555,6 +578,7 @@ internal static class SetupReadings {
     "tree",
     "block",
     "network",
+    "asm",
     "static",
     "value",
     "sum",
@@ -585,6 +609,7 @@ internal static class SetupReadings {
           or TreeReading
           or BlockReading
           or NetworkReading
+          or AsmReading
       ? new SampledReading(reading)
       : reading;
   }
@@ -634,6 +659,20 @@ internal static class SetupReadings {
           At(node, where, scope),
           SetupJson.String(node["block"], where.In("block"))
         );
+      }
+      case "asm": {
+        SetupJson.RefuseUnknown(node, where, "at", "asm");
+        string what = SetupJson.String(node["asm"], where.In("asm"));
+        if (
+          what is not ("fixed" or "joint")
+          && SetupLayout.FaceOf(what) == null
+        )
+          throw where
+            .In("asm")
+            .Fail(
+              $"\"{what}\" is not fixed, joint or one of n, e, s, w, u, d."
+            );
+        return new AsmReading(At(node, where, scope), what);
       }
       case "network": {
         SetupJson.RefuseUnknown(node, where, "at", "network", "member", "or");

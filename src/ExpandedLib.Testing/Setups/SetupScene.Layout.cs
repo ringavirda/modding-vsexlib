@@ -2,6 +2,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using ExpandedLib.Assembling;
 using ExpandedLib.Networks;
 using ExpandedLib.Definitions;
 using ExpandedLib.Scenarios;
@@ -153,7 +154,18 @@ public sealed partial class SetupScene
     {
       throw Fail(where, e.Message);
     }
-    Put(chosen, pos, where, kind, kind != null);
+    if (HandAssemblySpec.Of(chosen) != null)
+      PutByHand(
+        chosen,
+        pos,
+        where,
+        new AssemblyPick(Block: chosen.Code.ToString()),
+        BlockFacing.UP,
+        kind,
+        kind != null
+      );
+    else
+      Put(chosen, pos, where, kind, kind != null);
     _runCells[pos] = new RunCell(family, faces);
     return chosen;
   }

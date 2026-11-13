@@ -34,7 +34,9 @@ internal sealed class ScenarioCaseRun(
     StepFailure? failure = null;
     int failedAt = 0;
     string? failedLabel = null;
-    RunStep.PlayerPlace? place = ctx.Player is { } player ? player.Place : null;
+    RunStep.PlayerPlace? place = ctx.Player is { } player
+      ? RunStep.Placer(ctx, player)
+      : null;
     RunStep.PlayerWrench? wrench = ctx.Player is { } turner
       ? turner.Wrench
       : null;

@@ -88,6 +88,9 @@ internal static class SetupSteps {
       "complete",
       "materials",
       "tree",
+      "face",
+      "arms",
+      "turn",
     ],
     ["complete"] = ["of", "to", "materials"],
     ["run"] = ["id", "code", "from", "via", "to", "family", "open"],
@@ -163,11 +166,24 @@ internal static class SetupSteps {
       "count",
       "attribute",
       "player",
+      "asm",
     ],
     ["fill"] = ["id", "code", "from", "to"],
     ["window"] = ["at", "open", "put", "take", "press", "close"],
     ["ignite"] = ["at", "seconds"],
     ["craft"] = ["at", "output", "recipe", "times", "with"],
+    ["assemble"] =
+    [
+      "id",
+      "code",
+      "at",
+      "face",
+      "steps",
+      "fails",
+      "arms",
+      "turn",
+    ],
+    ["takeoff"] = ["at"],
   };
 
   private static readonly Dictionary<string, string[]> Required = new() {
@@ -184,6 +200,8 @@ internal static class SetupSteps {
     ["ignite"] = ["at"],
     ["craft"] = ["output"],
     ["break"] = ["at"],
+    ["assemble"] = ["code", "at"],
+    ["takeoff"] = ["at"],
     ["repeat"] = ["steps"],
     ["advance"] = ["hours"],
     ["fillInventory"] = ["code"],

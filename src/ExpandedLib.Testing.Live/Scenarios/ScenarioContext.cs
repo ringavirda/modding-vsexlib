@@ -48,6 +48,9 @@ internal sealed class ScenarioContext(
   /// <summary>The item entities already given to the pack, by entity id.</summary>
   public HashSet<long> SpawnsSeen { get; } = [];
 
+  /// <summary>The fasteners hand assembly granted this case, by code, whose line is printed once.</summary>
+  public HashSet<string> Granted { get; } = [];
+
   /// <summary>Plot-local cells a step placed; <c>complete</c> never replaces one.</summary>
   public HashSet<BlockPos> Placed { get; } = [];
 
