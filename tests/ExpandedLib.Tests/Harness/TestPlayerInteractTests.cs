@@ -308,6 +308,61 @@ public class TestPlayerInteractTests {
 
   #endregion
 
+  #region Hot stacks
+
+  private static ItemStack HotStack(TestWorld world, int size) {
+    var stack = new ItemStack(world.RegisterItem("game:ball-iron"), size);
+    stack.Collectible.SetTemperature(world.World, stack, 900f);
+    return stack;
+  }
+
+  // Fails when a change to the active slot does not drop a hot stack held without tongs.
+  [Fact]
+  public void A_modified_active_slot_drops_a_hot_stack_without_tongs() {
+    var (world, _, player) = Stand();
+    player.Hold(HotStack(world, 6));
+
+    player.ActiveSlot.TakeOut(1);
+    player.ActiveSlot.MarkDirty();
+
+    Assert.Null(player.ActiveSlot.Itemstack);
+    player.Player.InventoryManager.Received().DropItem(player.ActiveSlot, true);
+  }
+
+  // Fails when a heat resistant off-hand item does not spare the hot stack.
+  [Fact]
+  public void A_modified_active_slot_keeps_a_hot_stack_with_tongs() {
+    var (world, _, player) = Stand();
+    Item tongs = world.RegisterItem("game:tongs");
+    tongs.Attributes = new Vintagestory.API.Datastructures.JsonObject(
+      Newtonsoft.Json.Linq.JToken.Parse("{ heatResistant: true }")
+    );
+    player.HoldOffHand(new ItemStack(tongs));
+    player.Hold(HotStack(world, 6));
+
+    player.ActiveSlot.TakeOut(1);
+    player.ActiveSlot.MarkDirty();
+
+    Assert.Equal(5, player.ActiveSlot.Itemstack!.StackSize);
+  }
+
+  // Fails when a change to a slot that is not the active one drops the active slot's hot stack.
+  [Fact]
+  public void A_modified_inactive_slot_drops_nothing() {
+    var (world, _, player) = Stand();
+    ItemStack hot = HotStack(world, 6);
+    player.Hold(hot);
+
+    player.Hotbar[3].Itemstack = new ItemStack(
+      world.RegisterItem("game:stick")
+    );
+    player.Hotbar[3].MarkDirty();
+
+    Assert.Same(hot, player.ActiveSlot.Itemstack);
+  }
+
+  #endregion
+
 #if GAME_GE_1_21
   // Fails when OffhandHotbarSlot is not the slot LeftHandItemSlot and HoldOffHand fill.
   [Fact]

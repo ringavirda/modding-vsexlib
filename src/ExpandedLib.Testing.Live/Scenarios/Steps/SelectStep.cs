@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Linq;
 using ExpandedLib.Scenarios;
 using Newtonsoft.Json.Linq;
 using Vintagestory.API.Common;
@@ -15,10 +16,13 @@ internal sealed class SelectStep : ScenarioStep {
 
   public override string Kind => "select";
 
-  public override string What(SetupStep step) => $"slot {step.Body["slot"]}";
+  public override string What(SetupStep step) =>
+    step.Body["slot"] is { } slot ? $"slot {slot}" : $"{step.Body["code"]}";
 
   public override string? Refuse(SetupStep step) {
-    int slot = (int)step.Body["slot"]!;
+    if (step.Body["slot"] is not { } named)
+      return null;
+    int slot = (int)named;
     return slot >= 0 && slot < HotbarSlots
       ? null
       : $"slot {slot} is not a hotbar slot (0 to {HotbarSlots - 1}).";
@@ -37,7 +41,9 @@ internal sealed class SelectStep : ScenarioStep {
         Suspect.Scenario
       );
     IPlayerInventoryManager manager = player.Player.InventoryManager;
-    int slot = (int)step.Body["slot"]!;
+    int slot = step.Body["slot"] is { } named
+      ? (int)named
+      : SlotHolding(player, (string)step.Body["code"]!);
     int from = manager.ActiveHotbarSlotNumber;
     int changes = player.SlotChanges;
     ItemStack? offHand = step.Body["offHand"] is JObject off
@@ -65,5 +71,17 @@ internal sealed class SelectStep : ScenarioStep {
       ? $"slot {from} to {manager.ActiveHotbarSlotNumber}"
       : $"slot {from} kept, the change was vetoed";
     yield break;
+  }
+
+  private static int SlotHolding(ScenarioPlayer player, string code) {
+    IInventory hotbar = player.Player.InventoryManager.GetHotbarInventory();
+    int found = SetupSlotExpect.SlotHolding(
+      code,
+      [.. Enumerable.Range(0, hotbar.Count).Select(i => hotbar[i].Itemstack)],
+      HotbarSlots
+    );
+    return found >= 0
+      ? found
+      : throw new StepFailure($"no hotbar slot holds {code}.");
   }
 }

@@ -134,7 +134,7 @@ internal static class SetupSteps {
     ["wait"] = ["seconds", "until", "max", "hold"],
     ["advance"] = ["hours"],
     ["fillInventory"] = ["code"],
-    ["select"] = ["slot", "offHand"],
+    ["select"] = ["slot", "code", "offHand"],
     ["stand"] = ["at"],
     ["reload"] = ["hours"],
     ["timespeed"] = ["speed", "seconds"],
@@ -188,7 +188,7 @@ internal static class SetupSteps {
     ["repeat"] = ["steps"],
     ["advance"] = ["hours"],
     ["fillInventory"] = ["code"],
-    ["select"] = ["slot"],
+    ["select"] = [],
     ["stand"] = ["at"],
     ["timespeed"] = ["speed", "seconds"],
   };
@@ -286,6 +286,8 @@ internal static class SetupSteps {
       SetupSlotExpect.Validate(o, at);
     if (kind == "expect" && SetupPlayerExpect.Is(o))
       SetupPlayerExpect.Validate(o, at);
+    if (kind == "select")
+      SetupSlotExpect.ValidateSelect(o, at);
     if (kind == "set" && (o["tree"] == null) == (o["member"] == null))
       throw at.Fail("takes one of \"tree\" and \"member\".");
     if (kind == "complete")
