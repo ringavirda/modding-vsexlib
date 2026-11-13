@@ -3,6 +3,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using ExpandedLib.Scenarios;
+using ExpandedLib.Structures;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using Vintagestory.API.Common;
@@ -173,13 +174,19 @@ public sealed partial class SetupScene
 
   private void RecordUsePlaced(SetupStep step, Dictionary<BlockPos, int> before)
   {
-    List<(BlockPos Pos, bool Entity)> appeared =
+    List<(BlockPos Pos, bool Entity, bool Host)> appeared =
     [
       .. World
         .SolidBlocks.Where(b =>
           before.GetValueOrDefault(b.Key, 0) != b.Value.BlockId
         )
-        .Select(b => (b.Key.Copy(), World.GetBlockEntity(b.Key) != null)),
+        .Select(b =>
+          (
+            b.Key.Copy(),
+            World.GetBlockEntity(b.Key) != null,
+            b.Value is IFillerHost
+          )
+        ),
     ];
     BlockPos placed =
       SetupUsePlaced.Of(appeared, step.Id!, out string? problem)

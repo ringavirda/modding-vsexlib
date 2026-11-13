@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using System.Linq;
 using ExpandedLib.Helpers;
 using ExpandedLib.Scenarios;
+using ExpandedLib.Structures;
 using Newtonsoft.Json.Linq;
 using Vintagestory.API.Common;
 using Vintagestory.API.MathTools;
@@ -84,7 +85,8 @@ internal sealed class UseStep : ScenarioStep {
       ctx.World.Claims.TryAccess(player.Player, at, EnumBlockAccessFlags.Use),
       local
     );
-    Dictionary<BlockPos, int>? before = step.Id == null ? null : Around(ctx, local);
+    Dictionary<BlockPos, int>? before =
+      step.Id == null ? null : Around(ctx, local);
     EnumHandHandling handling = player.HeldStart(
       at,
       selection,
@@ -123,12 +125,12 @@ internal sealed class UseStep : ScenarioStep {
   static Dictionary<BlockPos, int> Around(ScenarioContext ctx, BlockPos local) {
     var cells = new Dictionary<BlockPos, int>();
     for (int x = -Reach; x <= Reach; x++)
-    for (int y = -Reach; y <= Reach; y++)
-    for (int z = -Reach; z <= Reach; z++) {
-      BlockPos cell = local.AddCopy(x, y, z);
-      if (cell.Y >= 0)
-        cells[cell] = ctx.Setup.BlockAt(cell).BlockId;
-    }
+      for (int y = -Reach; y <= Reach; y++)
+        for (int z = -Reach; z <= Reach; z++) {
+          BlockPos cell = local.AddCopy(x, y, z);
+          if (cell.Y >= 0)
+            cells[cell] = ctx.Setup.BlockAt(cell).BlockId;
+        }
     return cells;
   }
 
@@ -138,11 +140,17 @@ internal sealed class UseStep : ScenarioStep {
     BlockPos local,
     Dictionary<BlockPos, int> before
   ) {
-    List<(BlockPos Pos, bool Entity)> appeared =
+    List<(BlockPos Pos, bool Entity, bool Host)> appeared =
     [
       .. Around(ctx, local)
         .Where(c => c.Value != 0 && before[c.Key] != c.Value)
-        .Select(c => (c.Key, ctx.Setup.BlockEntityAt(c.Key) != null)),
+        .Select(c =>
+          (
+            c.Key,
+            ctx.Setup.BlockEntityAt(c.Key) != null,
+            ctx.Setup.BlockAt(c.Key) is IFillerHost
+          )
+        ),
     ];
     BlockPos placed =
       SetupUsePlaced.Of(appeared, step.Id!, out string? problem)
@@ -150,7 +158,11 @@ internal sealed class UseStep : ScenarioStep {
     ctx.Placed.Add(placed.Copy());
     ctx.Setup.Place(
       step.Id!,
-      new SetupPlacement(placed.Copy(), [placed.Copy()], ctx.Setup.FrameAt(placed))
+      new SetupPlacement(
+        placed.Copy(),
+        [placed.Copy()],
+        ctx.Setup.FrameAt(placed)
+      )
     );
   }
 }
