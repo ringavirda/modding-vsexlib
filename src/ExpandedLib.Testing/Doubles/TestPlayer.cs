@@ -18,16 +18,15 @@ namespace ExpandedLib.Testing;
 /// <remarks>The world answers <see cref="IWorldAccessor.PlayerByUid"/> for this player's uid with
 /// <see cref="Player"/>, so <see cref="EntityPlayer.Player"/> resolves to it, as the game's
 /// right-click construction reads it. Its inventory manager holds <see cref="Hotbar"/> and
-/// <see cref="Mouse"/> under the engine's ids (<c>hotbar-</c> and <c>mouse-</c> with the uid), and
-/// <c>OpenInventory</c>/<c>CloseInventory</c> add and drop an inventory there and run its own
-/// <c>Open</c>/<c>Close</c>, as the server's does; <c>ActiveHotbarSlot</c> answers
-/// <see cref="Hotbar"/>'s slot at <c>ActiveHotbarSlotNumber</c>. <c>TryGiveItemstack</c> fills
-/// <see cref="Hotbar"/> as the game does: it merges into the held stack, fills the first empty slot
-/// among the first ten (the skill and off hand slots only for a stack stored there), drops a stack
-/// too hot to hold, sets the given stack's size to 0 once all of it is placed, and returns false for
-/// a null or empty stack or when nothing is placed. A change to the active slot raised through
-/// <c>ItemSlot.MarkDirty</c> drops a too hot stack there; a stack put in the slot directly, through
-/// <see cref="Hold"/> or <c>Itemstack</c>, is not checked.</remarks>
+/// <see cref="Mouse"/> under the engine's ids, and <c>OpenInventory</c>/<c>CloseInventory</c> add
+/// and drop an inventory there and run its own <c>Open</c>/<c>Close</c>; <c>ActiveHotbarSlot</c>
+/// answers <see cref="Hotbar"/>'s slot at <c>ActiveHotbarSlotNumber</c>. <c>TryGiveItemstack</c>
+/// fills <see cref="Hotbar"/> as the game does: it merges into the held stack, fills the first
+/// empty slot among the first ten (the skill and off hand slots only for a stack stored there),
+/// drops a stack too hot to hold, sets the given stack's size to 0 once all of it is placed, and
+/// returns false for a null or empty stack or when nothing is placed. A change to the active slot
+/// raised through <c>ItemSlot.MarkDirty</c> drops a too hot stack there; a stack put in the slot
+/// directly, through <see cref="Hold"/> or <c>Itemstack</c>, is not checked.</remarks>
 public sealed class TestPlayer {
   /// <summary>The live scenario runner's tick, the step of a held interaction, in seconds.</summary>
   public const float InteractStepSeconds = 0.1f;
