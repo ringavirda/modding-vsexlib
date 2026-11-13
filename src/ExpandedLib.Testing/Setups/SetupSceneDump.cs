@@ -42,7 +42,11 @@ internal static class SetupSceneDump
   /// by the real block the legend matches instead: among those, the ones the first branch of an
   /// alternation matches are preferred, and the lowest code in ordinal order is taken. The
   /// stand-in's own code stands when no real block matches.</summary>
-  private static string CodeOf(SetupScene scene, Cell cell)
+  private static string CodeOf(
+    SetupScene scene,
+    Cell cell,
+    HashSet<Block> standIns
+  )
   {
     string own = cell.Block.Code.ToString();
     if (!scene.Raised.TryGetValue(cell.At, out var raised))
@@ -56,7 +60,7 @@ internal static class SetupSceneDump
     [
       .. scene
         .World.Api.World.SearchBlocks(wanted)
-        .Where(b => b.Id < StructureRig.FirstStandInId),
+        .Where(b => !standIns.Contains(b)),
     ];
     Regex? first = wanted.Path.StartsWith('@')
       ? new Regex("^" + new AssetLocation(raised.First).Path + "$")
@@ -93,6 +97,10 @@ internal static class SetupSceneDump
         .ThenBy(c => c.At.Z)
         .ThenBy(c => c.At.X)
         .ThenBy(c => c.Fluid),
+    ];
+    HashSet<Block> standIns =
+    [
+      .. scene.Raised.Keys.Select(at => world.GetBlock(at)),
     ];
     HashSet<BlockPos> principals =
     [
@@ -208,7 +216,7 @@ internal static class SetupSceneDump
       List<string> parts =
       [
         "\"at\": " + Position(e.Cell.At),
-        "\"code\": " + Quote(CodeOf(scene, e.Cell)),
+        "\"code\": " + Quote(CodeOf(scene, e.Cell, standIns)),
       ];
       if (e.Shape != null)
         parts.Add("\"shape\": " + Quote(e.Shape));
