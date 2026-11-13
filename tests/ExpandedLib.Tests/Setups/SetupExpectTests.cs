@@ -81,6 +81,7 @@ public class SetupExpectTests : IDisposable
           )
           .RegisterClass("SetupHoldBlock", typeof(SetupHoldBlock))
           .RegisterClass("SetupHoldWand", typeof(SetupHoldWand))
+          .RegisterClass("SetupHoldPlacer", typeof(SetupHoldPlacer))
           .RegisterClass("SetupHoldBox", typeof(SetupHoldBox))
           .RegisterBlockEntityFactory("SetupHoldBox", () => new SetupHoldBox())
           .RegisterClass("SetupHoldEntity", typeof(SetupHoldEntity))

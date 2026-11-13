@@ -66,6 +66,28 @@ internal sealed class SetupHoldWand : Item
   }
 }
 
+internal sealed class SetupHoldPlacer : Item
+{
+  public override void OnHeldInteractStart(
+    ItemSlot slot,
+    EntityAgent byEntity,
+    BlockSelection blockSel,
+    EntitySelection entitySel,
+    bool firstEvent,
+    ref EnumHandHandling handling
+  )
+  {
+    Block block = byEntity.World.GetBlock(
+      new AssetLocation(Attributes["places"].AsString())
+    );
+    byEntity.World.BlockAccessor.SetBlock(
+      block.BlockId,
+      blockSel.Position.AddCopy(blockSel.Face)
+    );
+    handling = EnumHandHandling.PreventDefault;
+  }
+}
+
 internal sealed class SetupHoldCanalBlock : Block
 {
   public override bool OnBlockInteractStart(
