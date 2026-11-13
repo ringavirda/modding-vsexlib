@@ -22,7 +22,7 @@ public sealed class StructureRig {
   private static readonly AssetLocation AirCode = new("game:air");
 
   /// <summary>Block ids for the rig's stand-in blocks, kept clear of the low ids fixtures hand out.</summary>
-  private const int FirstStandInId = 30000;
+  internal const int FirstStandInId = 30000;
 
   private readonly TestWorld _world;
   private readonly BlockEntityMultiblockStructure _anchor;

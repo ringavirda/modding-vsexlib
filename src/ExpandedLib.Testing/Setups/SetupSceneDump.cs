@@ -36,6 +36,28 @@ internal static class SetupSceneDump
     string? Shape
   );
 
+  /// <summary>The code the scene file names for <paramref name="cell"/>. A cell a multiblock's
+  /// completion filled from a wildcard legend holds a stand-in whose code no asset has; it is named
+  /// by the lowest real block code the legend matches instead, or by the stand-in's own code when
+  /// none matches.</summary>
+  private static string CodeOf(SetupScene scene, Cell cell)
+  {
+    string own = cell.Block.Code.ToString();
+    if (
+      !scene.Raised.TryGetValue(cell.At, out string? wanted)
+      || !wanted.Contains('*')
+    )
+      return own;
+
+    return scene
+        .World.Api.World.SearchBlocks(new AssetLocation(wanted))
+        .Where(b => b.Id < StructureRig.FirstStandInId)
+        .Select(b => b.Code.ToString())
+        .OrderBy(c => c, StringComparer.Ordinal)
+        .FirstOrDefault()
+      ?? own;
+  }
+
   /// <summary>The <c>setup-scene/1</c> text of <paramref name="scene"/>. Cells run by y, then z,
   /// then x, a solid entry before a fluid one at the same cell. Network keys run A, B, ...
   /// Z, AA, AB, ... and line keys M1, M2, ..., each given in the order of the key's first
@@ -176,7 +198,7 @@ internal static class SetupSceneDump
       List<string> parts =
       [
         "\"at\": " + Position(e.Cell.At),
-        "\"code\": " + Quote(e.Cell.Block.Code.ToString()),
+        "\"code\": " + Quote(CodeOf(scene, e.Cell)),
       ];
       if (e.Shape != null)
         parts.Add("\"shape\": " + Quote(e.Shape));

@@ -510,6 +510,55 @@ public class SetupSceneDumpTests : IDisposable
     );
   }
 
+  // Fails when the dump writes the stand-in's own code for a cell completed from a wildcard legend,
+  // a code no loaded asset has.
+  [Fact]
+  public void A_cell_completed_from_a_wildcard_legend_is_dumped_under_a_loaded_block_code()
+  {
+    SetupFile file = SetupFile.Load(
+      Path.Combine(
+        RepoPaths.Root,
+        "tests",
+        "ExpandedLib.Tests",
+        "Setups",
+        "Files",
+        "smoke-stack.json"
+      )
+    );
+    using SetupScene scene = SetupScene.Build(
+      file,
+      [Path.Combine(RepoPaths.Root, "samples", "SmokeStack")],
+      w =>
+      {
+        w.Register(
+          TestBlocks.Configure(
+            new Block(),
+            "game:refractorybricks-good-tier2",
+            5002
+          )
+        );
+        w.Register(
+          TestBlocks.Configure(
+            new Block(),
+            "game:refractorybricks-good-tier1",
+            5001
+          )
+        );
+      }
+    );
+    using JsonDocument dump = Dump(scene);
+
+    BlockPos wildcard = scene
+      .Raised.Where(r => r.Value == "game:refractorybricks-good-tier*")
+      .Select(r => r.Key)
+      .First();
+    string code = CellAt(dump, wildcard.X, wildcard.Y, wildcard.Z)
+      .GetProperty("code")
+      .GetString()!;
+
+    Assert.Equal("game:refractorybricks-good-tier1", code);
+  }
+
   // Fails when the dump leaves out the shape an entity draws, or writes it for a cell whose entity
   // draws none.
   [Fact]
