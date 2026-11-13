@@ -123,7 +123,7 @@ public class BlockBehaviorExOrientable : BlockBehavior {
   }
 
   /// <summary>The token the placement should wear.</summary>
-  private string TokenFor(IPlayer byPlayer, BlockSelection blockSel) {
+  internal string TokenFor(IPlayer byPlayer, BlockSelection blockSel) {
     if (IsOmni && blockSel.Face is { IsVertical: true } face)
       return face == BlockFacing.UP ? "u" : "d";
 

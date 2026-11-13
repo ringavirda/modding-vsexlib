@@ -255,6 +255,58 @@ public abstract class BlockNetworkNode
     if (!AllowedOrientations.TryGetValue(type, out string[]? validOrientations))
       return [];
 
+    var (requiredChars, forbiddenChars) = ScanNeighbours(
+      blockAccessor,
+      pos,
+      currentOrientation
+    );
+
+    // A linear (single-axis) shape connects via any one required face; a bendable shape requires all of them.
+    bool connectsAny = validOrientations.All(IsSingleAxisOrientation);
+
+    bool Matches(string orient) =>
+      !forbiddenChars.Any(c => orient.Contains(c))
+      && (
+        connectsAny
+          ? requiredChars.Count == 0
+            || requiredChars.Any(c => orient.Contains(c))
+          : requiredChars.All(c => orient.Contains(c))
+      );
+
+    var choices = validOrientations.Where(Matches).ToArray();
+
+    // Fallback: relax the requirement for non-network faces if no orientation matched.
+    if (
+      choices.Length == 0
+      && requiredChars.Count > 0
+      && currentOrientation != null
+    ) {
+      requiredChars.RemoveAll(c => {
+        // Orientation tokens are single letters; BlockFacing.FromCode only recognizes full words.
+        BlockFacing? facing = BlockNetworkModSystem.SideToFace(c.ToString());
+        if (facing == null)
+          return false;
+        BlockPos nPos = pos.AddCopy(facing);
+        return !BlockNetworkModSystem.IsCompatibleNetworkBlockAt(
+          blockAccessor,
+          nPos,
+          blockAccessor.GetBlock(nPos),
+          ((INetworkMember)this).NetworkTypeAt(blockAccessor, pos)
+        );
+      });
+
+      choices = validOrientations.Where(Matches).ToArray();
+    }
+
+    return choices;
+  }
+
+  /// <summary>Sorts the six neighbours of <paramref name="pos"/> into the faces an orientation must carry (a compatible network neighbour with a connector back, an attachable neighbour of the current orientation) and the faces it must not (a compatible network neighbour with none).</summary>
+  private (List<char> Required, List<char> Forbidden) ScanNeighbours(
+    IBlockAccessor blockAccessor,
+    BlockPos pos,
+    string? currentOrientation
+  ) {
     List<char> requiredChars = [];
     List<char> forbiddenChars = [];
 
@@ -300,45 +352,18 @@ public abstract class BlockNetworkNode
       }
     }
 
-    // A linear (single-axis) shape connects via any one required face; a bendable shape requires all of them.
-    bool connectsAny = validOrientations.All(IsSingleAxisOrientation);
-
-    bool Matches(string orient) =>
-      !forbiddenChars.Any(c => orient.Contains(c))
-      && (
-        connectsAny
-          ? requiredChars.Count == 0
-            || requiredChars.Any(c => orient.Contains(c))
-          : requiredChars.All(c => orient.Contains(c))
-      );
-
-    var choices = validOrientations.Where(Matches).ToArray();
-
-    // Fallback: relax the requirement for non-network faces if no orientation matched.
-    if (
-      choices.Length == 0
-      && requiredChars.Count > 0
-      && currentOrientation != null
-    ) {
-      requiredChars.RemoveAll(c => {
-        // Orientation tokens are single letters; BlockFacing.FromCode only recognizes full words.
-        BlockFacing? facing = BlockNetworkModSystem.SideToFace(c.ToString());
-        if (facing == null)
-          return false;
-        BlockPos nPos = pos.AddCopy(facing);
-        return !BlockNetworkModSystem.IsCompatibleNetworkBlockAt(
-          blockAccessor,
-          nPos,
-          blockAccessor.GetBlock(nPos),
-          ((INetworkMember)this).NetworkTypeAt(blockAccessor, pos)
-        );
-      });
-
-      choices = validOrientations.Where(Matches).ToArray();
-    }
-
-    return choices;
+    return (requiredChars, forbiddenChars);
   }
+
+  /// <summary>The faces of the cell at <paramref name="pos"/> where a compatible network neighbour offers no connector back, so an arm there would meet a forbidden crossing.</summary>
+  /// <param name="world">The accessor to read the six neighbours from.</param>
+  /// <param name="pos">The cell this block would fill.</param>
+  internal BlockFacing[] ForbiddenFaces(IBlockAccessor world, BlockPos pos) =>
+    [
+      .. ScanNeighbours(world, pos, null)
+        .Forbidden.Select(c => BlockNetworkModSystem.SideToFace(c.ToString()))
+        .OfType<BlockFacing>(),
+    ];
 
   /// <summary>True when every connector face in <paramref name="orientation"/> lies on the same axis (e.g. "ns", "we", "ud").</summary>
   private static bool IsSingleAxisOrientation(string orientation) =>

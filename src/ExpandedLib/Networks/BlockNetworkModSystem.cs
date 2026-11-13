@@ -727,7 +727,7 @@ public class BlockNetworkModSystem : ModSystem {
   }
 
   /// <summary>Whether the cell at <paramref name="pos"/> continues the run: not a fixed endpoint and not severed.</summary>
-  private static bool CouplesFrom(
+  internal static bool CouplesFrom(
     IBlockAccessor world,
     BlockPos pos,
     INetworkMember member
