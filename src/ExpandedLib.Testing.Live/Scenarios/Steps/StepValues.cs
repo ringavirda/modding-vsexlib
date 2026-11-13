@@ -17,7 +17,8 @@ internal static class StepValues {
 
   /// <summary>A stack of <paramref name="count"/> of the item or block with
   /// <paramref name="code"/>, holding <paramref name="litres"/> of the liquid item
-  /// <paramref name="content"/> when one is named.</summary>
+  /// <paramref name="content"/> when one is named and <paramref name="durability"/> points of
+  /// durability left when given.</summary>
   /// <exception cref="StepFailure">The code names neither an item nor a block, or a content is
   /// named for a stack that is no liquid container or takes fewer litres than asked.</exception>
   public static ItemStack Stack(
@@ -26,7 +27,8 @@ internal static class StepValues {
     int count,
     float? temperature = null,
     string? content = null,
-    float? litres = null
+    float? litres = null,
+    int? durability = null
   ) {
     var location = new AssetLocation(code);
     CollectibleObject? collectible =
@@ -40,6 +42,8 @@ internal static class StepValues {
     var stack = new ItemStack(collectible, count);
     if (temperature is { } t)
       collectible.SetTemperature(ctx.World, stack, t);
+    if (durability is { } d)
+      stack.Attributes.SetInt("durability", d);
     if (content != null)
       if (HeldContent.Fill(ctx.World, stack, content, litres) is { } refusal)
         throw new StepFailure(refusal, Suspect.Scenario);
@@ -47,7 +51,7 @@ internal static class StepValues {
   }
 
   /// <summary>The stack a step object describes with its <c>stack</c>, <c>count</c>,
-  /// <c>temperature</c>, <c>content</c> and <c>litres</c> keys.</summary>
+  /// <c>temperature</c>, <c>durability</c>, <c>content</c> and <c>litres</c> keys.</summary>
   /// <exception cref="StepFailure">As <see cref="Stack"/>.</exception>
   public static ItemStack Held(ScenarioContext ctx, JObject o) =>
     Stack(
@@ -56,7 +60,8 @@ internal static class StepValues {
       (int?)o["count"] ?? 1,
       (float?)o["temperature"],
       (string?)o["content"],
-      (float?)o["litres"]
+      (float?)o["litres"],
+      (int?)o["durability"]
     );
 
   /// <summary>The value of <paramref name="token"/> as <paramref name="type"/>: null, numbers,
@@ -94,7 +99,8 @@ internal static class StepValues {
         (int?)o["count"] ?? 1,
         (float?)o["temperature"],
         (string?)o["content"],
-        (float?)o["litres"]
+        (float?)o["litres"],
+        (int?)o["durability"]
       );
       return type == typeof(ItemStack) ? stack : new DummySlot(stack);
     }

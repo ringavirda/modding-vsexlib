@@ -1,6 +1,8 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using ExpandedLib.FastForwarding;
+using ExpandedLib.Machines;
 using ExpandedLib.Scenarios;
 using ExpandedLib.Testing;
 using ExpandedLib.Testing.Live;
@@ -298,6 +300,20 @@ public class StepTests {
     );
   }
 
+  /// <summary>Fails when a hand's durability is dropped on the way to its stack (the insert, interact, break and
+  /// window steps read their stack there).</summary>
+  [Fact]
+  public void A_held_object_with_a_durability_makes_a_worn_stack() {
+    LiveFixture fixture = VesselFixture();
+    ItemStack stack = StepValues.Held(
+      fixture.Context,
+      Newtonsoft.Json.Linq.JObject.Parse(
+        """{ "stack": "game:charcoal", "durability": 17 }"""
+      )
+    );
+    Assert.Equal(17, stack.Attributes.GetInt("durability", -1));
+  }
+
   /// <summary>Fails when a content on a stack that is no liquid container is let through, or blames the
   /// mod instead of the scenario.</summary>
   [Fact]
@@ -441,6 +457,72 @@ public class StepTests {
     Assert.InRange(member.Ticks, 100, 120);
     Assert.Equal(new HashSet<int?> { 0 }, budgets);
     Assert.Equal(7, fixture.Test.Networks.FastForward.BudgetMs);
+  }
+
+  private static TestProductionMachine PlaceOffMachine(LiveFixture fixture) {
+    var machine = new TestProductionMachine { Mode = FastForwardMode.Off };
+    var at = new BlockPos(
+      LiveFixture.Origin.X + 1,
+      LiveFixture.Origin.Y + 2,
+      LiveFixture.Origin.Z + 3
+    );
+    machine.Pos = at;
+    fixture.Test.Place(at, fixture.Stone, machine);
+    fixture.Test.Initialize(machine);
+    fixture.Context.PlotBounds = (
+      new BlockPos(at.X - 2, at.Y - 2, at.Z - 2),
+      new BlockPos(at.X + 2, at.Y + 2, at.Z + 2)
+    );
+    return machine;
+  }
+
+  /// <summary>Fails when an advance of two chunks ends before an Off-mode machine has ticked once per chunk and
+  /// stamped the new calendar time, the machine's listener firing on every third runner tick.</summary>
+  [Fact]
+  public void An_advance_waits_for_an_off_machine_to_tick_each_chunk() {
+    var fixture = new LiveFixture();
+    TestProductionMachine machine = PlaceOffMachine(fixture);
+    int yields = 0;
+    foreach (
+      bool _ in ScenarioSteps.Run(
+        fixture.Context,
+        Steps("""[{ "advance": { "hours": 2 } }]"""),
+        ""
+      )
+    )
+      if (++yields % 3 == 0)
+        fixture.Test.FireBlockEntityTicks();
+    Assert.Equal(2, machine.ProductionTicks);
+    Assert.Equal(1.0, machine.LastTickGameHours, 4);
+    Assert.Equal(
+      fixture.Test.Calendar.TotalHours,
+      ProductionProcess.ProcessesOn(machine).Single().LastTickHours,
+      6
+    );
+  }
+
+  /// <summary>Fails when an advance over an Off-mode machine whose listener never fires ends, or names no machine
+  /// in its failure, or waits other than <see cref="AdvanceStep.MaxMachineTicks"/> ticks.</summary>
+  [Fact]
+  public void An_advance_fails_naming_a_machine_that_never_ticks() {
+    var fixture = new LiveFixture();
+    PlaceOffMachine(fixture);
+    int ticks = 0;
+    StepFailure failure = Assert.Throws<StepFailure>(() => {
+      foreach (
+        bool _ in ScenarioSteps.Run(
+          fixture.Context,
+          Steps("""[{ "advance": { "hours": 1 } }]"""),
+          ""
+        )
+      )
+        ticks++;
+    });
+    Assert.Contains(
+      "TestProductionMachine at [1, 2, 3] did not tick to",
+      failure.Message
+    );
+    Assert.Equal(AdvanceStep.MaxMachineTicks + 1, ticks);
   }
 
   /// <summary>Fails when a select without the scenario player passes.</summary>

@@ -250,7 +250,13 @@ public sealed partial class SetupScene
 
   private void SelectStep(SetupStep step)
   {
-    int slot = (int)step.Body["slot"]!;
+    int slot = SelectedSlot(step);
+    ItemStack? offHand = step.Body["offHand"] is { } off
+      ? StackOf(off, step.Path)
+      : null;
+    if (offHand != null)
+      Draw(step.Path, offHand);
+    Player.HoldOffHand(offHand);
     try
     {
       Player.Select(slot);
@@ -259,6 +265,28 @@ public sealed partial class SetupScene
     {
       throw Fail(step.Path, e.Message);
     }
+    finally
+    {
+      Give(Player.OffHandSlot.Itemstack);
+      Player.HoldOffHand(null);
+    }
+  }
+
+  private int SelectedSlot(SetupStep step)
+  {
+    if (step.Body["slot"] is not { } slot)
+    {
+      string code = (string)step.Body["code"]!;
+      int found = SetupSlotExpect.SlotHolding(
+        code,
+        [.. Enumerable.Range(0, TestPlayer.HotbarSlots).Select(Player.StackInSlot)],
+        TestPlayer.HotbarSlots
+      );
+      return found >= 0
+        ? found
+        : throw Fail(step.Path, $"no hotbar slot holds {code}.");
+    }
+    return (int)slot;
   }
 
   private void StandStep(SetupStep step)

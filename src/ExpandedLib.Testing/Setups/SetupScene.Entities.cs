@@ -79,6 +79,8 @@ public sealed partial class SetupScene
     );
     if (body["temperature"] is { } temperature)
       stack.Collectible.SetTemperature(World.World, stack, (float)temperature);
+    if (body["durability"] is { } durability)
+      stack.Attributes.SetInt("durability", WholeOf(durability, where));
     if (body["content"] is { } content)
     {
       if (stack.Collectible is BlockLiquidContainerBase vessel)

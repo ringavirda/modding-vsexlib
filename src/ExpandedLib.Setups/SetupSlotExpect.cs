@@ -63,6 +63,32 @@ internal static class SetupSlotExpect {
   /// <summary>The slot index the reading names.</summary>
   public static int SlotOf(JObject body) => (int)body["slot"]!;
 
+  /// <summary>Checks the one-of <c>slot</c> and <c>code</c> a <c>select</c> takes.</summary>
+  /// <exception cref="SetupFileException">The body has both keys or neither, or <c>code</c> is no string.</exception>
+  public static void ValidateSelect(JObject body, SetupJson.Where at) {
+    if ((body["slot"] == null) == (body["code"] == null))
+      throw at.Fail("takes one of \"slot\" and \"code\".");
+    if (body["code"] != null)
+      SetupJson.String(body["code"], at.In("code"));
+  }
+
+  /// <summary>The first hotbar slot a <c>select</c> by <c>code</c> finds the item in.</summary>
+  /// <param name="code">An asset location whose domain defaults to <c>game</c>.</param>
+  /// <param name="hotbar">The stacks of hotbar slots 0 up to <paramref name="slots"/> exclusive; null entries are empty.</param>
+  /// <param name="slots">How many leading entries are selectable hotbar slots.</param>
+  /// <returns>The slot index, or -1 when no selectable slot holds the item.</returns>
+  public static int SlotHolding(
+    string code,
+    IReadOnlyList<ItemStack?> hotbar,
+    int slots
+  ) {
+    var wanted = new AssetLocation(code);
+    for (int i = 0; i < Math.Min(slots, hotbar.Count); i++)
+      if (hotbar[i] is { } stack && wanted.Equals(stack.Collectible.Code))
+        return i;
+    return -1;
+  }
+
   /// <summary>Tests the whole hotbar against a hotbar-wide reading.</summary>
   /// <param name="body">The <c>expect</c> body: a string <c>code</c> (domain defaults to <c>game</c>) and an
   /// optional <c>count</c>.</param>

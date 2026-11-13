@@ -148,6 +148,24 @@ public class SetupEntityStepTests : IDisposable
     );
   }
 
+  // Fails when a stack's durability key is dropped, leaving the item at the durability it is made with.
+  [Fact]
+  public void A_stack_with_a_durability_holds_those_points()
+  {
+    using SetupScene scene = Build(
+      SetupFile.Parse(
+        "{\"setup\": \"t\", \"description\": \"d\", \"mods\": [\"setupbox\"], \"steps\": ["
+          + PlaceBox
+          + ", {\"insert\": {\"at\": {\"of\": \"box\"}, \"stack\": \"game:charcoal\", \"durability\": 17, \"slot\": 1}}"
+          + "], \"seconds\": 10, \"record\": {}}",
+        "t.json"
+      )
+    );
+
+    ItemStack held = BoxOf(scene).Inventory[1].Itemstack!;
+    Assert.Equal(17, held.Attributes.GetInt("durability", -1));
+  }
+
   // Fails when a content on an item that is no liquid container is let through instead of failing.
   [Fact]
   public void A_content_on_a_stack_that_holds_no_liquid_fails_the_step()

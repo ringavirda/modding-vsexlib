@@ -130,6 +130,7 @@ public class SetupRunTests : IDisposable
           )
           .RegisterClass("SetupHoldWand", typeof(SetupHoldWand))
           .RegisterClass("SetupHoldPlacer", typeof(SetupHoldPlacer))
+          .RegisterClass("SetupHoldGiver", typeof(SetupHoldGiver))
           .RegisterClass("SetupHoldBox", typeof(SetupHoldBox))
           .RegisterBlockEntityFactory("SetupHoldBox", () => new SetupHoldBox())
           .RegisterBlockEntityBehaviorFactory(
