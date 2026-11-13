@@ -3,6 +3,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using System.Text.RegularExpressions;
 using System.Text.Json;
 using ExpandedLib.Helpers;
 using ExpandedLib.Industry.MechanicalPower;
@@ -36,6 +37,41 @@ internal static class SetupSceneDump
     string? Shape
   );
 
+  /// <summary>The code the scene file names for <paramref name="cell"/>. A cell a multiblock's
+  /// completion filled from a wildcard legend holds a stand-in whose code no asset has; it is named
+  /// by the real block the legend matches instead: among those, the ones the first branch of an
+  /// alternation matches are preferred, and the lowest code in ordinal order is taken. The
+  /// stand-in's own code stands when no real block matches.</summary>
+  private static string CodeOf(
+    SetupScene scene,
+    Cell cell,
+    HashSet<Block> standIns
+  )
+  {
+    string own = cell.Block.Code.ToString();
+    if (!scene.Raised.TryGetValue(cell.At, out var raised))
+      return own;
+
+    var wanted = new AssetLocation(raised.Wanted);
+    if (!wanted.Path.Contains('*') && !wanted.Path.Contains('('))
+      return own;
+
+    Block[] real =
+    [
+      .. scene
+        .World.Api.World.SearchBlocks(wanted)
+        .Where(b => !standIns.Contains(b)),
+    ];
+    Regex? first = wanted.Path.StartsWith('@')
+      ? new Regex("^" + new AssetLocation(raised.First).Path + "$")
+      : null;
+    return real.OrderBy(b => first?.IsMatch(b.Code.Path) == true ? 0 : 1)
+        .ThenBy(b => b.Code.ToString(), StringComparer.Ordinal)
+        .Select(b => b.Code.ToString())
+        .FirstOrDefault()
+      ?? own;
+  }
+
   /// <summary>The <c>setup-scene/1</c> text of <paramref name="scene"/>. Cells run by y, then z,
   /// then x, a solid entry before a fluid one at the same cell. Network keys run A, B, ...
   /// Z, AA, AB, ... and line keys M1, M2, ..., each given in the order of the key's first
@@ -61,6 +97,10 @@ internal static class SetupSceneDump
         .ThenBy(c => c.At.Z)
         .ThenBy(c => c.At.X)
         .ThenBy(c => c.Fluid),
+    ];
+    HashSet<Block> standIns =
+    [
+      .. scene.Raised.Keys.Select(at => world.GetBlock(at)),
     ];
     HashSet<BlockPos> principals =
     [
@@ -176,7 +216,7 @@ internal static class SetupSceneDump
       List<string> parts =
       [
         "\"at\": " + Position(e.Cell.At),
-        "\"code\": " + Quote(e.Cell.Block.Code.ToString()),
+        "\"code\": " + Quote(CodeOf(scene, e.Cell, standIns)),
       ];
       if (e.Shape != null)
         parts.Add("\"shape\": " + Quote(e.Shape));
