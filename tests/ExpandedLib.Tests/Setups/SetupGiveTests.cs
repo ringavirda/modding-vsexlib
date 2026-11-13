@@ -23,6 +23,9 @@ public class SetupGiveTests
     + extra
     + "}}";
 
+  private static string Select(int slot, string extra = "") =>
+    "{\"select\": {\"slot\": " + slot + extra + "}}";
+
   private static SetupHoldGiver GiverAt(SetupScene scene) =>
     Assert.IsType<SetupHoldGiver>(
       scene.World.GetBlock(scene.PositionOf("giver"))
@@ -88,6 +91,58 @@ public class SetupGiveTests
     SetupHoldGiver giver = GiverAt(second);
     Assert.Equal(1, giver.Laid);
     Assert.Equal(20f, giver.LaidTemperature);
+  }
+
+  // Fails when the off hand a select is given is not in hand for the slot change, so the hot stack drops on the way back.
+  [Fact]
+  public void Tongs_given_to_each_select_carry_the_hot_stack_to_another_slot_and_back()
+  {
+    using SetupScene scene = SetupHoldTests.Build(
+      "["
+        + Giver("giverhot")
+        + ", "
+        + Click(Tongs)
+        + ", "
+        + Select(1, Tongs)
+        + ", "
+        + Select(0, Tongs)
+        + ", "
+        + Click()
+        + "]"
+    );
+
+    SetupHoldGiver giver = GiverAt(scene);
+    Assert.Equal(1, giver.Laid);
+    Assert.Equal(900f, giver.LaidTemperature);
+  }
+
+  // Fails when a hot stack survives a select back to its slot with nothing heatResistant in the off hand.
+  [Fact]
+  public void A_hot_stack_drops_on_a_select_back_to_its_slot_without_tongs()
+  {
+    using SetupScene scene = SetupHoldTests.Build(
+      "["
+        + Giver("giverhot")
+        + ", "
+        + Click(Tongs)
+        + ", "
+        + Select(1)
+        + ", "
+        + Select(0)
+        + "]"
+    );
+
+    Assert.Null(scene.Player.ActiveSlot.Itemstack);
+    Assert.Equal(0, GiverAt(scene).Laid);
+  }
+
+  // Fails when the off hand a select was given stays in hand after the step.
+  [Fact]
+  public void An_off_hand_given_to_a_select_is_gone_after_the_step()
+  {
+    using SetupScene scene = SetupHoldTests.Build("[" + Select(1, Tongs) + "]");
+
+    Assert.Null(scene.Player.OffHandSlot.Itemstack);
   }
 }
 #endif

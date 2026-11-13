@@ -195,6 +195,9 @@ public sealed partial class SetupScene
           case "use":
             Hold(step);
             break;
+          case "select":
+            Select(step);
+            break;
           case "window":
             Window(step);
             break;
@@ -306,6 +309,19 @@ public sealed partial class SetupScene
         _hand = null;
       }
       scene.Give(offHand);
+    }
+
+    private void Select(SetupStep step)
+    {
+      Note(() =>
+      {
+        if (step.Body["offHand"] is { } off)
+        {
+          ItemStack held = scene.StackOf(off, step.Path);
+          scene.Draw(step.Path, held);
+          scene.Give(held);
+        }
+      });
     }
 
     private void Window(SetupStep step)
