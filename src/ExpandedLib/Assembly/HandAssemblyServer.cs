@@ -144,7 +144,12 @@ internal static class HandAssemblyServer {
     AssemblyTakeOff take
   ) {
     IBlockAccessor accessor = world.BlockAccessor;
-    var cell = new BlockPos(take.X, take.Y, take.Z, player.Entity.Pos.Dimension);
+    var cell = new BlockPos(
+      take.X,
+      take.Y,
+      take.Z,
+      player.Entity.Pos.Dimension
+    );
     if (!InRange(player, cell))
       return Refusal(OutOfRange);
     if (
@@ -228,11 +233,7 @@ internal static class HandAssemblyServer {
     IServerPlayer player,
     string code,
     params string[] args
-  ) =>
-    player.SendIngameError(
-      code,
-      Line(LanguageOf(player), code, args)
-    );
+  ) => player.SendIngameError(code, Line(LanguageOf(player), code, args));
 
   /// <summary>The line of a placement failure code in the language <paramref name="langCode"/> (the current one when null), formatted with <paramref name="args"/>.</summary>
   internal static string Line(
