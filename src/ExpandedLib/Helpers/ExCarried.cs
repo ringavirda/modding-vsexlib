@@ -9,7 +9,7 @@ namespace ExpandedLib.Helpers;
 internal static class ExCarried {
   /// <summary>The number of items of <paramref name="code"/> in the hotbar and the backpack.</summary>
   /// <param name="player">The player whose inventories are read.</param>
-  /// <param name="code">Item code, wildcards allowed.</param>
+  /// <param name="code">Item code.</param>
   public static int Count(IPlayer player, string code) {
     int total = 0;
     foreach (ItemSlot slot in Slots(player))
@@ -20,7 +20,7 @@ internal static class ExCarried {
 
   /// <summary>Takes <paramref name="count"/> items of <paramref name="code"/>, emptying the hotbar's slots before the backpack's.</summary>
   /// <param name="player">The player whose inventories are taken from.</param>
-  /// <param name="code">Item code, wildcards allowed.</param>
+  /// <param name="code">Item code.</param>
   /// <param name="count">How many to take, at least 1.</param>
   /// <returns>The taken items as one stack of <paramref name="count"/> (the first slot's attributes), or null with nothing taken when fewer are carried.</returns>
   public static ItemStack? Take(IPlayer player, string code, int count) {
