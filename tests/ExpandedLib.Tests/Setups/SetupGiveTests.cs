@@ -1,4 +1,5 @@
 #if GAME_GE_1_22
+using System;
 using ExpandedLib.Testing;
 using Vintagestory.API.Common;
 using Xunit;
@@ -143,6 +144,55 @@ public class SetupGiveTests
     using SetupScene scene = SetupHoldTests.Build("[" + Select(1, Tongs) + "]");
 
     Assert.Null(scene.Player.OffHandSlot.Itemstack);
+  }
+
+  private static string SelectCode(string code, string extra = "") =>
+    "{\"select\": {\"code\": \"" + code + "\"" + extra + "}}";
+
+  // Fails when a select by code takes the first slot or the active one instead of the slot that holds the item.
+  [Fact]
+  public void A_select_by_code_makes_the_slot_holding_the_item_active()
+  {
+    using SetupScene scene = SetupHoldTests.Build(
+      "[{\"place\": {\"id\": \"dial\", \"code\": \"setuphold:dial\", \"at\": [0, 0, 0]}}"
+        + ", {\"fillInventory\": {\"code\": \"setuphold:tongs\"}}, "
+        + Select(3)
+        + ", {\"interact\": {\"at\": {\"of\": \"dial\"}, \"with\": {\"stack\": \"setuphold:wand\"}, \"keep\": true}}, "
+        + Select(0)
+        + ", "
+        + SelectCode("setuphold:wand")
+        + "]"
+    );
+
+    Assert.Equal(3, scene.Player.ActiveNumber);
+    Assert.Equal(
+      "setuphold:wand",
+      scene.Player.ActiveSlot.Itemstack!.Collectible.Code.ToString()
+    );
+  }
+
+  // Fails when a select by code with no slot holding the item passes.
+  [Fact]
+  public void A_select_by_code_of_an_item_no_slot_holds_fails_the_step()
+  {
+    InvalidOperationException error = Assert.Throws<InvalidOperationException>(() =>
+      SetupHoldTests.Build("[" + SelectCode("setuphold:wand") + "]")
+    );
+
+    Assert.Contains("no hotbar slot holds setuphold:wand", error.Message);
+  }
+
+  // Fails when a select with both a slot and a code, or with neither, is accepted.
+  [Theory]
+  [InlineData("{\"slot\": 1, \"code\": \"setuphold:wand\"}")]
+  [InlineData("{}")]
+  public void A_select_takes_one_of_slot_and_code(string body)
+  {
+    InvalidOperationException error = Assert.Throws<InvalidOperationException>(() =>
+      SetupHoldTests.Build("[{\"select\": " + body + "}]")
+    );
+
+    Assert.Contains("takes one of \"slot\" and \"code\"", error.Message);
   }
 }
 #endif
