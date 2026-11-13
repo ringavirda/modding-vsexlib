@@ -72,7 +72,7 @@ internal static class HandAssemblyServer {
     bool creative = HandAssemblyGate.IsCreative(player);
     ItemSlot toolSlot = player.Entity.LeftHandItemSlot;
     if (!creative && !HoldsTool(toolSlot, spec.Tool))
-      return Refusal(NeedsTool, ToolName(world, spec.Tool, player.LanguageCode));
+      return Refusal(NeedsTool, ToolName(world, spec.Tool, LanguageOf(player)));
     if (!NeighbourhoodLoaded(world.BlockAccessor, cell))
       return Refusal(Unloaded);
 
@@ -112,7 +112,7 @@ internal static class HandAssemblyServer {
         return Refusal(
           NeedsFasteners,
           cost.ToString(),
-          FastenerName(world, spec.Fastener, player.LanguageCode),
+          FastenerName(world, spec.Fastener, LanguageOf(player)),
           carried.ToString()
         );
     }
@@ -165,7 +165,7 @@ internal static class HandAssemblyServer {
     if (!creative && !HoldsTool(toolSlot, spec.Tool))
       return Refusal(
         NeedsToolMain,
-        ToolName(world, spec.Tool, player.LanguageCode)
+        ToolName(world, spec.Tool, LanguageOf(player))
       );
     if (!player.Entity.Controls.Sneak)
       return Refusal(Fixed);
@@ -231,12 +231,24 @@ internal static class HandAssemblyServer {
   ) =>
     player.SendIngameError(
       code,
-      Lang.GetL(
-        player.LanguageCode,
-        "game:placefailure-" + code,
-        args.Cast<object>().ToArray()
-      )
+      Line(LanguageOf(player), code, args)
     );
+
+  /// <summary>The line of a placement failure code in the language <paramref name="langCode"/> (the current one when null), formatted with <paramref name="args"/>.</summary>
+  internal static string Line(
+    string? langCode,
+    string code,
+    params string[] args
+  ) {
+    object[] formatArgs = [.. args];
+    return langCode == null
+      ? Lang.Get("game:placefailure-" + code, formatArgs)
+      : Lang.GetL(langCode, "game:placefailure-" + code, formatArgs);
+  }
+
+  /// <summary>The language of <paramref name="player"/>; null on the client, where the current one applies.</summary>
+  internal static string? LanguageOf(IPlayer player) =>
+    (player as IServerPlayer)?.LanguageCode;
 
   /// <summary>Places the first candidate of the aim, fixed and with no fastener recorded; the vanilla creative path.</summary>
   /// <returns>False, with <paramref name="failureCode"/> set, when the aim offers no placement.</returns>

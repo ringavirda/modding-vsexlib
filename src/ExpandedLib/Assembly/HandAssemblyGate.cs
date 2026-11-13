@@ -1,7 +1,6 @@
 using System.Linq;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
-using Vintagestory.API.Config;
 using Vintagestory.API.Server;
 using Vintagestory.API.Util;
 
@@ -29,10 +28,11 @@ internal static class HandAssemblyGate {
       return false;
 
     string code = HandAssemblyServer.NeedsTool;
-    string message = Lang.GetL(
-      player.LanguageCode,
-      "game:placefailure-" + code,
-      HandAssemblyServer.ToolName(world, spec.Tool, player.LanguageCode)
+    string? langCode = HandAssemblyServer.LanguageOf(player);
+    string message = HandAssemblyServer.Line(
+      langCode,
+      code,
+      HandAssemblyServer.ToolName(world, spec.Tool, langCode)
     );
     if (player is IServerPlayer serverPlayer)
       serverPlayer.SendIngameError(code, message);
