@@ -442,19 +442,24 @@ public abstract class BlockNetworkNode
       world.BlockAccessor.BreakBlock(pos, null);
   }
 
-  /// <summary>Removes this block's position from the network graph and clears the fastener records its neighbours hold toward it, then calls the base break logic. A fixed piece's own fasteners are lost with it.</summary>
+  /// <summary>Removes this block's position from the network graph, then calls the base break logic. A fixed piece's own fasteners are lost with it.</summary>
   public override void OnBlockBroken(
     IWorldAccessor world,
     BlockPos pos,
     IPlayer byPlayer,
     float dropQuantityMultiplier = 1
   ) {
-    HandAssemblyServer.ClearRecordsToward(world.BlockAccessor, pos);
     world
       .Api.ModLoader.GetModSystem<BlockNetworkModSystem>()
       .RemoveNode(world.BlockAccessor, pos);
 
     base.OnBlockBroken(world, pos, byPlayer, dropQuantityMultiplier);
+  }
+
+  /// <summary>Clears the fastener records the neighbours hold toward this block's position; runs for a break, a burst and a take-off alike.</summary>
+  public override void OnBlockRemoved(IWorldAccessor world, BlockPos pos) {
+    HandAssemblyServer.ClearRecordsToward(world.BlockAccessor, pos);
+    base.OnBlockRemoved(world, pos);
   }
   #endregion
 

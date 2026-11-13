@@ -299,6 +299,16 @@ public class HandAssemblyFixedTests {
     Assert.Null(scene.RecordAt(North).FastenerAt(BlockFacing.SOUTH));
   }
 
+  // Fails when the neighbours' records are cleared on a break only: a burst clears the cell with no break.
+  [Fact]
+  public void A_piece_removed_with_no_break_clears_the_records_toward_it() {
+    var scene = TwoPieces();
+
+    scene.World.Accessor.SetBlock(0, Cell);
+
+    Assert.Null(scene.RecordAt(North).FastenerAt(BlockFacing.SOUTH));
+  }
+
   // Fails when breaking a piece returns the fasteners its own record holds.
   [Fact]
   public void Breaking_a_piece_loses_the_fasteners_of_its_own_joints() {
