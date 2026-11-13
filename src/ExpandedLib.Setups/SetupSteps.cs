@@ -133,7 +133,7 @@ internal static class SetupSteps {
     ["wait"] = ["seconds", "until", "max", "hold"],
     ["advance"] = ["hours"],
     ["fillInventory"] = ["code"],
-    ["select"] = ["slot"],
+    ["select"] = ["slot", "offHand"],
     ["stand"] = ["at"],
     ["reload"] = ["hours"],
     ["timespeed"] = ["speed", "seconds"],

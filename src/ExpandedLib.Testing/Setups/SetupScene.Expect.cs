@@ -251,6 +251,12 @@ public sealed partial class SetupScene
   private void SelectStep(SetupStep step)
   {
     int slot = (int)step.Body["slot"]!;
+    ItemStack? offHand = step.Body["offHand"] is { } off
+      ? StackOf(off, step.Path)
+      : null;
+    if (offHand != null)
+      Draw(step.Path, offHand);
+    Player.HoldOffHand(offHand);
     try
     {
       Player.Select(slot);
@@ -258,6 +264,11 @@ public sealed partial class SetupScene
     catch (ArgumentOutOfRangeException e)
     {
       throw Fail(step.Path, e.Message);
+    }
+    finally
+    {
+      Give(Player.OffHandSlot.Itemstack);
+      Player.HoldOffHand(null);
     }
   }
 

@@ -61,6 +61,7 @@ public class SetupHoldTests
       .RegisterBlockEntityFactory("SetupHoldEmber", () => new SetupHoldEmber())
       .RegisterClass("SetupHoldWand", typeof(SetupHoldWand))
       .RegisterClass("SetupHoldPlacer", typeof(SetupHoldPlacer))
+      .RegisterClass("SetupHoldGiver", typeof(SetupHoldGiver))
       .RegisterClass("SetupHoldBox", typeof(SetupHoldBox))
       .RegisterBlockEntityFactory("SetupHoldBox", () => new SetupHoldBox());
     SetupTickOrderTests.RegisterTick(w, []);
