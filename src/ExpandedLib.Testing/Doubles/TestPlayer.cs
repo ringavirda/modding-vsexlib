@@ -26,7 +26,9 @@ namespace ExpandedLib.Testing;
 /// fills <see cref="Hotbar"/> as the game does: it merges into the held stack, fills the first empty slot among the first ten (the skill and
 /// off hand slots only for a stack stored there), drops a stack too hot to hold, sets the given
 /// stack's size to 0 once all of it is placed, and returns false for a null or empty stack or when
-/// nothing is placed.</remarks>
+/// nothing is placed. A change to the active slot raised through <c>ItemSlot.MarkDirty</c> drops a too hot
+/// stack there, as the engine's hotbar does; a stack put in the slot directly, through <see cref="Hold"/> or
+/// <c>Itemstack</c>, is not checked.</remarks>
 public sealed class TestPlayer {
   /// <summary>The live scenario runner's tick, the step of a held interaction, in seconds.</summary>
   public const float InteractStepSeconds = 0.1f;
@@ -626,6 +628,10 @@ public sealed class TestPlayer {
     player.InventoryManager.Returns(manager);
 
     made = new TestPlayer(world, player, serverPlayer, entity, hotbar, mouse);
+    hotbar.SlotModified += slot => {
+      if (slot == made._activeNumber)
+        made.DropIfTooHot();
+    };
     world.OwnMade(uid, firstMade);
     manager.ActiveHotbarSlotNumber.Returns(_ => made._activeNumber);
     manager
