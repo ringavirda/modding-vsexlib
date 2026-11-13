@@ -71,6 +71,9 @@ public abstract class BEBehaviorProductionMachine(BlockEntity blockentity)
   /// <summary>Calendar time, in game hours, the machine is simulated up to: its group's replay cursor on a <see cref="FastForwardMode.Replay"/> machine, the time of its last tick on an Off machine, or -1 before the first.</summary>
   public double LastTickHours => _member?.CursorHours ?? _lastTickHours;
 
+  /// <summary>Whether the machine takes the calendar time since its last stamp on its own tick listener: registered, server-side and not in a fast-forward group.</summary>
+  internal bool TicksOnCalendar => _member == null && _productionTickId != 0;
+
   /// <summary>Sets <paramref name="hours"/> as the calendar time the machine was simulated up to, as read back from a save; a Replay machine starts its cursor there when it initialises. Negative means none.</summary>
   public void RestoreLastTickHours(double hours) {
     _lastTickHours = hours;
