@@ -133,6 +133,7 @@ internal static class ViewBands {
       ItemGates
     ),
     new(ItemViewKind.Plate, ["metalplate-"], false, false, ItemGates),
+    new(ItemViewKind.Pile, ["metalnailsandstrips-"], false, true, ["G3"]),
     new(
       ItemViewKind.Bar,
       ["rod-", "stick", "plank-aged"],
@@ -241,6 +242,13 @@ internal static class ViewBands {
     ),
   ];
 
+  /// <summary>The slot fill G3 of the pile's mod members, which no vanilla world holds: the iiex rivet and bolt heaps
+  /// measured at a slot span of 0.8021, within 0.3 % of the pile rule's 0.8, joining the game's nails and strips in the pile set.</summary>
+  internal static readonly IReadOnlyList<(
+    double Value,
+    string Code
+  )> PileHeaps = [(0.3046, "rivet-pile-heap"), (0.2494, "bolt-pile-heap")];
+
   /// <summary>The working end of the vanilla spears that <see cref="Lay.Of"/>'s count rule gets wrong, by shape base; each is <c>+x</c>.</summary>
   internal static readonly IReadOnlyDictionary<string, string> TipByShape =
     new Dictionary<string, string> {
@@ -255,6 +263,7 @@ internal static class ViewBands {
     ("metalplate", "game:metalplate-iron"),
     ("ingot", "game:ingot-iron"),
     ("rod", "game:rod-iron"),
+    ("nails", "game:metalnailsandstrips-iron"),
   ];
 
   private static ViewBandData? _embedded;
@@ -385,7 +394,10 @@ internal static class ViewBands {
               .Select(m =>
                 (ViewGates.ValueOf(Of(m.Group), gate), Short(m.Code))
               )
-              .Where(v => !double.IsNaN(v.Item1)),
+              .Where(v => !double.IsNaN(v.Item1))
+              .Concat(
+                set.Kind == ItemViewKind.Pile && gate == "G3" ? PileHeaps : []
+              ),
           ]
         );
     }
@@ -435,6 +447,11 @@ internal static class ViewBands {
       rules[name]["thickness"] = Round(
         Lay.Of(group.Box, false, null).Extent(2)
       );
+      if (name == "nails") {
+        rules[name]["handOriginX"] = Round(hand.Origin.X);
+        rules[name]["handOriginY"] = Round(hand.Origin.Y);
+        rules[name]["handOriginZ"] = Round(hand.Origin.Z);
+      }
       if (name == "spear") {
         rules[name]["slotScale"] = Round(gui.ScaleXYZ.X);
         Lay lay = Lay.Of(group.Box, true, null);

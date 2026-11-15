@@ -1,0 +1,12 @@
+{
+  "code": "boltheap",
+  "class": "Item",
+  "shape": {
+    "base": "viewsfixture:item/boltheap"
+  },
+  "attributes": {
+    "itemViews": {
+      "kind": "pile"
+    }
+  }
+}
