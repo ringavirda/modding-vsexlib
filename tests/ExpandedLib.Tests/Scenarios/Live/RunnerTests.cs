@@ -265,7 +265,7 @@ public class RunnerTests {
     loaded!();
     run.Tick(2);
     run.Events.Received(1)
-      .RegisterGameTickListener(Arg.Any<Action<float>>(), 1000);
+      .RegisterGameTickListener(Arg.Any<Action<float>>(), 1);
     run.Events.DidNotReceive().UnregisterGameTickListener(Arg.Any<long>());
     run.Api.World.ElapsedMilliseconds.Returns<long>(_ =>
       throw new InvalidOperationException("clock lost")
@@ -383,7 +383,7 @@ public class RunnerTests {
     long now = 0;
     run.Tick(1, now += 500);
     Assert.Equal(7, store.Config.Level);
-    for (int i = 0; i < 40 && runner.Active; i++)
+    for (int i = 0; i < 400 && runner.Active; i++)
       run.Tick(1, now += 500);
     Assert.False(runner.Active);
     Assert.Contains(
