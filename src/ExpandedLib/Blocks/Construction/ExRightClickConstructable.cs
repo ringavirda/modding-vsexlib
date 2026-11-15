@@ -10,6 +10,7 @@ using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
+using Vintagestory.API.Util;
 using Vintagestory.GameContent;
 
 namespace ExpandedLib.Blocks;
@@ -27,6 +28,7 @@ public class ExRightClickConstructable
     IControlStates {
   private readonly ExRightClickConstruction rcc = new();
   private float brokenDropsRatio = 1f;
+  private string[] brokenDropsLost = [];
 
   /// <summary>The block's shape with the elements of the stages built so far selected.</summary>
   public CompositeShape shape { get; protected set; }
@@ -79,11 +81,12 @@ public class ExRightClickConstructable
     OnAttemptConstruct = AdmitsOneMaterial;
   }
 
-  /// <summary>Reads <c>brokenDropsRatio</c>, <c>gatesProduction</c> and <c>stages</c> from
+  /// <summary>Reads <c>brokenDropsRatio</c>, <c>brokenDropsLost</c>, <c>gatesProduction</c> and <c>stages</c> from
   /// <paramref name="properties"/>.</summary>
   public override void Initialize(ICoreAPI api, JsonObject properties) {
     base.Initialize(api, properties);
     brokenDropsRatio = properties["brokenDropsRatio"].AsFloat(1f);
+    brokenDropsLost = properties["brokenDropsLost"].AsArray<string>([]) ?? [];
     GatesProduction = properties["gatesProduction"].AsBool(true);
     var stages = properties["stages"].AsObject<ExConstructionStage[]>(null);
     rcc.LateInit(
@@ -293,8 +296,19 @@ public class ExRightClickConstructable
   internal float EffectiveBrokenDropsRatio =>
     ExRccSettings.BrokenDropsRatio(Block.Code.Domain) ?? brokenDropsRatio;
 
-  /// <summary>Scatters the materials of every completed stage at the configured salvage fraction;
-  /// nothing for a creative player.</summary>
+  // The codes lost at the salvage ratio: the owning mod's registered list, else the JSON list.
+  internal IReadOnlyList<string> EffectiveBrokenDropsLost =>
+    ExRccSettings.BrokenDropsLost(Block.Code.Domain) ?? brokenDropsLost;
+
+  internal bool IsBrokenDropLost(string code) {
+    foreach (string entry in EffectiveBrokenDropsLost)
+      if (WildcardUtil.Match(entry, code))
+        return true;
+    return false;
+  }
+
+  /// <summary>Scatters the materials of every completed stage, the listed expendables at the
+  /// configured salvage fraction and the rest whole; nothing for a creative player.</summary>
   /// <param name="byPlayer">Who broke the block; may be null.</param>
   public override void OnBlockBroken(IPlayer? byPlayer = null) {
     if (byPlayer?.WorldData.CurrentGameMode == EnumGameMode.Creative)
@@ -312,10 +326,22 @@ public class ExRightClickConstructable
 #endif
   }
 
-  /// <summary>The materials this block would scatter at <paramref name="ratio"/> (0..1) of the
-  /// consumed stacks, across every completed stage.</summary>
+  /// <summary>The materials this block would scatter when broken, across every completed stage:
+  /// a stack whose code the domain lists as lost (<see cref="ExRccSettings.BrokenDropsLost"/>, else
+  /// the block's <c>brokenDropsLost</c>) at <paramref name="ratio"/> (0..1) of the consumed size,
+  /// every other stack whole.</summary>
+  /// <param name="ratio">The fraction of a listed stack returned, 0..1.</param>
+  /// <param name="rand">The rounding source.</param>
   [MethodImpl(MethodImplOptions.NoInlining)]
   public ItemStack[] GetConstructionDrops(float ratio, Random rand) =>
+    rcc.GetDrops(ratio, rand, IsBrokenDropLost);
+
+  /// <summary>The materials of a block destroyed rather than taken apart (a burst), across every
+  /// completed stage, every stack at <paramref name="ratio"/> (0..1) of the consumed size whether
+  /// listed as lost or not.</summary>
+  /// <param name="ratio">The fraction of each stack returned, 0..1.</param>
+  /// <param name="rand">The rounding source.</param>
+  public ItemStack[] GetWreckDrops(float ratio, Random rand) =>
     rcc.GetDrops(ratio, rand);
 
   /// <summary>The next-stage build-material hover help.</summary>

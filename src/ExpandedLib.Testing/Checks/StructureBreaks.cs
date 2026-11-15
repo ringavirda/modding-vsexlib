@@ -885,12 +885,15 @@ public static class StructureBreaks
         Resolvable(world, code, type);
     if (built >= 1)
       foreach ((string code, _, int quantity) in paid)
-        Expect(
-          expected,
-          code,
-          MathF.Floor(quantity * ratio),
-          MathF.Ceiling(quantity * ratio)
-        );
+        if (behavior.IsBrokenDropLost(code))
+          Expect(
+            expected,
+            code,
+            MathF.Floor(quantity * ratio),
+            MathF.Ceiling(quantity * ratio)
+          );
+        else
+          Expect(expected, code, quantity, quantity);
   }
 
   /// <summary>What stage <paramref name="index"/> offers, its stored keys filled from

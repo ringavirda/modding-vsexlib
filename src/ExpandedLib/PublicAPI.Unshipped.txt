@@ -161,6 +161,7 @@ ExpandedLib.Blocks.ExConstructionToolStep.Sound -> string?
 ExpandedLib.Blocks.ExConstructionToolStep.Tool -> string?
 ExpandedLib.Blocks.ExRightClickConstructable.EntityDrawsShape.get -> bool
 ExpandedLib.Blocks.ExRightClickConstructable.EntityDrawsShape.set -> void
+ExpandedLib.Blocks.ExRightClickConstructable.GetWreckDrops(float ratio, System.Random! rand) -> Vintagestory.API.Common.ItemStack![]!
 ExpandedLib.Blocks.ExRightClickConstructable.OnBlockInteractCancel(float secondsUsed, Vintagestory.API.Common.IWorldAccessor! world, Vintagestory.API.Common.IPlayer! byPlayer, Vintagestory.API.Common.BlockSelection! blockSel, ref Vintagestory.API.Common.EnumHandling handling) -> bool
 ExpandedLib.Blocks.ExRightClickConstructable.OnBlockInteractStep(float secondsUsed, Vintagestory.API.Common.IWorldAccessor! world, Vintagestory.API.Common.IPlayer! byPlayer, Vintagestory.API.Common.BlockSelection! blockSel, ref Vintagestory.API.Common.EnumHandling handling) -> bool
 ExpandedLib.Blocks.ExRightClickConstructable.OnBlockInteractStop(float secondsUsed, Vintagestory.API.Common.IWorldAccessor! world, Vintagestory.API.Common.IPlayer! byPlayer, Vintagestory.API.Common.BlockSelection! blockSel, ref Vintagestory.API.Common.EnumHandling handling) -> void
@@ -275,6 +276,7 @@ ExpandedLib.Checks.GatheredSources.Source.Source(Vintagestory.API.Common.EnumIte
 ExpandedLib.Checks.GatheredSources.Source.Type.get -> Vintagestory.API.Common.EnumItemClass
 ExpandedLib.Checks.GatheredSources.Source.Type.init -> void
 ExpandedLib.Definitions.ConstructionStage.Tool(string! tool, int hits = 2, string? animation = null, string? sound = null) -> ExpandedLib.Definitions.ConstructionStage!
+ExpandedLib.Definitions.ConstructionStages.BrokenDropsLost(params string![]! codes) -> ExpandedLib.Definitions.ConstructionStages!
 ExpandedLib.Definitions.ExBlockDef.ClipAction(ExpandedLib.Blocks.ClipAction! action) -> ExpandedLib.Definitions.ExBlockDef!
 ExpandedLib.Definitions.ExBlockDef.ClipActionByType(string! wildcard, ExpandedLib.Blocks.ClipAction! action) -> ExpandedLib.Definitions.ExBlockDef!
 ExpandedLib.Definitions.ExBlockDef.Controls(params ExpandedLib.Blocks.BlockControl![]! controls) -> ExpandedLib.Definitions.ExBlockDef!
@@ -553,6 +555,8 @@ readonly ExpandedLib.Helpers.StreamRenderer.Pos -> Vintagestory.API.MathTools.Bl
 static ExpandedLib.Blocks.AnimatorKeys.Of(Vintagestory.API.Common.Block! block) -> string!
 static ExpandedLib.Blocks.BlockControls.Find(Vintagestory.API.Common.Block! block, string! id) -> ExpandedLib.Blocks.BlockControl?
 static ExpandedLib.Blocks.BlockControls.Of(Vintagestory.API.Common.Block! block) -> System.Collections.Generic.IReadOnlyList<ExpandedLib.Blocks.BlockControl!>!
+static ExpandedLib.Blocks.ExRccSettings.BrokenDropsLost(string! domain) -> System.Collections.Generic.IReadOnlyList<string!>?
+static ExpandedLib.Blocks.ExRccSettings.RegisterBrokenDropsLost(string! domain, System.Collections.Generic.IEnumerable<string!>! codes) -> void
 static ExpandedLib.Blocks.CellBoxes.Read(Vintagestory.API.Datastructures.JsonObject! row) -> ExpandedLib.Blocks.CellBoxes?
 static ExpandedLib.Blocks.ClipActions.None.get -> ExpandedLib.Blocks.ClipActions!
 static ExpandedLib.Blocks.ClipActions.Of(Vintagestory.API.Common.Block! block) -> ExpandedLib.Blocks.ClipActions!
