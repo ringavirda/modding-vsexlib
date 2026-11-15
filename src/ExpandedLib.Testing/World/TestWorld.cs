@@ -770,11 +770,20 @@ public sealed partial class TestWorld : IDisposable {
   /// <param name="seconds">Whole seconds to advance.</param>
   /// <param name="lines">Ids of the listeners stepped between the fires; an empty set steps none.</param>
   internal void Tick(int seconds, IReadOnlySet<long> lines) {
-    const float fire = BlockNetworkModSystem.ListenerIntervalMs / 1000f;
-    for (int i = 0; i < seconds * 5; i++) {
-      Networks.ListenerTick(Accessor, fire);
-      StepListeners(BlockNetworkModSystem.ListenerIntervalMs, lines);
-    }
+    for (int i = 0; i < seconds * 5; i++)
+      NetworkFire(lines);
+  }
+
+  /// <summary>Runs one 200 ms fire of the server's network listener through
+  /// <see cref="BlockNetworkModSystem.ListenerTick"/>, then steps the listeners in <paramref name="lines"/> 200 ms.
+  /// No delayed callback comes due.</summary>
+  /// <param name="lines">Ids of the listeners stepped after the fire; an empty set steps none.</param>
+  internal void NetworkFire(IReadOnlySet<long> lines) {
+    Networks.ListenerTick(
+      Accessor,
+      BlockNetworkModSystem.ListenerIntervalMs / 1000f
+    );
+    StepListeners(BlockNetworkModSystem.ListenerIntervalMs, lines);
   }
 
   /// <summary>Fires every server tick listener registered through <see cref="Api"/> or
@@ -799,11 +808,13 @@ public sealed partial class TestWorld : IDisposable {
   /// <summary>Runs one second of block-entity time. Each listener not in <paramref name="except"/>
   /// fires at its own registered interval with that interval in seconds as dt, at the moments of
   /// the second its accrued time reaches the interval; a listener over 1000 ms carries its accrued
-  /// time into the next second. Listeners due at the same moment fire in firing order. At the
-  /// second's end <paramref name="network"/> runs just before the listener
-  /// <paramref name="networkBefore"/>, even when that listener is in except or not due; then sim
-  /// time advances 1000 ms and the delayed callbacks that come due fire; <paramref name="network"/>
-  /// runs last when it has not run (that listener is null or gone).</summary>
+  /// time into the next second. <paramref name="network"/> is one fire of the network listener and
+  /// runs at 200, 400, 600, 800 and 1000 ms, among the listeners due at the same moment. Listeners
+  /// due at one moment fire in firing order; the network fire due with them runs just before the
+  /// listener <paramref name="networkBefore"/>, even when that listener is in except or not due, and
+  /// after them when it is null or gone. At the second's end sim time advances 1000 ms and the
+  /// delayed callbacks that come due fire, after the listeners and before a network fire that runs
+  /// after them.</summary>
   /// <remarks>The accrued time of a listener in <paramref name="except"/> is left as it was. A
   /// listener registered during the second starts accruing at the next moment of it.</remarks>
   internal void RunSecond(
@@ -812,9 +823,10 @@ public sealed partial class TestWorld : IDisposable {
     long? networkBefore
   ) {
     const int second = 1000;
-    bool ran = false;
+    const int fire = BlockNetworkModSystem.ListenerIntervalMs;
+    int sinceFire = 0;
     for (int elapsed = 0; elapsed < second;) {
-      int step = second - elapsed;
+      int step = System.Math.Min(second - elapsed, fire - sinceFire);
       foreach (var (id, listener) in _tickListeners)
         if (!except.Contains(id))
           step = System.Math.Min(
@@ -825,9 +837,13 @@ public sealed partial class TestWorld : IDisposable {
             )
           );
       elapsed += step;
+      sinceFire += step;
+      bool ran = sinceFire < fire;
+      if (!ran)
+        sinceFire = 0;
       // Snapshot: a listener may unregister (or a block entity may register a new one) while firing.
       foreach (long id in _tickListeners.Keys.ToList()) {
-        if (!ran && elapsed == second && id == networkBefore) {
+        if (!ran && id == networkBefore) {
           network();
           ran = true;
         }
@@ -845,10 +861,11 @@ public sealed partial class TestWorld : IDisposable {
         if (_tickListeners.ContainsKey(id))
           _tickAccumMs[id] = accum;
       }
+      if (elapsed == second)
+        AdvanceCallbacks(second);
+      if (!ran)
+        network();
     }
-    AdvanceCallbacks(second);
-    if (!ran)
-      network();
   }
 
   /// <summary>The tick listeners in firing order, each with its id and callback.</summary>

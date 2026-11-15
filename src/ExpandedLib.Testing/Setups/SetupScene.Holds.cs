@@ -348,8 +348,8 @@ public sealed partial class SetupScene
   /// <summary>Advances the calendar by <paramref name="hours"/> and runs one second of the world:
   /// every block entity listener not in <paramref name="except"/> fires at its own registered
   /// interval with that interval as dt, those due together in tick order when the setup names one,
-  /// and the network tick, once at the second's end or in the place the tick order gives it, steps
-  /// the line listeners between its fires.</summary>
+  /// and the network tick fires every 200 ms among them, after the listeners due with it or in the
+  /// place the tick order gives it, each fire followed by 200 ms of the line listeners.</summary>
   /// <param name="hours">Game hours the calendar moves.</param>
   /// <param name="except">Ids of the listeners that do not fire this second; the line listeners
   /// belong in it.</param>

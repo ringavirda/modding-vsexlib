@@ -11,9 +11,9 @@ public sealed partial class SetupScene
 {
   private long? _networkBefore;
 
-  /// <summary>The network tick a second runs once, after the listeners or in the place a tick
-  /// order gives it: the second's five network fires, each followed by 200 ms of the mechanical
-  /// lines.</summary>
+  /// <summary>One 200 ms fire of the network listener followed by 200 ms of the mechanical lines;
+  /// a second runs it five times, at 200, 400, 600, 800 and 1000 ms, after the listeners due with
+  /// it or in the place a tick order gives it.</summary>
   internal Action NetworkTick { get; set; }
 
   /// <summary>Fires the seconds that follow in <paramref name="order"/>: the listeners of the named
