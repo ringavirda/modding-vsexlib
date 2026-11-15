@@ -1,4 +1,6 @@
+using System.Linq;
 using ExpandedLib.Industry.Casting;
+using Vintagestory.API.MathTools;
 using Xunit;
 
 namespace ExpandedLib.Tests.Casting;
@@ -101,6 +103,75 @@ public class MoldSpecTests {
 
     Assert.False(ok);
     Assert.Equal("not cast at shutflask", error);
+  }
+
+  private const string ThreeBoxPiece = """
+    , "cavity": [ [
+      { "x1": 1, "y1": 1, "z1": 3, "x2": 3, "y2": 4, "z2": 13 },
+      { "x1": 6, "y1": 1, "z1": 3, "x2": 8, "y2": 4, "z2": 13 },
+      { "x1": 11, "y1": 1, "z1": 3, "x2": 13, "y2": 4, "z2": 13 }
+    ] ]
+    """;
+
+  private static MoldSpec Parse(string extra) {
+    CastingStationRegistry registry = CastingTestData.Registry(
+      CastingTestData.TestFlaskFile
+    );
+    Assert.True(
+      MoldSpec.TryParse(
+        CastingTestData.Mold("testflask", extra),
+        "testflask",
+        out MoldSpec? spec,
+        out string? error,
+        registry
+      ),
+      error
+    );
+    return spec!;
+  }
+
+  // Fails when a nested cavity entry is read as three pieces: Pieces and Capacity triple.
+  [Fact]
+  public void A_piece_of_three_boxes_parses_as_one_piece() {
+    MoldSpec spec = Parse(ThreeBoxPiece);
+
+    Assert.Equal(1, spec.Pieces);
+    Assert.Equal(100, spec.Capacity);
+    Assert.Equal(100, spec.UnitsPerPiece);
+    Cuboidf[] boxes = Assert.Single(spec.BoxesPerPiece);
+    Assert.Equal([1f, 6f, 11f], boxes.Select(b => b.X1));
+    Cuboidf bounds = Assert.Single(spec.Cavity);
+    Assert.Equal((1f, 13f), (bounds.X1, bounds.X2));
+  }
+
+  // Fails when a one-box declaration gains PieceBoxes or its Cavity box changes.
+  [Fact]
+  public void A_one_box_piece_keeps_its_cavity_and_declares_no_groups() {
+    MoldSpec spec = Parse("");
+
+    Assert.Null(spec.PieceBoxes);
+    Assert.Same(
+      spec.Cavity[0],
+      Assert.Single(Assert.Single(spec.BoxesPerPiece))
+    );
+  }
+
+  // Fails when an empty piece array is accepted.
+  [Fact]
+  public void A_piece_with_no_boxes_is_refused() {
+    CastingStationRegistry registry = CastingTestData.Registry(
+      CastingTestData.TestFlaskFile
+    );
+
+    bool ok = MoldSpec.TryParseAll(
+      CastingTestData.Mold("testflask", ", \"cavity\": [ [] ]"),
+      out _,
+      out string? error,
+      registry
+    );
+
+    Assert.False(ok);
+    Assert.Contains("no boxes", error);
   }
 
   private static MoldSpec CoredSpec(string extra) {

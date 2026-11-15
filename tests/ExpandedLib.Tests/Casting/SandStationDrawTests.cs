@@ -244,6 +244,63 @@ public class SandStationDrawTests : IDisposable {
     Assert.Equal(8, Assert.Single(meshes).VerticesCount);
   }
 
+  private const string Boxes = """
+    { "x1": 1, "y1": 1, "z1": 3, "x2": 3, "y2": 4, "z2": 13 },
+    { "x1": 6, "y1": 1, "z1": 3, "x2": 8, "y2": 4, "z2": 13 },
+    { "x1": 11, "y1": 1, "z1": 3, "x2": 13, "y2": 4, "z2": 13 }
+    """;
+
+  private static (
+    SandStationScene Scene,
+    Client Client,
+    List<MeshData> Meshes
+  ) Grouped(string cavity, int pieces, int presses) {
+    var scene = SandStationScene.Build();
+    for (int i = 0; i < presses; i++)
+      Assert.True(
+        scene.Interact(
+          scene.PatternStack("plate", pieces: pieces, cavityJson: cavity)
+        )
+      );
+    var client = new Client(scene);
+    var meshes = new List<MeshData>();
+    client
+      .Api.Render.When(r => r.UploadMesh(Arg.Any<MeshData>()))
+      .Do(ci => meshes.Add(ci.Arg<MeshData>()));
+    return (scene, client, meshes);
+  }
+
+  // Fails when the bounds box is drawn in place of the piece's three boxes: four vertices, one quad across the gaps.
+  [Fact]
+  public void The_surface_of_a_three_box_piece_is_three_quads_with_none_between() {
+    var (scene, client, meshes) = Grouped($"[{Boxes}]", 1, 1);
+    scene.Pour(50, 1300f);
+
+    scene.Entity.Initialize(client.Api);
+
+    MeshData mesh = Assert.Single(meshes);
+    Assert.Equal(12, mesh.VerticesCount);
+    float[] xs = [.. Enumerable.Range(0, 12).Select(i => mesh.xyz[i * 3])];
+    Assert.Equal(
+      [1f, 3f, 6f, 8f, 11f, 13f],
+      xs.Select(x => x * 16f).Select(x => MathF.Round(x)).Distinct().Order()
+    );
+    Assert.DoesNotContain(xs, x => x * 16f > 3.5f && x * 16f < 5.5f);
+    Assert.Equal(0.5f, Surface(client).FillRatio, 0.001f);
+  }
+
+  // Fails when a pressed piece's boxes are cut to its bounds: the second press adds one quad and the first stays one quad.
+  [Fact]
+  public void Every_box_of_a_pressed_piece_takes_metal() {
+    string cavity =
+      $"[{Boxes}], {{ \"x1\": 1, \"y1\": 5, \"z1\": 1, \"x2\": 13, \"y2\": 8, \"z2\": 2 }}";
+    var (scene, client, meshes) = Grouped(cavity, 2, 2);
+
+    scene.Entity.Initialize(client.Api);
+
+    Assert.Equal(16, Assert.Single(meshes).VerticesCount);
+  }
+
   // Fails when the feed surface shows without the head standing in the runner box.
   [Fact]
   public void The_feed_surface_shows_only_while_the_head_stands() {
