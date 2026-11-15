@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Linq;
 using ExpandedLib.Registries;
 using Vintagestory.API.Common;
 using Vintagestory.API.Datastructures;
@@ -133,7 +134,22 @@ public class BEBehaviorAssembled(BlockEntity blockentity)
     }
   }
 
-  /// <summary>Clears the fastener records of a part a schematic or a paste brings in, caps' included, and keeps <see cref="Fixed"/> and the caps: nothing was spent on its joints.</summary>
+  /// <inheritdoc/>
+  public override void OnStoreCollectibleMappings(
+    Dictionary<int, AssetLocation> blockIdMapping,
+    Dictionary<int, AssetLocation> itemIdMapping
+  ) {
+    base.OnStoreCollectibleMappings(blockIdMapping, itemIdMapping);
+    foreach (ItemStack cap in _caps.Values)
+      cap.Collectible?.OnStoreCollectibleMappings(
+        Blockentity.Api.World,
+        new DummySlot(cap),
+        blockIdMapping,
+        itemIdMapping
+      );
+  }
+
+  /// <summary>Clears the fastener records of a part a schematic or a paste brings in, caps' included, and keeps <see cref="Fixed"/> and the caps, each re-resolved against the destination world and dropped when its collectible does not exist there: nothing was spent on its joints.</summary>
   public override void OnLoadCollectibleMappings(
     IWorldAccessor worldForNewMappings,
     Dictionary<int, AssetLocation> oldBlockIdMapping,
@@ -150,6 +166,12 @@ public class BEBehaviorAssembled(BlockEntity blockentity)
     );
     _fasteners.Clear();
     _capFasteners.Clear();
+    foreach (string code in _caps.Keys.ToList())
+      if (
+        !_caps[code]
+          .FixMapping(oldBlockIdMapping, oldItemIdMapping, worldForNewMappings)
+      )
+        _caps.Remove(code);
   }
 
   private static IEnumerable<string> FaceKeys() {

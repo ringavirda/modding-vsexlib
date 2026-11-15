@@ -10,13 +10,13 @@ public static class PipeFaces {
   /// <summary>The class of the neighbour across <paramref name="face"/> of <paramref name="node"/>, tried in the order vent, air, structure, solid, other. Reads only, mutates nothing.</summary>
   /// <param name="blockAccessor">Reads the neighbour block.</param>
   /// <param name="vent">The strategy that serves the node, as <see cref="PipeNetwork.VentFor"/> gives it; <c>null</c> skips the vent class.</param>
-  /// <param name="node">The node block at <paramref name="nodePos"/>.</param>
+  /// <param name="node">The node block at <paramref name="nodePos"/>; <c>null</c> for a cell that joins through a membership behaviour and is not a <see cref="BlockNetworkNode"/>, which skips the vent class.</param>
   /// <param name="nodePos">The node's position.</param>
   /// <param name="face">The face of the node whose neighbour is classified.</param>
   public static PipeFaceClass Classify(
     IBlockAccessor blockAccessor,
     IPipeVentStrategy? vent,
-    BlockNetworkNode node,
+    BlockNetworkNode? node,
     BlockPos nodePos,
     BlockFacing face
   ) {
@@ -24,6 +24,7 @@ public static class PipeFaces {
     Block neighbour = blockAccessor.GetBlock(neighbourPos);
     if (
       vent != null
+      && node != null
       && vent.TryClassifyVent(
         blockAccessor,
         node,

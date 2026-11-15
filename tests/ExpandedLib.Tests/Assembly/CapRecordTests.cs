@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using ExpandedLib.Assembling;
 using ExpandedLib.Testing;
 using Vintagestory.API.Common;
@@ -76,19 +77,44 @@ public class CapRecordTests {
     Assert.Null(record.CapFastenersAt(BlockFacing.UP));
   }
 
-  // Fails when a paste clears the caps with the joints.
+  // Fails when a paste keeps the cap under the id of the world it was saved in.
   [Fact]
   public void Cap_PasteKeepsCapDropsFasteners() {
     var (world, entity, record, cap, bolt) = Standing();
-    record.SetCap(
-      BlockFacing.UP,
-      new ItemStack(cap, 1),
-      new ItemStack(bolt, 2)
+    var stored = new ItemStack(cap, 1) { Id = 9000 };
+    record.SetCap(BlockFacing.UP, stored, new ItemStack(bolt, 2));
+
+    entity.OnLoadCollectibleMappings(
+      world.World,
+      [],
+      new Dictionary<int, AssetLocation> { [9000] = cap.Code },
+      0,
+      true
     );
 
-    entity.OnLoadCollectibleMappings(world.World, [], [], 0, true);
-
     Assert.Same(cap, record.CapAt(BlockFacing.UP)!.Item);
+    Assert.Equal(cap.Id, record.CapAt(BlockFacing.UP)!.Id);
     Assert.Null(record.CapFastenersAt(BlockFacing.UP));
+  }
+
+  // Fails when a cap whose item the destination world lacks is kept.
+  [Fact]
+  public void Cap_PasteDropsCapOfMissingItem() {
+    var (world, entity, record, cap, _) = Standing();
+    var stored = new ItemStack(cap, 1) { Id = 9001 };
+    record.SetCap(BlockFacing.UP, stored, null);
+    world.Log.Expect(EnumLogType.Warning, "test:gone");
+
+    entity.OnLoadCollectibleMappings(
+      world.World,
+      [],
+      new Dictionary<int, AssetLocation> {
+        [9001] = new AssetLocation("test:gone"),
+      },
+      0,
+      true
+    );
+
+    Assert.Null(record.CapAt(BlockFacing.UP));
   }
 }

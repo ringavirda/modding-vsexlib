@@ -227,6 +227,71 @@ public class SetupOpeningsCensusTests : IDisposable
     Assert.Equal("air", Read(CensusFile)["down"][6]);
   }
 
+  // Fails when only the neighbour's face away from the node is read: a block solid on its face toward
+  // the node is classed other, and one solid only on its far face is classed solid.
+  [Fact]
+  public void Census_ReadsTheNeighbourFaceTowardTheNode()
+  {
+    Environment.SetEnvironmentVariable(CensusVar, CensusFile);
+    Block towardNode = Solid(
+      new Block(),
+      "test:toward",
+      905,
+      1 << BlockFacing.UP.Index
+    );
+    Block awayFromNode = Solid(
+      new Block(),
+      "test:away",
+      906,
+      1 << BlockFacing.EAST.Index
+    );
+
+    Run(
+      Options(
+        null,
+        TestBlocks.Configure(new CensusNode(), "test:plain", NodeId),
+        (w, at) =>
+        {
+          Fill(w, at, BlockFacing.DOWN, towardNode);
+          Fill(w, at, BlockFacing.EAST, awayFromNode);
+        }
+      )
+    );
+
+    Dictionary<string, string[]> lines = Read(CensusFile);
+    Assert.Equal("solid", lines["down"][6]);
+    Assert.Equal("other", lines["east"][6]);
+  }
+
+  // Fails when a node whose block is not a BlockNetworkNode is left out of the census.
+  [Fact]
+  public void Census_WalksAFillerPortCell()
+  {
+    Environment.SetEnvironmentVariable(CensusVar, CensusFile);
+    Block full = Solid(new Block(), "test:full", 903, 0x3F);
+    BlockPos port = new(8, 5, 5);
+    Block? filler = null;
+
+    Run(
+      Options(
+        null,
+        TestBlocks.Configure(new CensusNode(), "test:plain", NodeId),
+        (w, _) =>
+        {
+          w.PlaceFillerNode(port, "pipe", "u", port.AddCopy(0, -1, 0));
+          w.Place(port.AddCopy(0, 1, 0), full);
+          filler = w.GetBlock(port);
+        }
+      )
+    );
+
+    string[] line = File.ReadAllLines(CensusFile)
+      .Select(l => l.Split('\t'))
+      .Single(f => f[2] == "8,5,5");
+    Assert.Equal(["up", "test:full", "solid"], [line[3], line[5], line[6]]);
+    Assert.Equal(filler!.Code.ToString(), line[4]);
+  }
+
   // Fails when a run with the variable unset or empty writes a census file.
   [Fact]
   public void Census_WritesOnlyWhenNamed()

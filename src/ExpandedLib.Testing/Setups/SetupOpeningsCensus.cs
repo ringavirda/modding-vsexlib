@@ -16,8 +16,8 @@ internal static class SetupOpeningsCensus
   /// <summary>Appends one tab-separated line to <paramref name="file"/> per open face of every node
   /// of the scene's <c>pipe</c> and <c>pipeflow</c> networks: setup, case (the variant, or
   /// <c>main</c>), position as <c>x,y,z</c>, face code, own code, neighbour code, class. Cells run
-  /// by y, then z, then x, faces in <see cref="BlockFacing.ALLFACES"/> order. A node block that is
-  /// not a <see cref="BlockNetworkNode"/> has no class and is left out.</summary>
+  /// by y, then z, then x, faces in <see cref="BlockFacing.ALLFACES"/> order. A node whose block is
+  /// not a <see cref="BlockNetworkNode"/>, a filler port cell, is classed without a vent.</summary>
   public static void Append(
     SetupScene scene,
     string setup,
@@ -39,12 +39,14 @@ internal static class SetupOpeningsCensus
       if (
         world.NetworkAt(at) is not { NetworkType: "pipe" or "pipeflow" } net
         || !net.Nodes.Contains(at)
-        || world.GetBlock(at) is not BlockNetworkNode node
         || NetworkMembership.Resolve(world.Accessor, at, net.NetworkType)
           is not { } member
       )
         continue;
-      IPipeVentStrategy? vent = (net as PipeNetwork)?.VentFor(node);
+      Block block = world.GetBlock(at);
+      BlockNetworkNode? node = block as BlockNetworkNode;
+      IPipeVentStrategy? vent =
+        node == null ? null : (net as PipeNetwork)?.VentFor(node);
       foreach (
         BlockFacing face in SetupSceneDump.UnjoinedFaces(
           world,
@@ -59,7 +61,7 @@ internal static class SetupOpeningsCensus
             variant ?? "main",
             $"{at.X},{at.Y},{at.Z}",
             face.Code,
-            node.Code,
+            block.Code,
             world.GetBlock(at.AddCopy(face)).Code,
             PipeFaces
               .Classify(world.Accessor, vent, node, at, face)

@@ -992,5 +992,5 @@ ExpandedLib.Industry.Pipes.PipeFaceClass.Structure = 2 -> ExpandedLib.Industry.P
 ExpandedLib.Industry.Pipes.PipeFaceClass.Solid = 3 -> ExpandedLib.Industry.Pipes.PipeFaceClass
 ExpandedLib.Industry.Pipes.PipeFaceClass.Other = 4 -> ExpandedLib.Industry.Pipes.PipeFaceClass
 ExpandedLib.Industry.Pipes.PipeFaces
-static ExpandedLib.Industry.Pipes.PipeFaces.Classify(Vintagestory.API.Common.IBlockAccessor! blockAccessor, ExpandedLib.Industry.Pipes.IPipeVentStrategy? vent, ExpandedLib.Networks.BlockNetworkNode! node, Vintagestory.API.MathTools.BlockPos! nodePos, Vintagestory.API.MathTools.BlockFacing! face) -> ExpandedLib.Industry.Pipes.PipeFaceClass
+static ExpandedLib.Industry.Pipes.PipeFaces.Classify(Vintagestory.API.Common.IBlockAccessor! blockAccessor, ExpandedLib.Industry.Pipes.IPipeVentStrategy? vent, ExpandedLib.Networks.BlockNetworkNode? node, Vintagestory.API.MathTools.BlockPos! nodePos, Vintagestory.API.MathTools.BlockFacing! face) -> ExpandedLib.Industry.Pipes.PipeFaceClass
 ExpandedLib.Industry.Pipes.PipeNetwork.VentFor(ExpandedLib.Networks.BlockNetworkNode! node) -> ExpandedLib.Industry.Pipes.IPipeVentStrategy?

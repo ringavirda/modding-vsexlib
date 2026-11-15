@@ -16,8 +16,7 @@ public static class NetworkFaces {
     BlockFacing faceTowardPipe
   ) {
     Block block = blockAccessor.GetBlock(neighbourPos);
-    return block.Id != 0
-      && block is not (BlockStructureFiller or IFillerHost)
+    return block is not (BlockStructureFiller or IFillerHost)
       && block.SideIsSolid(blockAccessor, neighbourPos, faceTowardPipe.Index);
   }
 }
