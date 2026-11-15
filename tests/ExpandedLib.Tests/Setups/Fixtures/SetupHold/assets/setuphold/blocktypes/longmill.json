@@ -1,0 +1,1 @@
+{ "code": "longmill", "entityClass": "Generic", "entityBehaviors": [{ "name": "SetupMill", "properties": { "tickMs": 1500 } }] }

@@ -1,6 +1,7 @@
 #if GAME_GE_1_22
 using System.Collections.Generic;
 using ExpandedLib.Industry.Molten;
+using ExpandedLib.Machines;
 using ExpandedLib.Testing;
 using Vintagestory.API.Common;
 using Vintagestory.API.Datastructures;
@@ -270,6 +271,27 @@ internal sealed class SetupTickBehavior(BlockEntity be, List<string> log)
     List<string> sink = log;
     Blockentity.RegisterGameTickListener(_ => sink.Add(x), 1000);
   }
+}
+
+/// <summary>A production machine on the interval its block's <c>tickMs</c> property names, default 1000 ms.</summary>
+internal sealed class SetupMill(BlockEntity be)
+  : BEBehaviorProductionMachine(be)
+{
+  private int _tickMs = 1000;
+
+  /// <summary>Seconds of work done: the sum of every <c>dt</c> the production tick was handed after the
+  /// catch-up clamp.</summary>
+  public float Work;
+
+  protected override int ProductionTickMs => _tickMs;
+
+  public override void Initialize(ICoreAPI api, JsonObject properties)
+  {
+    _tickMs = properties["tickMs"].AsInt(1000);
+    base.Initialize(api, properties);
+  }
+
+  protected override void OnProductionTick(float dt) => Work += dt;
 }
 
 internal sealed class SetupHoldEmber : BlockEntity, IIgnitable
