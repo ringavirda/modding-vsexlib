@@ -77,6 +77,25 @@ public class CapRecordTests {
     Assert.Null(record.CapFastenersAt(BlockFacing.UP));
   }
 
+  // Fails when a stack that no longer resolves is kept, so a face reads a cap with no collectible.
+  [Fact]
+  public void Cap_UnresolvedStackIsNotRead() {
+    var (world, entity, record, cap, bolt) = Standing();
+    record.SetCap(
+      BlockFacing.UP,
+      new ItemStack(cap, 1) { Id = 9002 },
+      new ItemStack(bolt, 2) { Id = 9003 }
+    );
+    var tree = new TreeAttribute();
+    record.ToTreeAttributes(tree);
+    var read = new BEBehaviorAssembled(entity);
+
+    read.FromTreeAttributes(tree, world.World);
+
+    Assert.Null(read.CapAt(BlockFacing.UP));
+    Assert.Null(read.CapFastenersAt(BlockFacing.UP));
+  }
+
   // Fails when a paste keeps the cap under the id of the world it was saved in.
   [Fact]
   public void Cap_PasteKeepsCapDropsFasteners() {

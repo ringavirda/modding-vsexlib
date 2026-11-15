@@ -129,7 +129,8 @@ public class BEBehaviorAssembled(BlockEntity blockentity)
       ItemStack? stack = tree.GetItemstack(prefix + face.Code);
       if (stack == null)
         continue;
-      stack.ResolveBlockOrItem(world);
+      if (!stack.ResolveBlockOrItem(world))
+        continue;
       into[face.Code] = stack;
     }
   }
