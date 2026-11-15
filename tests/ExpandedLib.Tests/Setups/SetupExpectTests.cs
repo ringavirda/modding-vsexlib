@@ -1,5 +1,6 @@
 #if GAME_GE_1_22
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using ExpandedLib.Scenarios;
@@ -39,6 +40,13 @@ public class SetupExpectTests : IDisposable
         "Setups",
         "Fixtures",
         "SetupHold"
+      ),
+      "setuppulse" => Fixture(
+        "tests",
+        "ExpandedLib.Tests",
+        "Setups",
+        "Fixtures",
+        "SetupPulse"
       ),
       "platedpipes" => Fixture("samples", "PlatedPipes"),
       "twintubblower" => Fixture("samples", "TwinTubBlower"),
@@ -90,6 +98,11 @@ public class SetupExpectTests : IDisposable
             "SetupHoldEntity",
             () => new SetupHoldEntity()
           )
+          .RegisterClass("SetupHoldPulse", typeof(SetupHoldPulse))
+          .RegisterBlockEntityFactory(
+            "SetupHoldPulse",
+            () => new SetupHoldPulse()
+          )
           .RegisterClass("SetupHoldEmber", typeof(SetupHoldEmber))
           .RegisterBlockEntityFactory(
             "SetupHoldEmber",
@@ -134,6 +147,11 @@ public class SetupExpectTests : IDisposable
         scene.World.GetBlockEntity(scene.PositionOf("dial"))
       )
       .Fires;
+
+  private static readonly IReadOnlyList<(
+    string Mod,
+    string Version
+  )> PulseMods = [("exlib", "0.8.4"), ("setuppulse", "1.0.0")];
 
   private const string PlaceBox =
     "{\"place\": {\"id\": \"box\", \"code\": \"setupbox:box\", \"at\": [0, 0, 0]}}";
@@ -505,6 +523,81 @@ public class SetupExpectTests : IDisposable
 
     Assert.Contains("hold broke after 2.0 s", broken);
     Assert.Equal(4, Fires(kept));
+  }
+
+  private const string PlacePulse =
+    "{\"place\": {\"id\": \"pulse\", \"code\": \"setuppulse:pulse\", \"at\": [0, 0, 0]}}";
+
+  private const string PulseRaised =
+    "{\"at\": [0, 0, 0], \"member\": \"Raised\", \"equals\": 1}";
+
+  private static SetupScene Pulse(string during) =>
+    Build(
+      SetupFile.Parse(
+        "{\"setup\": \"t\", \"description\": \"d\", \"mods\": [\"setuppulse\"], \"steps\": ["
+          + PlacePulse
+          + "], \"during\": "
+          + during
+          + ", \"seconds\": 6, \"record\": {\"machines\": {\"pulse\": {\"series\": "
+          + "{\"state\": {\"words\": [\"idle\"]}, \"ticks\": {\"member\": \"Ticks\", \"unit\": \"u\"}}}}}}",
+        "t.json"
+      )
+    );
+
+  private static double[] PulseTicks(SetupRecording recording) =>
+    Enumerable
+      .Range(0, recording.Seconds)
+      .Select(s => Convert.ToDouble(recording.ValueAt("pulse", "ticks", s)))
+      .ToArray();
+
+  // Fails when a wait checks its until only at whole seconds: the reading raised from 300 to 700 ms is
+  // missed, or the expect after the wait runs at the second's end, after it dropped.
+  [Fact]
+  public void A_wait_until_met_inside_a_second_runs_the_next_steps_at_that_instant()
+  {
+    using SetupScene waited = Pulse(
+      "[{\"at\": 1, \"steps\": [{\"wait\": {\"until\": "
+        + PulseRaised
+        + ", \"max\": 0.5}}, {\"expect\": "
+        + PulseRaised
+        + "}, {\"expect\": {\"at\": [0, 0, 0], \"member\": \"Ticks\", \"equals\": 13}}]}]"
+    );
+    using SetupScene plain = Pulse("[]");
+
+    double[] ticks = PulseTicks(waited.Run(PulseMods));
+
+    Assert.Equal([10, 20, 30, 40, 50, 60], ticks);
+    Assert.Equal(PulseTicks(plain.Run(PulseMods)), ticks);
+  }
+
+  // Fails when a wait that ends on the second's end is followed by a whole further second before the sample.
+  [Fact]
+  public void A_wait_to_the_second_s_end_leaves_the_sample_on_time()
+  {
+    using SetupScene waited = Pulse("[{\"at\": 1, \"step\": {\"wait\": 1}}]");
+    using SetupScene plain = Pulse("[]");
+
+    double[] ticks = PulseTicks(waited.Run(PulseMods));
+
+    Assert.Equal(PulseTicks(plain.Run(PulseMods)), ticks);
+  }
+
+  // Fails when max is read as whole seconds: a max of 0.2 s waits on to 300 ms and meets the reading.
+  [Fact]
+  public void A_wait_until_fails_at_a_max_under_a_second()
+  {
+    string message = Assert
+      .Throws<InvalidOperationException>(() =>
+        Pulse(
+            "[{\"at\": 1, \"step\": {\"wait\": {\"until\": "
+              + PulseRaised
+              + ", \"max\": 0.2}}}]"
+          )
+          .Run(PulseMods)
+      )
+      .Message;
+
+    Assert.Contains("not met in 0.2 s", message);
   }
 
   // Fails when a wait object names neither seconds nor until, or an until has no max.

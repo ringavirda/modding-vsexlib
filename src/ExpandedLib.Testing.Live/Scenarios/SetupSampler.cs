@@ -8,9 +8,11 @@ using Vintagestory.API.Server;
 
 namespace ExpandedLib.Testing.Live;
 
-/// <summary>The seconds of a case's run, driven by a 1000 ms game tick listener: each firing
-/// samples the second that just ticked, then pulls the next second's <c>during</c> actions once
-/// and takes its <c>Before</c> readings. An action that runs on past its firing continues on
+/// <summary>The seconds of a case's run, driven by a game tick listener that fires every server
+/// tick: second k ends when the time handed to the listener since <see cref="Start"/> reaches
+/// k x 1000 ms, so a late tick is paid back on the next. Each second's end samples it, then pulls
+/// the next second's <c>during</c> actions once and takes its <c>Before</c> readings; a tick that
+/// crosses several ends does so for each in order. An action that runs on past its firing continues on
 /// <see cref="Advance"/> while the samples go on, and the actions due meanwhile queue behind it.</summary>
 internal sealed class SetupSampler(
   IServerEventAPI events,
@@ -20,7 +22,7 @@ internal sealed class SetupSampler(
   IReadOnlyList<ModInfo> loaded,
   string folder
 ) {
-  private const int PeriodMilliseconds = 1000;
+  private const int SecondMilliseconds = 1000;
 
   private readonly Queue<(int Second, IEnumerator<SetupDuring> Due)> _queued =
   [];
@@ -32,6 +34,7 @@ internal sealed class SetupSampler(
   private long _listener;
   private bool _registered;
   private int _fired;
+  private double _elapsed;
 
   /// <summary>The failure that stopped the run, or null; its FAIL line is printed unless
   /// <see cref="StepFailure.Reported"/> is false.</summary>
@@ -92,7 +95,7 @@ internal sealed class SetupSampler(
         ModMap(scenario.Model.Mods, loaded)
       );
       _run.Start();
-      _listener = events.RegisterGameTickListener(Fire, PeriodMilliseconds);
+      _listener = events.RegisterGameTickListener(Fire, 1);
       _registered = true;
       Second(0);
     });
@@ -126,17 +129,23 @@ internal sealed class SetupSampler(
     return true;
   }
 
+  /// <param name="dt">Seconds since the listener last fired.</param>
   private void Fire(float dt) {
     if (Failure != null || Done)
       return;
-    Guard(() => {
-      _fired++;
-      _run!.Sample(_fired - 1);
-      if (Done)
-        Finish();
-      else
-        Second(_fired);
-    });
+    _elapsed += dt * 1000.0;
+    while (
+      Failure == null && !Done && _elapsed >= (_fired + 1) * SecondMilliseconds
+    ) {
+      Guard(() => {
+        _fired++;
+        _run!.Sample(_fired - 1);
+        if (Done)
+          Finish();
+        else
+          Second(_fired);
+      });
+    }
   }
 
   private void Finish() {

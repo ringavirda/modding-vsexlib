@@ -205,8 +205,10 @@ public sealed partial class SetupScene
       seconds = (double)(o["until"] != null ? o["max"]! : o["seconds"]!);
     }
     var reading = new ReadingContext(View);
-    for (double elapsed = 0; ; elapsed++)
+    int slices = (int)Math.Ceiling(seconds * 1000 / TestWorld.SliceMs - 1e-9);
+    for (int slice = 0; ; slice++)
     {
+      double elapsed = slice * TestWorld.SliceMs / 1000.0;
       foreach (ReadingTest test in hold)
         if (!Holds(test, reading, step.Path))
           throw Fail(
@@ -215,7 +217,7 @@ public sealed partial class SetupScene
           );
       if (until.Count > 0 && until.All(t => Holds(t, reading, step.Path)))
         return;
-      if (elapsed >= seconds)
+      if (slice >= slices)
       {
         if (until.Count > 0)
           throw Fail(
@@ -224,7 +226,8 @@ public sealed partial class SetupScene
           );
         return;
       }
-      TickSecond();
+      RunSlices(1, TestWorld.GameHoursPerSecond, _lineListeners);
+      _waitClosedSecond = World.MsIntoSecond == 0;
     }
   }
 

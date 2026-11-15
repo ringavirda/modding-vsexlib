@@ -770,11 +770,20 @@ public sealed partial class TestWorld : IDisposable {
   /// <param name="seconds">Whole seconds to advance.</param>
   /// <param name="lines">Ids of the listeners stepped between the fires; an empty set steps none.</param>
   internal void Tick(int seconds, IReadOnlySet<long> lines) {
-    const float fire = BlockNetworkModSystem.ListenerIntervalMs / 1000f;
-    for (int i = 0; i < seconds * 5; i++) {
-      Networks.ListenerTick(Accessor, fire);
-      StepListeners(BlockNetworkModSystem.ListenerIntervalMs, lines);
-    }
+    for (int i = 0; i < seconds * 5; i++)
+      NetworkFire(lines);
+  }
+
+  /// <summary>Runs one 200 ms fire of the server's network listener through
+  /// <see cref="BlockNetworkModSystem.ListenerTick"/>, then steps the listeners in <paramref name="lines"/> 200 ms.
+  /// No delayed callback comes due.</summary>
+  /// <param name="lines">Ids of the listeners stepped after the fire; an empty set steps none.</param>
+  internal void NetworkFire(IReadOnlySet<long> lines) {
+    Networks.ListenerTick(
+      Accessor,
+      BlockNetworkModSystem.ListenerIntervalMs / 1000f
+    );
+    StepListeners(BlockNetworkModSystem.ListenerIntervalMs, lines);
   }
 
   /// <summary>Fires every server tick listener registered through <see cref="Api"/> or
@@ -796,30 +805,104 @@ public sealed partial class TestWorld : IDisposable {
     AdvanceCallbacks((long)System.Math.Round(dt * 1000f));
   }
 
-  /// <summary>Fires every listener not in <paramref name="except"/> once with
-  /// <paramref name="dt"/> in firing order, runs <paramref name="network"/> just before the
-  /// listener <paramref name="networkBefore"/> even when that listener is in except, advances
-  /// sim time and fires the delayed callbacks that come due, and runs <paramref name="network"/>
-  /// last when it has not run (that listener is null or fires nowhere).</summary>
-  internal void FireBlockEntityTicks(
-    float dt,
+  /// <summary>Runs one second of block-entity time as ten 100 ms <see cref="RunSlice"/> calls. Each listener
+  /// not in <paramref name="except"/> fires at its own registered interval with that interval in seconds as dt,
+  /// at the moments of the second its accrued time reaches the interval; a listener over 1000 ms carries its
+  /// accrued time into the next second. <paramref name="network"/> is one fire of the network listener and
+  /// runs at 200, 400, 600, 800 and 1000 ms, among the listeners due at the same moment. Listeners due at one
+  /// moment fire in firing order; the network fire due with them runs just before the listener
+  /// <paramref name="networkBefore"/>, even when that listener is in except or not due, and after them when it
+  /// is null or gone. At the second's end sim time advances 1000 ms and the delayed callbacks that come due
+  /// fire, after the listeners and before a network fire that runs after them.</summary>
+  /// <remarks>The accrued time of a listener in <paramref name="except"/> is left as it was. A
+  /// listener registered during the second starts accruing at the next moment of it.</remarks>
+  internal void RunSecond(
     IReadOnlySet<long> except,
     System.Action network,
     long? networkBefore
   ) {
-    bool ran = false;
-    foreach (var (id, listener) in _tickListeners.ToList()) {
-      if (!ran && id == networkBefore) {
-        network();
-        ran = true;
+    for (int i = 0; i < 1000 / SliceMs; i++)
+      RunSlice(SliceMs, except, network, networkBefore);
+  }
+
+  /// <summary>The length of the slices <see cref="RunSecond"/> is cut into, in ms.</summary>
+  internal const int SliceMs = 100;
+
+  /// <summary>How far the second <see cref="RunSlice"/> is running has got, in ms: 0 between seconds, under
+  /// 1000 inside one.</summary>
+  internal int MsIntoSecond { get; private set; }
+
+  // Sim time (ms) since the network last fired inside the running second.
+  private int _msSinceFire;
+
+  /// <summary>Runs the next <paramref name="ms"/> of the running second, firing the listeners, the network and
+  /// the delayed callbacks at the moments <see cref="RunSecond"/> fires them; slices that add up to 1000 ms run
+  /// that second exactly as <see cref="RunSecond"/> does, whatever their lengths.</summary>
+  /// <param name="ms">Sim time to run, in ms, from 1 up to what is left of the second.</param>
+  /// <param name="except">Ids of the listeners that do not fire in this slice.</param>
+  /// <param name="network">One fire of the network listener.</param>
+  /// <param name="networkBefore">The listener a network fire due with it runs just before; null for after the
+  /// listeners due.</param>
+  /// <exception cref="System.ArgumentOutOfRangeException"><paramref name="ms"/> is under 1 or runs past the
+  /// second's end.</exception>
+  internal void RunSlice(
+    int ms,
+    IReadOnlySet<long> except,
+    System.Action network,
+    long? networkBefore
+  ) {
+    const int second = 1000;
+    const int fire = BlockNetworkModSystem.ListenerIntervalMs;
+    if (ms < 1 || ms > second - MsIntoSecond)
+      throw new System.ArgumentOutOfRangeException(
+        nameof(ms),
+        ms,
+        $"a slice runs 1 to {second - MsIntoSecond} ms of the second"
+      );
+    int end = MsIntoSecond + ms;
+    while (MsIntoSecond < end) {
+      int step = System.Math.Min(end - MsIntoSecond, fire - _msSinceFire);
+      foreach (var (id, listener) in _tickListeners)
+        if (!except.Contains(id))
+          step = System.Math.Min(
+            step,
+            System.Math.Max(
+              1,
+              System.Math.Max(1, listener.IntervalMs) - _tickAccumMs[id]
+            )
+          );
+      MsIntoSecond += step;
+      _msSinceFire += step;
+      bool ran = _msSinceFire < fire;
+      if (!ran)
+        _msSinceFire = 0;
+      // Snapshot: a listener may unregister (or a block entity may register a new one) while firing.
+      foreach (long id in _tickListeners.Keys.ToList()) {
+        if (!ran && id == networkBefore) {
+          network();
+          ran = true;
+        }
+        if (
+          except.Contains(id)
+          || !_tickListeners.TryGetValue(id, out TickListener listener)
+        )
+          continue;
+        int interval = System.Math.Max(1, listener.IntervalMs);
+        int accum = _tickAccumMs[id] + step;
+        while (accum >= interval && _tickListeners.ContainsKey(id)) {
+          accum -= interval;
+          listener.Callback(interval / 1000f);
+        }
+        if (_tickListeners.ContainsKey(id))
+          _tickAccumMs[id] = accum;
       }
-      if (except.Contains(id))
-        continue;
-      listener.Callback(dt);
+      if (MsIntoSecond == second)
+        AdvanceCallbacks(second);
+      if (!ran)
+        network();
     }
-    AdvanceCallbacks((long)System.Math.Round(dt * 1000f));
-    if (!ran)
-      network();
+    if (MsIntoSecond == second)
+      MsIntoSecond = 0;
   }
 
   /// <summary>The tick listeners in firing order, each with its id and callback.</summary>
