@@ -154,6 +154,69 @@ internal static class HandAssemblyPlay {
     }
   }
 
+  /// <summary>Clicks the <paramref name="face"/> crossing of the fixed piece at <paramref name="at"/>
+  /// with its tool in the main hand and no sneak, as the wrench does: the crossing's cap is taken off,
+  /// or an uncapped one gets the def's cap from the off hand with the fasteners of one joint. The tool
+  /// and cap are drawn from the case's pack and what came back to the player goes to it.</summary>
+  /// <param name="ctx">The running case, whose pack the tool, cap and fasteners come from.</param>
+  /// <param name="world">The server world.</param>
+  /// <param name="player">The player, in survival mode and standing in reach of the cell.</param>
+  /// <param name="at">The absolute cell of the piece.</param>
+  /// <param name="face">The crossing the click lands on.</param>
+  /// <returns>Null when a cap was fitted or taken off; otherwise the server's refusal.</returns>
+  /// <exception cref="StepFailure">The cell's block does not declare handAssembly, a fit is asked of a def with no cap, or the pack holds no tool or cap.</exception>
+  public static AssemblyResult? Cap(
+    ScenarioContext ctx,
+    IWorldAccessor world,
+    IPlayer player,
+    BlockPos at,
+    BlockFacing face
+  ) {
+    Block block = world.BlockAccessor.GetBlock(at);
+    HandAssemblySpec spec =
+      HandAssemblySpec.Of(block)
+      ?? throw new StepFailure(
+        $"{block.Code} does not declare handAssembly, so nothing caps it.",
+        Suspect.Scenario
+      );
+    bool capped =
+      BEBehaviorAssembled.At(world.BlockAccessor, at)?.CapAt(face) != null;
+    if (!capped && spec.Cap == null)
+      throw new StepFailure($"{block.Code} declares no cap.", Suspect.Scenario);
+    ItemSlot slot = player.InventoryManager.ActiveHotbarSlot;
+    ItemSlot offhand = player.Entity.LeftHandItemSlot;
+    string label = $"hand assembly cap of {block.Code}";
+    slot.Itemstack = PackLedger.Tool(ctx, label, spec.Tool);
+    if (!capped) {
+      offhand.Itemstack = PackLedger.Tool(ctx, label, spec.Cap);
+      Supply(ctx, world, player, spec, spec.PerJoint);
+    }
+    Dictionary<string, int> before = ExCarried.Totals(player);
+    bool sneaking = player.Entity.Controls.Sneak;
+    player.Entity.Controls.Sneak = false;
+    try {
+      AssemblyResult? refused = HandAssemblyServer.Cap(
+        world,
+        player,
+        at,
+        ScenarioPlayer.Hit(face)
+      );
+      if (
+        refused == null
+        && player.WorldData.CurrentGameMode != EnumGameMode.Creative
+      )
+        slot.Itemstack.Collectible.DamageItem(world, player.Entity, slot);
+      return refused;
+    } finally {
+      player.Entity.Controls.Sneak = sneaking;
+      PackLedger.Give(ctx, slot.Itemstack);
+      PackLedger.Give(ctx, offhand.Itemstack);
+      slot.Itemstack = null;
+      offhand.Itemstack = null;
+      ReturnToPack(ctx, player, before);
+    }
+  }
+
   private static BlockPos Aimed(
     IWorldAccessor world,
     Block part,

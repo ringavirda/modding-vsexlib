@@ -442,13 +442,20 @@ public abstract class BlockNetworkNode
       world.BlockAccessor.BreakBlock(pos, null);
   }
 
-  /// <summary>Removes this block's position from the network graph, then calls the base break logic. A fixed piece's own fasteners are lost with it.</summary>
+  /// <summary>Removes this block's position from the network graph, then calls the base break logic. A fixed piece's own fasteners are lost with it, and the caps fitted to it drop.</summary>
   public override void OnBlockBroken(
     IWorldAccessor world,
     BlockPos pos,
     IPlayer byPlayer,
     float dropQuantityMultiplier = 1
   ) {
+    if (
+      BEBehaviorAssembled.At(world.BlockAccessor, pos) is { } record
+      && byPlayer?.WorldData.CurrentGameMode != EnumGameMode.Creative
+    )
+      foreach (ItemStack cap in record.Caps)
+        world.SpawnItemEntity(cap.Clone(), pos.ToVec3d().Add(0.5, 0.5, 0.5));
+
     world
       .Api.ModLoader.GetModSystem<BlockNetworkModSystem>()
       .RemoveNode(world.BlockAccessor, pos);
@@ -483,8 +490,15 @@ public abstract class BlockNetworkNode
         && !byEntity.Controls.Sneak
         && !WrenchFixed(world, pos, blockSel)
         && byEntity is EntityPlayer { Player: IServerPlayer player }
+        && HandAssemblyServer.Cap(
+          world,
+          player,
+          pos,
+          blockSel.HitPosition ?? new Vec3d(0.5, 0.5, 0.5)
+        )
+          is { } refusal
       )
-        HandAssemblyServer.Tell(world, player, HandAssemblyServer.Fixed);
+        HandAssemblyServer.Tell(world, player, refusal.Code, refusal.Args);
       return;
     }
 

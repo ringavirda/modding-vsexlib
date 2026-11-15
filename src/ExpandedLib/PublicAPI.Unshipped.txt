@@ -800,9 +800,11 @@ ExpandedLib.Assembling.HandAssemblyCandidates
 ExpandedLib.Assembling.HandAssemblyModSystem
 ExpandedLib.Assembling.HandAssemblyModSystem.HandAssemblyModSystem() -> void
 ExpandedLib.Assembling.HandAssemblySpec
+ExpandedLib.Assembling.HandAssemblySpec.Cap.get -> string?
+ExpandedLib.Assembling.HandAssemblySpec.Cap.init -> void
 ExpandedLib.Assembling.HandAssemblySpec.Fastener.get -> string!
 ExpandedLib.Assembling.HandAssemblySpec.Fastener.init -> void
-ExpandedLib.Assembling.HandAssemblySpec.HandAssemblySpec(string! Tool, string! Fastener, int PerJoint) -> void
+ExpandedLib.Assembling.HandAssemblySpec.HandAssemblySpec(string! Tool, string! Fastener, int PerJoint, string? Cap = null) -> void
 ExpandedLib.Assembling.HandAssemblySpec.PerJoint.get -> int
 ExpandedLib.Assembling.HandAssemblySpec.PerJoint.init -> void
 ExpandedLib.Assembling.HandAssemblySpec.Tool.get -> string!

@@ -449,6 +449,37 @@ internal sealed class ScenarioPlayer : IHandRelease {
     }
   }
 
+  /// <summary>Clicks the <paramref name="face"/> crossing of the fixed piece at <paramref name="at"/>
+  /// with the wrench (<see cref="HandAssemblyPlay.Cap"/>), then parks the player again.</summary>
+  /// <param name="ctx">The running case, whose pack the tool, cap and fasteners come from.</param>
+  /// <param name="at">The absolute cell of the piece.</param>
+  /// <param name="face">The crossing the click lands on.</param>
+  /// <param name="code">The refusal's code, or null when a cap was fitted or taken off.</param>
+  /// <returns>Null when a cap was fitted or taken off; otherwise the refusal's line.</returns>
+  public string? Cap(
+    ScenarioContext ctx,
+    BlockPos at,
+    BlockFacing face,
+    out string? code
+  ) {
+    ((IWorldPlayerData)_data).CurrentGameMode = EnumGameMode.Survival;
+    _data.FreeMove = false;
+    Face(at, face);
+    try {
+      AssemblyResult? refused = HandAssemblyPlay.Cap(
+        ctx,
+        _server,
+        Player,
+        at,
+        face
+      );
+      code = refused?.Code;
+      return refused == null ? null : HandAssemblyPlay.Describe(refused);
+    } finally {
+      Park();
+    }
+  }
+
   /// <summary>The refusal a held tool gets from a block that needs a better one, or null when the tool
   /// meets the block's tier.</summary>
   /// <param name="required">The block's required mining tier; 0 or less needs no tool.</param>

@@ -160,6 +160,96 @@ public class SetupAssemblyStepTests {
     Assert.Contains("harness-nocandidate", e.Message);
   }
 
+  private const string WePipe =
+    """{ "place": { "id": "first", "code": "setupasm:pipe-straight-we", "at": [0, 0, 0], "face": "u", "arms": "ew" } }""";
+
+  // Fails when the cap step ignores its face and clicks the centre, so the first arm is capped whichever is named; a second click on the capped face must take the cap off.
+  [Fact]
+  public void CapStep_FitsTheNamedFace() {
+    using SetupScene scene = BuildInline(
+      "[" + WePipe + ", { \"cap\": { \"at\": [0, 0, 0], \"face\": \"w\" } }]"
+    );
+
+    BEBehaviorAssembled record = RecordAt(scene, 0, 0, 0);
+    Assert.NotNull(record.CapAt(BlockFacing.WEST));
+    Assert.Null(record.CapAt(BlockFacing.EAST));
+    Assert.Equal(2, record.CapFastenersAt(BlockFacing.WEST)!.StackSize);
+
+    using SetupScene off = BuildInline(
+      "["
+        + WePipe
+        + ", { \"cap\": { \"at\": [0, 0, 0], \"face\": \"w\" } }, { \"cap\": { \"at\": [0, 0, 0], \"face\": \"w\" } }]"
+    );
+    Assert.Null(RecordAt(off, 0, 0, 0).CapAt(BlockFacing.WEST));
+  }
+
+  // Fails when the step names the refusal and a joined face is capped, or the refusal code is not compared.
+  [Fact]
+  public void CapStep_FailsNamesTheRefusal() {
+    using SetupScene scene = BuildInline(
+      "["
+        + WePipe
+        + ", { \"assemble\": { \"code\": \"setupasm:pipe-straight-we\", \"at\": [1, 0, 0], \"arms\": \"ew\" } },"
+        + " { \"cap\": { \"at\": [0, 0, 0], \"face\": \"e\", \"fails\": \"exlib-handassembly-capjoined\" } }]"
+    );
+
+    Assert.Null(RecordAt(scene, 0, 0, 0).CapAt(BlockFacing.EAST));
+  }
+
+  // Fails when a step naming another refusal than the server's passes.
+  [Fact]
+  public void CapStep_FailsOnAnotherRefusalThanNamed() {
+    Exception e = Assert.ThrowsAny<Exception>(() =>
+      BuildInline(
+        "["
+          + WePipe
+          + ", { \"assemble\": { \"code\": \"setupasm:pipe-straight-we\", \"at\": [1, 0, 0], \"arms\": \"ew\" } },"
+          + " { \"cap\": { \"at\": [0, 0, 0], \"face\": \"e\", \"fails\": \"exlib-handassembly-capclosed\" } }]"
+      )
+    );
+
+    Assert.Contains("was refused with exlib-handassembly-capjoined", e.Message);
+  }
+
+  // Fails when a step expecting a refusal passes after the cap was fitted.
+  [Fact]
+  public void CapStep_FailsWhenTheFitSucceeds() {
+    Exception e = Assert.ThrowsAny<Exception>(() =>
+      BuildInline(
+        "["
+          + WePipe
+          + ", { \"cap\": { \"at\": [0, 0, 0], \"face\": \"e\", \"fails\": \"exlib-handassembly-capclosed\" } }]"
+      )
+    );
+
+    Assert.Contains("expected the refusal", e.Message);
+  }
+
+  // Fails when a step with no refusal named passes a refused click.
+  [Fact]
+  public void CapStep_RefusalWithoutFailsFailsTheStep() {
+    Exception e = Assert.ThrowsAny<Exception>(() =>
+      BuildInline(
+        "["
+          + WePipe
+          + ", { \"assemble\": { \"code\": \"setupasm:pipe-straight-we\", \"at\": [1, 0, 0], \"arms\": \"ew\" } },"
+          + " { \"cap\": { \"at\": [0, 0, 0], \"face\": \"e\" } }]"
+      )
+    );
+
+    Assert.Contains("could not cap", e.Message);
+  }
+
+  // Fails when face is dropped from the required fields: a cap step with no face clicks the up face.
+  [Fact]
+  public void CapStep_FieldsRequired() {
+    Exception e = Assert.ThrowsAny<Exception>(() =>
+      BuildInline("[" + WePipe + ", { \"cap\": { \"at\": [0, 0, 0] } }]")
+    );
+
+    Assert.Contains("takes \"face\"", e.Message);
+  }
+
   // Fails when the fixed flag is read as anything but the record's.
   [Fact]
   public void Asm_reads_whether_the_piece_is_fixed() {
