@@ -21,12 +21,7 @@
   "attributes": {
     "handbook": {
       "groupBy": [
-        "pipe-plated-straight-*",
-        "pipe-plated-bend-*",
-        "pipe-plated-tjunction-*",
-        "pipe-plated-corner-*",
-        "pipe-plated-xjunction-*",
-        "pipe-plated-junction-*"
+        "pipe-plated-xjunction-*"
       ]
     }
   },
