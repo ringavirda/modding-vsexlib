@@ -19,6 +19,18 @@ internal static class ViewReferences {
     double GroundScale
   );
 
+  /// <summary>The hold of a pile, copied from the game's nails and strips: the hand rotation, origin and scale
+  /// of the item's transform, and the grip as fractions of the drawn box from its low corner along the shape's x,
+  /// y and z. <paramref name="GuiRotation"/> and <paramref name="GuiOrigin"/> lay the pile top-down in the slot.</summary>
+  internal sealed record PileReference(
+    Vec3d Rotation,
+    Vec3d Origin,
+    double Scale,
+    double[] Grip,
+    Vec3d GuiRotation,
+    Vec3d GuiOrigin
+  );
+
   private static readonly Vec3d X = new(1, 0, 0);
   private static readonly Vec3d Y = new(0, 1, 0);
   private static readonly Vec3d Z = new(0, 0, 1);
@@ -65,6 +77,15 @@ internal static class ViewReferences {
     0,
     new Vec3d(-48, 134, 171),
     4
+  );
+
+  internal static readonly PileReference Pile = new(
+    new Vec3d(94, 0, 0),
+    new Vec3d(0.5, 0.1, 0.5),
+    0.75,
+    [0.2527, 0.3051, 0.4965],
+    new Vec3d(60, 45, 0),
+    new Vec3d(0.5, 0.05, 0.5)
   );
 
   /// <summary>The two-handed hold of a long item: the hand rotation that lays the long axis (the lay's first axis, z in

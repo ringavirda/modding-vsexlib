@@ -641,7 +641,7 @@ internal static class ViewGates {
             id,
             [(group.Box.Extents()[0] / 16, "length")]
           );
-        else if (!bands.Bands[kind].TryGetValue(id, out band))
+        else if (!TryBand(bands, kind, id, out band))
           continue;
       } else {
         double own = ValueOf(twin.Metrics, id);
@@ -714,6 +714,20 @@ internal static class ViewGates {
         )
       );
     return readings;
+  }
+
+  // A pile has a band of its own for slot fill only; every other gate takes the plate's.
+  private static bool TryBand(
+    ViewBandData bands,
+    string kind,
+    string id,
+    out Band? band
+  ) {
+    if (bands.Bands[kind].TryGetValue(id, out band))
+      return true;
+    if (kind == "pile")
+      return bands.Bands["plate"].TryGetValue(id, out band);
+    return false;
   }
 
   // A tipped lump: the tool rule judges its hand scale in place of the lump band.
