@@ -97,6 +97,9 @@ public static class ItemViews {
     if (VanillaShape(api, item) is { } twin)
       return Shipped(api, item, twin, box);
 
+    if (kind == ItemViewKind.Pile)
+      return Pile(box);
+
     allowLong &= item.Code.Domain != "game";
     string? tip = item.Attributes?["itemViews"]?["tip"]?.AsString();
     Vec3d? guiRotation = GuiRotationOf(item);
@@ -118,13 +121,15 @@ public static class ItemViews {
   /// <paramref name="kind"/>, for a mod that wants the numbers without a collectible.</summary>
   /// <param name="api">The api of the side whose world is loaded.</param>
   /// <param name="shape">The shape's base, selectiveElements and rotateX/Y/Z are read.</param>
-  /// <param name="kind">Longtool, Plate, Bulk, Bar or Lump.</param>
-  /// <param name="tip">The working end as a sign and an axis letter ("+y"), or null.</param>
+  /// <param name="kind">Longtool, Plate, Bulk, Bar, Lump or Pile.</param>
+  /// <param name="tip">The working end as a sign and an axis letter ("+y"), or null; ignored for a pile.</param>
   /// <param name="guiRotation">The slot rotation in degrees about x, y and z, or null for the kind's; the slot
-  /// origin is computed for it, and its scale too except for a longtool's, which keeps the spear's close-up.</param>
+  /// origin is computed for it, and its scale too except for a longtool's, which keeps the spear's close-up. Ignored
+  /// for a pile, whose slot keeps the nails' rotation.</param>
   /// <returns>The views, as the collectible overload gives an item of that shape and kind.</returns>
   /// <exception cref="ArgumentException"><paramref name="kind"/> is None, Tool, Workpiece or a block kind,
-  /// whose reference is a collectible or a block; or <paramref name="tip"/> is not a sign and one of x, y, z.</exception>
+  /// whose reference is a collectible or a block; or, for a kind other than Pile, <paramref name="tip"/> is not a sign
+  /// and one of x, y, z.</exception>
   /// <exception cref="InvalidOperationException">The shape does not load or has no drawn face.</exception>
   public static ItemViewSet Compute(
     ICoreAPI api,
@@ -133,9 +138,9 @@ public static class ItemViews {
     string? tip = null,
     Vec3d? guiRotation = null
   ) {
-    HandReference reference =
-      ReferenceOf(kind)
-      ?? throw new ArgumentException(
+    HandReference? reference = ReferenceOf(kind);
+    if (reference == null && kind != ItemViewKind.Pile)
+      throw new ArgumentException(
         $"kind {kind} has no fixed reference to lay a shape out against",
         nameof(kind)
       );
@@ -144,7 +149,9 @@ public static class ItemViews {
       ?? throw new InvalidOperationException(
         $"shape {shape.Base} does not load or has no drawn face"
       );
-    return Held(api, kind, box, tip, reference, guiRotation, true);
+    if (kind == ItemViewKind.Pile)
+      return Pile(box);
+    return Held(api, kind, box, tip, reference!, guiRotation, true);
   }
 
   private static HandReference? ReferenceOf(ItemViewKind kind) =>
@@ -155,6 +162,163 @@ public static class ItemViews {
       ItemViewKind.Bar => Rod,
       _ => null,
     };
+
+  /// <summary>The views of a pile: one hand with the rotation, origin and scale of the game's nails and strips, solved so
+  /// that the grip, at <see cref="ViewReferences.PileReference.Grip"/> of the drawn box from its low corner, lands on the
+  /// hand; the slot top-down at the plate's slot span with the box centred; the ground at the plate's scale with the box resting on it.</summary>
+  private static ItemViewSet Pile(ViewBox box) {
+    PileReference pile = ViewReferences.Pile;
+    double[] lo = [box.From.X, box.From.Y, box.From.Z];
+    double[] hi = [box.To.X, box.To.Y, box.To.Z];
+    var lay = new Lay(box.Axes, lo, hi);
+    Vec3d[] corners =
+    [
+      .. Enumerable
+        .Range(0, 8)
+        .Select(c =>
+          lay.Point([
+            (c & 1) == 0 ? lo[0] : hi[0],
+            (c & 2) == 0 ? lo[1] : hi[1],
+            (c & 4) == 0 ? lo[2] : hi[2],
+          ])
+        ),
+    ];
+
+    double Along(double low, double high, double fraction) =>
+      low + fraction * (high - low);
+    Vec3d[] drawn = [.. box.Drawn.SelectMany(element => element)];
+    var low = new Vec3d(
+      drawn.Min(c => c.X),
+      drawn.Min(c => c.Y),
+      drawn.Min(c => c.Z)
+    );
+    var high = new Vec3d(
+      drawn.Max(c => c.X),
+      drawn.Max(c => c.Y),
+      drawn.Max(c => c.Z)
+    );
+    var grip = new Vec3d(
+      Along(low.X, high.X, pile.Grip[0]),
+      Along(low.Y, high.Y, pile.Grip[1]),
+      Along(low.Z, high.Z, pile.Grip[2])
+    );
+
+    double s = pile.Scale;
+    double[,] hand = Rotation(
+      new Vec3d(pile.Rotation.X, pile.Rotation.Y - HandYaw, pile.Rotation.Z)
+    );
+    Vec3d held = Mul(
+      hand,
+      new Vec3d(
+        grip.X / 16 - pile.Origin.X,
+        grip.Y / 16 - pile.Origin.Y,
+        grip.Z / 16 - pile.Origin.Z
+      )
+    );
+    var tp = new ModelTransform {
+      Translation = new FastVec3f(
+        (float)(-held.X - pile.Origin.X / s),
+        (float)(-held.Y - pile.Origin.Y / s),
+        (float)(-held.Z - pile.Origin.Z / s)
+      ),
+      Rotation = new FastVec3f(
+        (float)pile.Rotation.X,
+        (float)pile.Rotation.Y,
+        (float)pile.Rotation.Z
+      ),
+      Origin = new FastVec3f(
+        (float)pile.Origin.X,
+        (float)pile.Origin.Y,
+        (float)pile.Origin.Z
+      ),
+      Scale = (float)s,
+      Rotate = true,
+    };
+
+    double[,] turn = Rotation(pile.GuiRotation);
+    Vec3d[] flat =
+    [
+      .. corners.Select(c =>
+        Mul(
+          turn,
+          new Vec3d(
+            c.X / 16 - pile.GuiOrigin.X,
+            c.Y / 16 - pile.GuiOrigin.Y,
+            c.Z / 16 - pile.GuiOrigin.Z
+          )
+        )
+      ),
+    ];
+    double width = flat.Max(c => c.X) - flat.Min(c => c.X);
+    double height = flat.Max(c => c.Y) - flat.Min(c => c.Y);
+    double guiScale =
+      SlotSpan * SlotPixels / (SlotItemPixels * Math.Max(width, height));
+    double size = SlotItemPixels * guiScale;
+    var gui = new ModelTransform {
+      Translation = new FastVec3f(
+        (float)(
+          SlotShiftX
+          - pile.GuiOrigin.X
+          - size * (flat.Max(c => c.X) + flat.Min(c => c.X)) / 2
+        ),
+        (float)(
+          SlotShiftY
+          - pile.GuiOrigin.Y
+          - size * (flat.Max(c => c.Y) + flat.Min(c => c.Y)) / 2
+        ),
+        0
+      ),
+      Rotation = new FastVec3f(
+        (float)pile.GuiRotation.X,
+        (float)pile.GuiRotation.Y,
+        (float)pile.GuiRotation.Z
+      ),
+      Origin = new FastVec3f(
+        (float)pile.GuiOrigin.X,
+        (float)pile.GuiOrigin.Y,
+        (float)pile.GuiOrigin.Z
+      ),
+      Scale = (float)guiScale,
+      Rotate = true,
+    };
+
+    double groundScale = MetalPlate.GroundScale;
+    var centre = new Vec3d(
+      (low.X + high.X) / 2,
+      (low.Y + high.Y) / 2,
+      (low.Z + high.Z) / 2
+    );
+    var ground = new ModelTransform {
+      Translation = new FastVec3f(
+        0,
+        (float)(GroundUnit * groundScale * (centre.Y - low.Y) / 16),
+        0
+      ),
+      Rotation = new FastVec3f(0, 0, 0),
+      Origin = new FastVec3f(
+        (float)(centre.X / 16),
+        (float)(centre.Y / 16),
+        (float)(centre.Z / 16)
+      ),
+      Scale = (float)groundScale,
+      Rotate = true,
+    };
+
+    return new ItemViewSet(
+      ItemViewKind.Pile,
+      gui,
+      tp,
+      ground,
+      null,
+      null,
+      null,
+      null,
+      new Vec3d(lo[0], lo[1], lo[2]),
+      new Vec3d(hi[0], hi[1], hi[2]),
+      box.Axes,
+      grip
+    );
+  }
 
   /// <summary>The vanilla item whose views a tool follows: among the game's items carrying the same <c>tool</c>
   /// value, the shortest code beginning with the value and a dash, else the first code; null when none carries it.</summary>

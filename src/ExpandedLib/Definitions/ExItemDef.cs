@@ -393,9 +393,10 @@ public sealed class ExItemDef : IExDef {
   /// and one of x, y, z is logged as an error naming the item at load, and the item keeps the game's views.</param>
   /// <param name="guiRotation">The slot rotation in degrees about x, y and z, or null for the kind's. The slot
   /// origin and scale are computed for it, as for the kind's own; the hand and ground views are unchanged, and
-  /// an authored <see cref="GuiTransform(object)"/> still wins.</param>
+  /// an authored <see cref="GuiTransform(object)"/> still wins. Ignored for a pile, whose slot keeps the nails' rotation.</param>
   /// <param name="grips">The points of the item's shape, in voxels, that the right and the left hand hold, or null
-  /// to declare none; the view gate <c>hand.left</c> reads the left one against the held clip.</param>
+  /// to declare none; the view gate <c>hand.left</c> reads the left one against the held clip. A pile's layout does
+  /// not read it; the grip of a pile is fixed by <see cref="ViewReferences.PileReference.Grip"/>.</param>
   /// <exception cref="ArgumentException"><paramref name="kind"/> is a block kind; the load pass would leave the
   /// item at the game's views without a warning.</exception>
   public ExItemDef Views(

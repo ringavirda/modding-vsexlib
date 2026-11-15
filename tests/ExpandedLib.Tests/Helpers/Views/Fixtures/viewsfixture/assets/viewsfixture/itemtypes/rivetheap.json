@@ -1,0 +1,12 @@
+{
+  "code": "rivetheap",
+  "class": "Item",
+  "shape": {
+    "base": "viewsfixture:item/rivetheap"
+  },
+  "attributes": {
+    "itemViews": {
+      "kind": "pile"
+    }
+  }
+}

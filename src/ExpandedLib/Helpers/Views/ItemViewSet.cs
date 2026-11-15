@@ -6,7 +6,7 @@ namespace ExpandedLib.Helpers;
 /// <summary>The views <see cref="ItemViews.Compute(Vintagestory.API.Common.ICoreAPI, CollectibleObject)"/> computes for a collectible.</summary>
 /// <param name="Kind">The kind the views were laid out for.</param>
 /// <param name="Gui">The slot transform.</param>
-/// <param name="TpHand">The third-person hand transform; its origin is the box centre in blocks and the reference item's authored origin on the workpiece and shipped routes.</param>
+/// <param name="TpHand">The third-person hand transform; its origin is the box centre in blocks and the reference item's authored origin on the workpiece and shipped routes, and (0.5, 0.1, 0.5), the game nails' authored origin, for a pile.</param>
 /// <param name="Ground">The dropped-item transform.</param>
 /// <param name="IdleClip">The held idle clip, or null where the game's stays.</param>
 /// <param name="ReadyClip">The held ready clip, or null where the game's stays.</param>

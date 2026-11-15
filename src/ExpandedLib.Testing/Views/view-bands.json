@@ -390,6 +390,16 @@
         "high": 0.6054
       }
     },
+    "pile": {
+      "G3": {
+        "min": 0.2494,
+        "max": 0.3862,
+        "minCode": "bolt-pile-heap",
+        "maxCode": "metalnailsandstrips-bismuth",
+        "low": 0.2245,
+        "high": 0.4248
+      }
+    },
     "plate": {
       "G1": {
         "min": 0.7848,
@@ -545,6 +555,24 @@
       "groundLong": 0.8629,
       "heldLong": 1.2,
       "slotSpan": 0.8884
+    },
+    "nails": {
+      "gripX": 0.5056,
+      "gripY": 0.2527,
+      "gripZ": 0.2853,
+      "groundScale": 4.0,
+      "guiRotationX": -30.0,
+      "guiRotationY": -46.0,
+      "guiRotationZ": -180.0,
+      "handOriginX": 0.5,
+      "handOriginY": 0.1,
+      "handOriginZ": 0.5,
+      "handRotationX": 94.0,
+      "handRotationY": 0.0,
+      "handRotationZ": 0.0,
+      "handScale": 0.75,
+      "offDrawn": 0.0,
+      "thickness": 1.8013
     },
     "partial": {
       "groundLong": 0.3,

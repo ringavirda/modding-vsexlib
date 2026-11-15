@@ -355,6 +355,7 @@ ExpandedLib.Helpers.ItemViewKind.Lump = 7 -> ExpandedLib.Helpers.ItemViewKind
 ExpandedLib.Helpers.ItemViewKind.Multicell = 9 -> ExpandedLib.Helpers.ItemViewKind
 ExpandedLib.Helpers.ItemViewKind.None = 0 -> ExpandedLib.Helpers.ItemViewKind
 ExpandedLib.Helpers.ItemViewKind.Partial = 10 -> ExpandedLib.Helpers.ItemViewKind
+ExpandedLib.Helpers.ItemViewKind.Pile = 11 -> ExpandedLib.Helpers.ItemViewKind
 ExpandedLib.Helpers.ItemViewKind.Plate = 4 -> ExpandedLib.Helpers.ItemViewKind
 ExpandedLib.Helpers.ItemViewKind.Tool = 3 -> ExpandedLib.Helpers.ItemViewKind
 ExpandedLib.Helpers.ItemViewKind.Workpiece = 1 -> ExpandedLib.Helpers.ItemViewKind
