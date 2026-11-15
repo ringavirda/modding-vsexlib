@@ -749,8 +749,7 @@ public class HandAssemblyCapTests {
       }
     }
 
-    private T Solid<T>(T block, int sides)
-      where T : Block {
+    private Block Solid(Block block, int sides) {
       TestBlocks.Configure(block, $"test:solid-{_nextId}", _nextId++);
       block.SideSolid = new SmallBoolArray(sides);
       return block;
