@@ -112,6 +112,19 @@ public class HandAssemblyCandidatesTests {
 
   #region What is offered
 
+  // Fails when a refused crossing rejects the box's one candidate instead of leaving that arm open.
+  [Fact]
+  public void Box_RefusedCrossingLeavesFaceOpen() {
+    var scene = Scene.Standing(["nsweud"], keepsOpen: true);
+    scene.Pipe(Cell.AddCopy(BlockFacing.NORTH), "ns", family: "welded");
+
+    var offered = scene.Offer(Ground, BlockFacing.UP);
+
+    AssemblyCandidate box = Assert.Single(offered);
+    Assert.Equal(6, box.Arms.Count);
+    Assert.Contains(BlockFacing.NORTH, box.OpenArms);
+  }
+
   // Fails when an arm meeting a neighbour with no connector back is still offered.
   [Fact]
   public void No_candidate_has_an_arm_toward_a_neighbour_that_offers_no_connector_back() {
@@ -247,7 +260,8 @@ public class HandAssemblyCandidatesTests {
       string[] tokens,
       bool turns = false,
       bool orientable = false,
-      string? refusing = null
+      string? refusing = null,
+      bool keepsOpen = false
     ) {
       var world = new TestWorld();
       world.Place(Ground, TestBlocks.Configure(new Block(), "game:rock", 5));
@@ -256,7 +270,7 @@ public class HandAssemblyCandidatesTests {
       return new Scene(
         world,
         player,
-        new Pipes(world, tokens, turns, orientable, refusing)
+        new Pipes(world, tokens, turns, orientable, refusing, keepsOpen)
       );
     }
 
@@ -305,6 +319,7 @@ public class HandAssemblyCandidatesTests {
     private readonly TestWorld _world;
     private readonly string[] _tokens;
     private readonly string? _refusing;
+    private readonly bool _keepsOpen;
     private readonly Dictionary<(string, string?), Block> _variants = [];
     private int _nextId = 100;
 
@@ -313,11 +328,13 @@ public class HandAssemblyCandidatesTests {
       string[] tokens,
       bool turns,
       bool orientable,
-      string? refusing
+      string? refusing,
+      bool keepsOpen
     ) {
       _world = world;
       _tokens = tokens;
       _refusing = refusing;
+      _keepsOpen = keepsOpen;
 
       foreach (string token in tokens)
         foreach (string? turn in turns ? TurnLetters : [null]) {
@@ -368,7 +385,7 @@ public class HandAssemblyCandidatesTests {
           ? [("orientation", token)]
           : [("orientation", token), ("turn", turn)];
       return TestBlocks.Configure(
-        new PipeNode(token, family, _tokens, _refusing),
+        new PipeNode(token, family, _tokens, _refusing, _keepsOpen),
         code ?? $"test:pipe-{token}" + (turn == null ? "" : $"-{turn}"),
         _nextId++,
         variants
@@ -379,21 +396,26 @@ public class HandAssemblyCandidatesTests {
   private sealed class PipeNode : BlockNetworkNode, IHandAssemblyPart {
     private readonly string _family;
     private readonly string? _refusing;
+    private readonly bool _keepsOpen;
 
     public PipeNode(
       string token,
       string family,
       string[] tokens,
-      string? refusing
+      string? refusing,
+      bool keepsOpen
     ) {
       Type = "mixed";
       Orientation = token;
       _family = family;
       _refusing = refusing;
+      _keepsOpen = keepsOpen;
       AllowedOrientations = new() { ["mixed"] = tokens };
     }
 
     public override string NetworkType => "test";
+
+    internal override bool KeepsRefusedArmsOpen => _keepsOpen;
 
     public override Dictionary<string, string[]> AllowedOrientations { get; }
 

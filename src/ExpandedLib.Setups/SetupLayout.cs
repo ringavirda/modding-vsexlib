@@ -76,6 +76,7 @@ internal sealed class SetupLayout {
     "straight",
     "bend",
     "tjunction",
+    "junction",
     "xjunction",
   ];
 

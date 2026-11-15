@@ -1,8 +1,10 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using ExpandedLib.Definitions;
 using ExpandedLib.Networks;
 using ExpandedLib.Registries;
+using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.MathTools;
 
@@ -35,7 +37,9 @@ public partial class BlockPipe
   /// <summary>The defs this class declares itself, used only to derive
   /// <see cref="BlockNetworkNode.AllowedOrientations"/>; empty for the <c>exlib</c> domain.</summary>
   public static IEnumerable<ExBlockDef> Definitions(string domain) =>
-    domain == "exlib" ? [] : Segments(domain, tier: null);
+    domain == "exlib"
+      ? []
+      : [.. Segments(domain, tier: null), Junction(domain, tier: null)];
 
   /// <summary>The four plain pipe segments (straight / bend / T / X junction) of one
   /// <paramref name="tier"/> under <paramref name="domain"/>; a null <paramref name="tier"/> yields a
@@ -95,6 +99,7 @@ public partial class BlockPipe
       $"{prefix}bend-*",
       $"{prefix}tjunction-*",
       $"{prefix}xjunction-*",
+      $"{prefix}junction-*",
     ];
   }
 
@@ -200,6 +205,111 @@ public partial class BlockPipe
       .CollisionBox(0.3125f, 0.3125f, 0f, 0.6875f, 0.6875f, 1f)
       .SelectionBox(0f, 0.3125f, 0.3125f, 1f, 0.6875f, 0.6875f)
       .SelectionBox(0.3125f, 0.3125f, 0f, 0.6875f, 0.6875f, 1f);
+  }
+
+  /// <summary>The junction box of one <paramref name="tier"/> under <paramref name="domain"/>: one casting with a
+  /// neck on all six faces, one variant (<c>nsweud</c>) and one shape, <c>pipe/{tier}/junction</c>. Its six
+  /// connectors are always shown; a neck no pipe joins is capped, closed by a solid wall, or leaks. It is not in
+  /// <see cref="Segments"/>.</summary>
+  /// <param name="domain">The domain the block is declared in.</param>
+  /// <param name="tier">The tier name, or null for a tierless family.</param>
+  /// <returns>The definition of the box.</returns>
+  public static ExBlockDef Junction(string domain, string? tier) {
+    string s = $"{domain}:" + Asset(tier, "junction");
+    ExBlockDef def = Common(
+        domain,
+        tier,
+        Asset(tier, "junction"),
+        8,
+        "*-junction-nsweud"
+      )
+      .VariantGroup("type", "junction")
+      .VariantGroup("orientation", "nsweud")
+      .ShapeByType("*-junction-nsweud", s)
+      .CollisionBox(0.25f, 0.25f, 0.25f, 0.75f, 0.75f, 0.75f)
+      .SelectionBox(0.25f, 0.25f, 0.25f, 0.75f, 0.75f, 0.75f);
+    foreach (
+      (float x1, float y1, float z1, float x2, float y2, float z2) in ArmBoxes
+    )
+      def = def.CollisionBox(x1, y1, z1, x2, y2, z2)
+        .SelectionBox(x1, y1, z1, x2, y2, z2);
+    return def;
+  }
+
+  // One box from each face of the cell to the body, 0.3125..0.6875 across.
+  private static readonly (
+    float X1,
+    float Y1,
+    float Z1,
+    float X2,
+    float Y2,
+    float Z2
+  )[] ArmBoxes =
+  [
+    (0.3125f, 0.3125f, 0f, 0.6875f, 0.6875f, 0.25f),
+    (0.3125f, 0.3125f, 0.75f, 0.6875f, 0.6875f, 1f),
+    (0.75f, 0.3125f, 0.3125f, 1f, 0.6875f, 0.6875f),
+    (0f, 0.3125f, 0.3125f, 0.25f, 0.6875f, 0.6875f),
+    (0.3125f, 0.75f, 0.3125f, 0.6875f, 1f, 0.6875f),
+    (0.3125f, 0f, 0.3125f, 0.6875f, 0.25f, 0.6875f),
+  ];
+
+  /// <summary>The box keeps an arm open where its neighbour refuses the joint, so hand assembly offers it beside a
+  /// pipe of another joint family.</summary>
+  internal override bool KeepsRefusedArmsOpen => Type == "junction";
+
+  /// <summary>The asset path of the cap overlay drawn on a capped end: <c>pipe/{tier}/cap</c>, or
+  /// <c>pipe/cap</c> for a tierless family, in this block's domain.</summary>
+  internal string CapAsset => Asset(Tier, "cap");
+
+  private readonly Dictionary<int, MeshData[]> _capMeshes = [];
+  private bool _capShapeLogged;
+
+  /// <summary>The meshes of the cap overlays of a capped-face set, built once per set and kept. Client only.</summary>
+  /// <param name="capi">The client API, to read the cap shape and log.</param>
+  /// <param name="tesselator">The tesselator the shape is meshed with.</param>
+  /// <param name="cappedFaces">The faces of the piece that carry a cap.</param>
+  /// <returns>One mesh per capped face; empty when no face is capped or this tier ships no cap shape, which logs once.</returns>
+  internal MeshData[] CapMeshes(
+    ICoreClientAPI capi,
+    ITesselatorAPI tesselator,
+    IReadOnlyList<BlockFacing> cappedFaces
+  ) {
+    int key = PipeCapOverlays.Key(cappedFaces);
+    if (key == 0)
+      return [];
+    if (_capMeshes.TryGetValue(key, out MeshData[]? kept))
+      return kept;
+
+    var loc = new AssetLocation(Code.Domain, $"shapes/{CapAsset}.json");
+    Shape? shape = capi.Assets.TryGet(loc)?.ToObject<Shape>();
+    if (shape == null && !_capShapeLogged) {
+      _capShapeLogged = true;
+      capi.Logger.Warning(
+        "[exlib] {0}: no cap shape at {1}; capped ends draw without a cap.",
+        Code,
+        loc
+      );
+    }
+    MeshData[] meshes =
+    [
+      .. shape == null
+        ? []
+        : PipeCapOverlays
+          .For(cappedFaces)
+          .Select(overlay =>
+          {
+            tesselator.TesselateShape(
+              this,
+              shape,
+              out MeshData mesh,
+              new Vec3f(overlay.RotateXDeg, overlay.RotateYDeg, 0)
+            );
+            return mesh;
+          }),
+    ];
+    _capMeshes[key] = meshes;
+    return meshes;
   }
 
   #endregion

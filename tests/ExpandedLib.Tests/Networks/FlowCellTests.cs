@@ -1,4 +1,5 @@
 using System;
+using System.Linq;
 using ExpandedLib.Assembling;
 using ExpandedLib.Industry.Pipes;
 using ExpandedLib.Networks;
@@ -227,6 +228,51 @@ public class FlowCellTests {
     Assert.True(
       store.EdgeBetween(store.IndexOf(Key(1)), store.IndexOf(Key(2))) >= 0
     );
+  }
+
+  // Fails when the box's flow node drops its vertical arms, so nothing above or below joins its run.
+  [Fact]
+  public void Box_FlowCarriesUpAndDown() {
+    var w = NewWorld();
+    Lay(w, 10);
+    var middle = new BlockPos(11, 0, 0);
+    BlockPos above = middle.UpCopy();
+    BlockPos below = middle.DownCopy();
+    BlockPipe box = TestBlocks.Configure(
+      new BlockPipe(),
+      "test:pipe-cast-junction-nsweud",
+      95,
+      ("type", "junction"),
+      ("tier", "cast"),
+      ("orientation", "nsweud")
+    );
+    box.SetNetworkTypeForTest("junction");
+    box.ApplyOrientationForTest(
+      Assert.Single(
+        BlockPipe
+          .Junction("test", "cast")
+          .VariantGroups.Single(g => g.Name == "orientation")
+          .States
+      )
+    );
+    var be = new FlowCellEntity();
+    w.Place(middle, box, be);
+    w.Initialize(be);
+    LayAt(w, above, orientation: "ud");
+    LayAt(w, below, orientation: "ud");
+
+    var run = (PipeFlowNetwork)w.NetworkAt(middle)!;
+    run.OnTick(w.Accessor, Tiny, w.Networks);
+
+    var store = run.Store;
+    int centre = store.IndexOf(NodeKey.Centre(middle));
+    Assert.True(
+      store.EdgeBetween(centre, store.IndexOf(NodeKey.Centre(above))) >= 0
+    );
+    Assert.True(
+      store.EdgeBetween(centre, store.IndexOf(NodeKey.Centre(below))) >= 0
+    );
+    Assert.True(store.EdgeBetween(centre, store.IndexOf(Key(10))) >= 0);
   }
 
   // Fails when the opening of a capped end is shaped from the position-less connector test, so the cap leaves it venting.

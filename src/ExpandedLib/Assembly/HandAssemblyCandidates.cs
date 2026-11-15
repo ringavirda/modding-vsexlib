@@ -159,7 +159,8 @@ public static class HandAssemblyCandidates {
 
     BlockFacing[] forbidden = node.ForbiddenFaces(world, target.Cell);
     if (
-      arms.Any(face =>
+      !node.KeepsRefusedArmsOpen
+      && arms.Any(face =>
         forbidden.Contains(face)
         || CrossingAt(world, target.Cell, face, candidate) == Crossing.Refused
       )

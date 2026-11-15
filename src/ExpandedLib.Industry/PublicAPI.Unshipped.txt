@@ -909,6 +909,7 @@ virtual ExpandedLib.Industry.Machining.BlockEntityMachineTool.Materials.get -> E
 virtual ExpandedLib.Industry.Machining.BlockEntityMachineTool.ReadDrive() -> ExpandedLib.Industry.MechanicalPower.MpRunReading
 ExpandedLib.Industry.Pipes.IThroughputLimitedPipe.ThroughputFor(string? medium) -> float
 static ExpandedLib.Industry.Pipes.BlockPipe.RegisterThroughput(string! tier, string! medium, System.Func<float>! throughput) -> void
+static ExpandedLib.Industry.Pipes.BlockPipe.Junction(string! domain, string? tier) -> ExpandedLib.Definitions.ExBlockDef!
 virtual ExpandedLib.Industry.Pipes.BlockPipe.ThroughputFor(string? medium) -> float
 ExpandedLib.Industry.Pipes.PipeNetwork.OfferedTotalLitres.get -> double
 ExpandedLib.Industry.Pipes.PipeNetwork.OfferCeiling.get -> float
