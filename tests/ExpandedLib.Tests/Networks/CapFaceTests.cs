@@ -73,6 +73,18 @@ public class CapFaceTests {
       );
   }
 
+  private sealed class TeeNode : BlockNetworkNode {
+    public override string NetworkType => "test";
+
+    public override bool HasConnectorAt(BlockFacing face) =>
+      face == BlockFacing.WEST
+      || face == BlockFacing.EAST
+      || face == BlockFacing.NORTH;
+
+    public static TeeNode Create(int id) =>
+      TestBlocks.Configure(new TeeNode(), "test:tee", id);
+  }
+
   #endregion
 
   // Fails when HasConnectorAt ignores the cap record, so a capped end leaks.
@@ -129,7 +141,7 @@ public class CapFaceTests {
     var capped = new BlockEntityAssembled();
     capped.Behaviors.Add(new BEBehaviorAssembled(capped));
     Cap(w, capped, [BlockFacing.WEST]);
-    w.Place(new BlockPos(1, 0, 0), family[1], capped);
+    w.Place(new BlockPos(1, 0, 0), TeeNode.Create(10), capped);
     var entity = new OrientableNode {
       Orientation = "ns",
       PossibleOrientations = Axis,
