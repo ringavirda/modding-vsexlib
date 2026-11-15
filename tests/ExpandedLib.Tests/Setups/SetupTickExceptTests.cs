@@ -43,6 +43,9 @@ public class SetupTickExceptTests {
       anchor
     );
 
-    Assert.Equal(["network", "after"], order);
+    Assert.Equal(
+      ["network", "network", "network", "network", "network", "after"],
+      order
+    );
   }
 }

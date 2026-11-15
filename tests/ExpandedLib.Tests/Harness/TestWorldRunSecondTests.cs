@@ -5,8 +5,8 @@ using Xunit;
 namespace ExpandedLib.Tests;
 
 /// <summary>A run second fires each tick listener at its own interval with that interval as dt,
-/// carries the time a listener over 1000 ms accrued into the next second, and runs the network
-/// once, at the second's end.</summary>
+/// carries the time a listener over 1000 ms accrued into the next second, and fires the network
+/// every 200 ms among them in time order.</summary>
 public class TestWorldRunSecondTests {
   private static readonly HashSet<long> None = [];
 
@@ -32,7 +32,20 @@ public class TestWorldRunSecondTests {
     world.RunSecond(None, () => log.Add("network"), null);
 
     Assert.Equal(
-      ["a250", "a250", "c500", "a250", "a250", "b1000", "c500", "network"],
+      [
+        "network",
+        "a250",
+        "network",
+        "a250",
+        "c500",
+        "network",
+        "a250",
+        "network",
+        "a250",
+        "b1000",
+        "c500",
+        "network",
+      ],
       log
     );
   }
@@ -55,17 +68,29 @@ public class TestWorldRunSecondTests {
     Assert.All(fired, dt => Assert.Equal(1.5f, dt));
   }
 
-  // Fails when the network runs before its anchor's first fire of the second instead of its fire at
-  // the second's end.
+  // Fails when the network runs after its anchor at the second's end, or only once in the second.
   [Fact]
-  public void The_network_runs_before_its_anchor_only_at_the_seconds_end() {
+  public void The_network_runs_before_its_anchor_where_both_are_due_and_on_its_own_between() {
     var world = new TestWorld();
     var log = new List<string>();
     long anchor = world.World.RegisterGameTickListener(_ => log.Add("a"), 250);
 
     world.RunSecond(None, () => log.Add("network"), anchor);
 
-    Assert.Equal(["a", "a", "a", "network", "a"], log);
+    Assert.Equal(
+      [
+        "network",
+        "a",
+        "network",
+        "a",
+        "network",
+        "a",
+        "network",
+        "network",
+        "a",
+      ],
+      log
+    );
   }
 
   // Fails when a listener in except accrues time while it does not fire.
@@ -96,5 +121,52 @@ public class TestWorldRunSecondTests {
     world.RunSecond(None, () => { }, null);
 
     Assert.Equal(1, fired);
+  }
+
+  // Fails when the network runs once at the second's end: it then sees the load the 250 ms
+  // listener raised at 250 and 750 ms only after the listener dropped it again.
+  [Fact]
+  public void A_load_raised_and_dropped_inside_a_second_reaches_the_network() {
+    var world = new TestWorld();
+    var log = new List<string>();
+    bool raised = false;
+    world.World.RegisterGameTickListener(
+      _ => {
+        raised = !raised;
+        log.Add("a");
+      },
+      250
+    );
+
+    world.RunSecond(None, () => log.Add(raised ? "n1" : "n0"), null);
+
+    Assert.Equal(["n0", "a", "n1", "a", "n0", "a", "n1", "a", "n0"], log);
+  }
+
+  // Fails when the network fires other than five times a second 200 ms apart, or before the
+  // listeners due with it when no listener anchors it.
+  [Fact]
+  public void The_network_fires_every_200_ms_after_the_listeners_due_with_it() {
+    var world = new TestWorld();
+    int fired = 0;
+    var seen = new List<int>();
+    world.World.RegisterGameTickListener(_ => fired++, 100);
+
+    world.RunSecond(None, () => seen.Add(fired), null);
+
+    Assert.Equal([2, 4, 6, 8, 10], seen);
+  }
+
+  // Fails when the network runs before its anchor only at the second's end, or after it.
+  [Fact]
+  public void The_network_fires_before_its_anchor_at_every_moment_both_are_due() {
+    var world = new TestWorld();
+    int fired = 0;
+    var seen = new List<int>();
+    long anchor = world.World.RegisterGameTickListener(_ => fired++, 100);
+
+    world.RunSecond(None, () => seen.Add(fired), anchor);
+
+    Assert.Equal([1, 3, 5, 7, 9], seen);
   }
 }
