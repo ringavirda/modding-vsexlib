@@ -109,6 +109,12 @@ public sealed class SetupRunOptions
   public string ScenesVariable { get; init; } =
     SetupScene.DefaultScenesVariable;
 
+  /// <summary>The environment variable that names the file <see cref="SetupCases.Run"/> appends the
+  /// openings census to: one line per open face of a <c>pipe</c> or <c>pipeflow</c> node, with the
+  /// class of its neighbour. Unset or empty writes none. Default <c>EXLIB_OPENINGS_CENSUS</c>.</summary>
+  public string OpeningsCensusVariable { get; init; } =
+    SetupScene.DefaultOpeningsCensusVariable;
+
   /// <summary>The setup file an <c>after</c> id of a <c>pack</c> names, as <c>&lt;mod&gt;/setups/&lt;setup&gt;</c>;
   /// returns its path, or null when the id names none. Default: <c>&lt;setup&gt;.json</c> beside
   /// the file that runs.</summary>
@@ -184,7 +190,7 @@ public static class SetupCases
   /// <summary>Builds and runs the case <paramref name="row"/> names, judges its checks, and for a
   /// case that records writes or compares its recording (<c>EX_WRITE_SETUPS</c> names the setups to
   /// write). A case with no tick order also writes its built scene to <c>&lt;setup&gt;[@&lt;variant&gt;].scene.json</c> in the
-  /// folder named by the environment variable <see cref="SetupRunOptions.ScenesVariable"/>, when that is set. A tick-order case judges
+  /// folder named by the environment variable <see cref="SetupRunOptions.ScenesVariable"/>, when that is set. It also appends its openings census to the file named by <see cref="SetupRunOptions.OpeningsCensusVariable"/>, when that is set. A tick-order case judges
   /// only the checks that hold in every order and records nothing.</summary>
   /// <param name="row">A row from <see cref="In"/>.</param>
   /// <param name="options">The mod folders, recordings folder and hooks the case runs with.</param>
@@ -192,7 +198,7 @@ public static class SetupCases
   /// order case names its order) and the check; or the file cannot be built; or a tick-order
   /// machine registered no listener.</exception>
   /// <exception cref="SetupRecordingMismatchException">The recording differs from the committed file.</exception>
-  /// <exception cref="IOException">The scenes folder cannot be created or the scene file written.</exception>
+  /// <exception cref="IOException">The scenes folder cannot be created or the scene file written, or the census file cannot be appended to.</exception>
   /// <exception cref="UnauthorizedAccessException">The scenes folder or file is not writable.</exception>
   public static void Run(SetupCaseRow row, SetupRunOptions options)
   {
@@ -233,6 +239,12 @@ public static class SetupCases
     SetupRecording recording = scene.Run(mods, Series());
     if (scene.Judge(recording, row.Order != null) is { } verdict)
       throw new InvalidOperationException($"{row}: {verdict}");
+    if (
+      row.Order == null
+      && Environment.GetEnvironmentVariable(options.OpeningsCensusVariable)
+        is { Length: > 0 } census
+    )
+      SetupOpeningsCensus.Append(scene, row.Setup, row.Variant, census);
     if (row.Order == null && scene.RecordsOwn)
       scene.Record(
         recording,

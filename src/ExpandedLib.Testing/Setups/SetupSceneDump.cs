@@ -347,31 +347,41 @@ internal static class SetupSceneDump
         members.Add((member, type));
     return
     [
-      .. BlockFacing
-        .ALLFACES.Where(f =>
-          members.Any(m =>
-          {
-            if (!m.Member.HasConnectorAt(world.Accessor, at, f))
-              return false;
-            BlockPos next = at.AddCopy(f);
-            if (
-              world.GetBlock(at) is BlockNetworkNode node
-              && node.IsValidNonNetworkConnection(
-                world.Accessor,
-                at,
-                world.GetBlock(next),
-                f
-              )
-            )
-              return false;
-            return NetworkMembership
-                .Resolve(world.Accessor, next, m.Type)
-                ?.HasConnectorAt(world.Accessor, next, f.Opposite) != true;
-          })
-        )
-        .Select(f => f.Code[0].ToString()),
+      .. UnjoinedFaces(world, at, members).Select(f => f.Code[0].ToString()),
     ];
   }
+
+  /// <summary>The faces of the cell at <paramref name="at"/> that one of <paramref name="members"/>
+  /// connects through, that no valid non-network connection takes, and whose neighbour does not
+  /// answer with a connector of the same network type on the face toward it.</summary>
+  internal static List<BlockFacing> UnjoinedFaces(
+    TestWorld world,
+    BlockPos at,
+    List<(INetworkMember Member, string Type)> members
+  ) =>
+    [
+      .. BlockFacing.ALLFACES.Where(f =>
+        members.Any(m =>
+        {
+          if (!m.Member.HasConnectorAt(world.Accessor, at, f))
+            return false;
+          BlockPos next = at.AddCopy(f);
+          if (
+            world.GetBlock(at) is BlockNetworkNode node
+            && node.IsValidNonNetworkConnection(
+              world.Accessor,
+              at,
+              world.GetBlock(next),
+              f
+            )
+          )
+            return false;
+          return NetworkMembership
+              .Resolve(world.Accessor, next, m.Type)
+              ?.HasConnectorAt(world.Accessor, next, f.Opposite) != true;
+        })
+      ),
+    ];
 
   private static void Add(List<string> ids, string? id)
   {
