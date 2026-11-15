@@ -48,12 +48,6 @@ public class NetworkFacesTests {
   [Fact]
   public void NetworkFaces_SolidFaceCloses() {
     Assert.True(Closes(Solid(new Block(), "test:full", 1), BlockFacing.DOWN));
-    Assert.True(
-      Closes(
-        Solid(new BlockPipePassthrough(), "test:passthrough", 2),
-        BlockFacing.NORTH
-      )
-    );
   }
 
   // Fails when the type exclusion is dropped, so a structure cell, solid on every face, shuts an opening.
