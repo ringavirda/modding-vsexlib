@@ -605,7 +605,7 @@ internal static class ViewGates {
       : null;
 
   /// <summary>Every gate <paramref name="group"/> is judged on against <paramref name="bands"/>, as the dump writes it: each
-  /// banded gate in its kind's band (G2, G10 and G13 on the upper end only) and G8 against its limit, in third and first
+  /// banded gate in its kind's band, a pile in its own band on G3 and in the plate's bands on every other gate (G2, G10 and G13 on the upper end only) and G8 against its limit, in third and first
   /// person. With metrics that carry a twin each banded gate is judged against the twin's value widened as a band widens it, and G8 against the
   /// larger of the limit and the twin's grip plus 10%.</summary>
   /// <param name="bands">The bands to judge against.</param>
@@ -641,7 +641,7 @@ internal static class ViewGates {
             id,
             [(group.Box.Extents()[0] / 16, "length")]
           );
-        else if (!bands.Bands[kind].TryGetValue(id, out band))
+        else if (!TryBand(bands, kind, id, out band))
           continue;
       } else {
         double own = ValueOf(twin.Metrics, id);
@@ -714,6 +714,20 @@ internal static class ViewGates {
         )
       );
     return readings;
+  }
+
+  // A pile has a band of its own for slot fill only; every other gate takes the plate's.
+  private static bool TryBand(
+    ViewBandData bands,
+    string kind,
+    string id,
+    out Band? band
+  ) {
+    if (bands.Bands[kind].TryGetValue(id, out band))
+      return true;
+    if (kind == "pile")
+      return bands.Bands["plate"].TryGetValue(id, out band);
+    return false;
   }
 
   // A tipped lump: the tool rule judges its hand scale in place of the lump band.

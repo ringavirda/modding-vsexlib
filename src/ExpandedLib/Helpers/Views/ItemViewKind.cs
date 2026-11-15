@@ -35,4 +35,7 @@ public enum ItemViewKind {
 
   /// <summary>Any other block.</summary>
   Partial,
+
+  /// <summary>A heap of small parts, held past the fist as the game's nails and strips are. Only declared, never read from the box.</summary>
+  Pile,
 }

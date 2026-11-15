@@ -246,6 +246,19 @@ public class ViewBandsTests {
       ("rod", ViewReferences.Rod),
     ];
 
+  // Fails when the pile's hand rotation, origin or scale is changed from the vanilla nails' in ViewReferences.Pile.
+  [Fact]
+  public void The_pile_hold_is_the_vanilla_nails_hold() {
+    var nails = Bands.Rules["nails"];
+    ViewReferences.PileReference pile = ViewReferences.Pile;
+
+    AssertSameRotation(pile.Rotation, nails, "handRotation");
+    Assert.Equal(pile.Origin.X, nails["handOriginX"], Precision);
+    Assert.Equal(pile.Origin.Y, nails["handOriginY"], Precision);
+    Assert.Equal(pile.Origin.Z, nails["handOriginZ"], Precision);
+    Assert.Equal(pile.Scale, nails["handScale"], Precision);
+  }
+
   // Each entry of the two rotation matrices agrees, since several Euler triples give one orientation.
   private static void AssertSameRotation(
     Vec3d expected,
@@ -449,6 +462,20 @@ public class ViewBandsTests {
     ViewFinding finding = Assert.Single(
       ViewGates.Judge(Bands, edgeOn, ViewGates.Measure(World, edgeOn))
     );
+    Assert.EndsWith("G3 slot.face", finding.Key);
+  }
+
+  // Fails when a plate marked pile passes G3: the plate's slot fill is far above the pile band.
+  [Fact]
+  public void A_plate_marked_pile_fails_G3() {
+    ViewGroup plate = GroupOf("game:metalplate-iron") with {
+      Kind = ItemViewKind.Pile,
+    };
+
+    ViewFinding finding = Assert.Single(
+      ViewGates.Judge(Bands, plate, ViewGates.Measure(World, plate))
+    );
+
     Assert.EndsWith("G3 slot.face", finding.Key);
   }
 
