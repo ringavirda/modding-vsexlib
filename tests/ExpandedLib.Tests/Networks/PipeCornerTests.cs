@@ -100,7 +100,7 @@ public class PipeCornerTests {
 
   #endregion
 
-  // Fails when a token repeats a letter or leaves a connector out, or when dws is registered as dw.
+  // Fails when a token repeats a letter or leaves a connector out, when dws is registered as dw, or when a face is answered against its token.
   [Fact]
   public void Corner_EightTokensThreeConnectors() {
     Assert.Equal(8, Tokens.Length);
@@ -110,6 +110,8 @@ public class PipeCornerTests {
 
       Assert.Equal(3, token.Distinct().Count());
       Assert.Equal(3, block.GetConnectorFaces()!.Length);
+      foreach (BlockFacing face in BlockFacing.ALLFACES)
+        Assert.Equal(token.Contains(face.Code[0]), block.HasConnectorAt(face));
       Assert.Equal(1, token.Count(c => c is 'u' or 'd'));
       Assert.Equal(1, token.Count(c => c is 'n' or 's'));
       Assert.Equal(1, token.Count(c => c is 'e' or 'w'));
