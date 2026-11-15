@@ -373,10 +373,10 @@ public sealed partial class SetupScene
 
   /// <summary>Runs <paramref name="count"/> slices of <see cref="TestWorld.SliceMs"/> of the world. A slice
   /// that opens a second first advances the calendar by <paramref name="hours"/>. Every block entity listener
-  /// not in <paramref name="except"/> fires at its own registered interval with that interval as dt, those
-  /// due together in tick order when the setup names one, and the network tick fires every 200 ms among them,
-  /// after the listeners due with it or in the place the tick order gives it, each fire followed by 200 ms of
-  /// the line listeners.</summary>
+  /// not in <paramref name="except"/> fires at its own registered interval with that interval as dt, and the
+  /// network tick fires every 200 ms among them, each fire followed by 200 ms of the line listeners.</summary>
+  /// <remarks>Listeners due together fire in tick order when the setup names one; the network fire comes
+  /// after the listeners due with it, or in the place the tick order gives it.</remarks>
   /// <param name="count">Slices to run.</param>
   /// <param name="hours">Game hours the calendar moves when a second opens.</param>
   /// <param name="except">Ids of the listeners that do not fire; the line listeners belong in it.</param>

@@ -809,13 +809,13 @@ public sealed partial class TestWorld : IDisposable {
   /// not in <paramref name="except"/> fires at its own registered interval with that interval in seconds as dt,
   /// at the moments of the second its accrued time reaches the interval; a listener over 1000 ms carries its
   /// accrued time into the next second. <paramref name="network"/> is one fire of the network listener and
-  /// runs at 200, 400, 600, 800 and 1000 ms, among the listeners due at the same moment. Listeners due at one
-  /// moment fire in firing order; the network fire due with them runs just before the listener
-  /// <paramref name="networkBefore"/>, even when that listener is in except or not due, and after them when it
-  /// is null or gone. At the second's end sim time advances 1000 ms and the delayed callbacks that come due
-  /// fire, after the listeners and before a network fire that runs after them.</summary>
-  /// <remarks>The accrued time of a listener in <paramref name="except"/> is left as it was. A
-  /// listener registered during the second starts accruing at the next moment of it.</remarks>
+  /// runs at 200, 400, 600, 800 and 1000 ms, among the listeners due at the same moment.</summary>
+  /// <remarks>Listeners due at one moment fire in firing order; the network fire due with them runs just
+  /// before the listener <paramref name="networkBefore"/>, even when that listener is in except or not due,
+  /// and after them when it is null or gone. At the second's end sim time advances 1000 ms and the delayed
+  /// callbacks that come due fire, after the listeners and before a network fire that runs after them. The
+  /// accrued time of a listener in <paramref name="except"/> is left as it was. A listener registered during
+  /// the second starts accruing at the next moment of it.</remarks>
   internal void RunSecond(
     IReadOnlySet<long> except,
     System.Action network,
