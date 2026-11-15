@@ -29,6 +29,25 @@ public class HandAssemblyDefTests {
     Assert.Equal(2, (int?)spec["perJoint"]);
   }
 
+  // Fails when the cap argument is dropped from the written attribute, or a def with no cap is given a cap key.
+  [Fact]
+  public void A_cap_is_written_beside_the_tool_and_left_out_when_not_given() {
+    JObject capped = ExBlockDef
+      .Create("test", "c")
+      .HandAssembly("game:wrench-*", "iiex:bolt", 2, "iiex:pipecap-cast")
+      .ToJson();
+    JObject bare = ExBlockDef
+      .Create("test", "b")
+      .HandAssembly("game:wrench-*", "iiex:bolt", 2)
+      .ToJson();
+
+    Assert.Equal(
+      "iiex:pipecap-cast",
+      (string?)capped["attributes"]!["handAssembly"]!["cap"]
+    );
+    Assert.Null(bare["attributes"]!["handAssembly"]!["cap"]);
+  }
+
   // Fails when a def that is not a node is left with no block entity to carry the record.
   [Fact]
   public void A_def_with_no_block_entity_gets_the_record_entity_and_behaviour() {

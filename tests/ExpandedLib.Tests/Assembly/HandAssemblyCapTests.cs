@@ -4,11 +4,14 @@ using ExpandedLib.Blocks;
 using ExpandedLib.Helpers;
 using ExpandedLib.Industry.Pipes;
 using ExpandedLib.Networks;
+using ExpandedLib.Scenarios;
 using ExpandedLib.Structures;
 using ExpandedLib.Testing;
+using ExpandedLib.Testing.Live;
 using Newtonsoft.Json.Linq;
 using NSubstitute;
 using Vintagestory.API.Common;
+using Vintagestory.API.Common.Entities;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 using Xunit;
@@ -322,6 +325,43 @@ public class HandAssemblyCapTests {
     Assert.Equal(10, scene.Carried(scene.Bolt));
   }
 
+  // Fails when the fit does not mark the cell for redraw, so a client draws no cap until the chunk is sent again.
+  [Fact]
+  public void Cap_FitMarksTheCellForRedraw() {
+    var scene = CapScene.Standing();
+    scene.World.TakeRedrawMark(Cell);
+
+    Assert.Null(scene.Click(BlockFacing.NORTH));
+
+    Assert.True(scene.World.TakeRedrawMark(Cell));
+  }
+
+  // Fails when the take-off does not mark the cell for redraw, so a client keeps drawing the cap.
+  [Fact]
+  public void Cap_TakeOffMarksTheCellForRedraw() {
+    var scene = CapScene.Standing();
+    Assert.Null(scene.Click(BlockFacing.NORTH));
+    scene.World.TakeRedrawMark(Cell);
+
+    Assert.Null(scene.Click(BlockFacing.NORTH));
+
+    Assert.True(scene.World.TakeRedrawMark(Cell));
+  }
+
+  // Fails when the fit leaves the piece in the network built before the cap, not in one built afresh.
+  [Fact]
+  public void Cap_FitRebuildsTheNetwork() {
+    var scene = CapScene.Lumped(bolts: 10);
+    BlockNetwork? before = scene.World.NetworkAt(Cell);
+
+    Assert.Null(scene.Click(BlockFacing.UP));
+
+    BlockNetwork? after = scene.World.NetworkAt(Cell);
+    Assert.NotNull(after);
+    Assert.NotSame(before, after);
+    Assert.Contains(Cell, after.Nodes);
+  }
+
   // Fails when a take-off needs the cap in the off hand, or is refused to a player with a full pack instead of dropping at the feet.
   [Fact]
   public void Cap_TakeOffWithAFullPackDropsAtTheFeet() {
@@ -367,6 +407,52 @@ public class HandAssemblyCapTests {
     scene.Rotate(BlockFacing.UP);
 
     Assert.Same(scene.World.NetworkAt(Cell), scene.World.NetworkAt(above));
+  }
+
+  #endregion
+
+  #region The scenario player's click
+
+  // Fails when the live run wears the wrench only on a click the server took: a refusal wears it as well, and creative never does.
+  [Theory]
+  [InlineData("fit", 1)]
+  [InlineData("refusal", 1)]
+  [InlineData("creative", 0)]
+  public void Cap_PlayWearsTheWrenchOnEveryClickOutsideCreative(
+    string click,
+    int wear
+  ) {
+    var scene = CapScene.Standing();
+    if (click == "refusal")
+      scene.Beside(BlockFacing.NORTH, "full block");
+    if (click == "creative")
+      scene.Player.GameMode = EnumGameMode.Creative;
+    var ctx = new ScenarioContext(
+      scene.World.World,
+      new ScenarioWorld(
+        scene.World.World,
+        new BlockPos(0, 0, 0),
+        scene.World.Networks
+      ),
+      () => 0,
+      new ScenarioErrors([]),
+      _ => { },
+      "case.json"
+    );
+
+    AssemblyResult? refused = HandAssemblyPlay.Cap(
+      ctx,
+      scene.World.World,
+      scene.Player.Player,
+      Cell,
+      BlockFacing.NORTH
+    );
+
+    Assert.Equal(
+      click == "refusal" ? HandAssemblyServer.CapClosed : null,
+      refused?.Code
+    );
+    Assert.Equal(wear, scene.Wear);
   }
 
   #endregion
@@ -451,8 +537,12 @@ public class HandAssemblyCapTests {
       Player = world.Player();
       Player.StandAt(Cell, BlockFacing.SOUTH);
       Player.GameMode = EnumGameMode.Survival;
-      Wrench = world.RegisterItem("test:wrench-iron");
-      Wrench.Durability = 100;
+      Wrench = new WearCounter {
+        Code = new AssetLocation("test:wrench-iron"),
+        ItemId = 900,
+        Durability = 100,
+      };
+      world.Register(Wrench);
       Bolt = world.RegisterItem("test:bolt");
       Bundle = world.RegisterItem("test:bolt-bundle");
       CastCap = world.RegisterItem("test:cap-cast");
@@ -476,6 +566,7 @@ public class HandAssemblyCapTests {
     public TestWorld World { get; }
     public TestPlayer Player { get; }
     public Item Wrench { get; }
+    public int Wear => ((WearCounter)Wrench).Uses;
     public Item Bolt { get; }
     public Item Bundle { get; }
     public Item CastCap { get; }
@@ -664,6 +755,18 @@ public class HandAssemblyCapTests {
       block.SideSolid = new SmallBoolArray(sides);
       return block;
     }
+  }
+
+  private sealed class WearCounter : Item {
+    public int Uses;
+
+    public override void DamageItem(
+      IWorldAccessor world,
+      Entity byEntity,
+      ItemSlot itemslot,
+      int amount = 1,
+      bool destroyOnZeroDurability = true
+    ) => Uses += amount;
   }
 
   private sealed class FillerHost : Block, IFillerHost {

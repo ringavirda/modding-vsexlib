@@ -151,7 +151,7 @@ public sealed partial class SetupScene
         )
       );
       ItemSlot wrench = Player.ActiveSlot;
-      if (refused == null && !HandAssemblyGate.IsCreative(Player.Player))
+      if (!HandAssemblyGate.IsCreative(Player.Player))
         wrench.Itemstack.Collectible.DamageItem(
           World.World,
           Player.Player.Entity,

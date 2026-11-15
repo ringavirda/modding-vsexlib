@@ -2,7 +2,7 @@ using Vintagestory.API.Common;
 
 namespace ExpandedLib.Assembling;
 
-/// <summary>What a block declares under <c>attributes.handAssembly</c>: the tool that fixes it and the fasteners each joint spends.</summary>
+/// <summary>What a block declares under <c>attributes.handAssembly</c>: the tool that fixes it, the fasteners each joint spends and the cap that closes an open crossing.</summary>
 /// <param name="Tool">Item code of the tool held in the off hand, wildcards allowed.</param>
 /// <param name="Fastener">Item code of the fastener a joint spends.</param>
 /// <param name="PerJoint">Count of <paramref name="Fastener"/> items one joint spends, at least 1.</param>

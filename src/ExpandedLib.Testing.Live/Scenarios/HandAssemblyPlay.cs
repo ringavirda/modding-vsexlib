@@ -201,10 +201,7 @@ internal static class HandAssemblyPlay {
         at,
         ScenarioPlayer.Hit(face)
       );
-      if (
-        refused == null
-        && player.WorldData.CurrentGameMode != EnumGameMode.Creative
-      )
+      if (player.WorldData.CurrentGameMode != EnumGameMode.Creative)
         slot.Itemstack.Collectible.DamageItem(world, player.Entity, slot);
       return refused;
     } finally {

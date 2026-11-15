@@ -471,7 +471,7 @@ public abstract class BlockNetworkNode
   #endregion
 
   #region IWrenchOrientable
-  /// <summary>Cycles the block's orientation through <see cref="GetWrenchOrientations"/> and re-registers the node in the network graph.</summary>
+  /// <summary>Cycles the block's orientation through <see cref="GetWrenchOrientations"/> and re-registers the node in the network graph. On a fixed piece it cycles nothing: a server click without sneak that is not a weep re-make fits the def's cap on, or takes the cap off, the crossing nearest the hit point, and tells the player a refusal.</summary>
   public virtual void Rotate(
     EntityAgent byEntity,
     BlockSelection blockSel,

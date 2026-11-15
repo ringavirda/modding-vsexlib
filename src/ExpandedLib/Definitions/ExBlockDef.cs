@@ -565,8 +565,14 @@ public sealed class ExBlockDef : IExDef {
   /// <param name="tool">Item code of the tool held in the off hand, wildcards allowed.</param>
   /// <param name="fastener">Item code of the fastener a joint spends.</param>
   /// <param name="perJoint">Count of <paramref name="fastener"/> items one joint spends, at least 1.</param>
+  /// <param name="cap">Item code of the cap held in the off hand to close an open crossing of the part, wildcards allowed; null, the default, when the part takes no cap.</param>
   /// <exception cref="ArgumentOutOfRangeException"><paramref name="perJoint"/> is below 1.</exception>
-  public ExBlockDef HandAssembly(string tool, string fastener, int perJoint) {
+  public ExBlockDef HandAssembly(
+    string tool,
+    string fastener,
+    int perJoint,
+    string? cap = null
+  ) {
     if (perJoint < 1)
       throw new ArgumentOutOfRangeException(
         nameof(perJoint),
@@ -574,14 +580,14 @@ public sealed class ExBlockDef : IExDef {
         "A joint spends at least one fastener."
       );
 
-    Attribute(
-      Assembling.HandAssemblySpec.AttributeKey,
-      new {
-        tool,
-        fastener,
-        perJoint,
-      }
-    );
+    var spec = new JObject {
+      ["tool"] = tool,
+      ["fastener"] = fastener,
+      ["perJoint"] = perJoint,
+    };
+    if (cap != null)
+      spec["cap"] = cap;
+    Attribute(Assembling.HandAssemblySpec.AttributeKey, spec);
     NestedArray("behaviors")
       .Insert(0, new JObject { ["name"] = "HandAssembly" });
     if (_root["entityClass"] == null)
