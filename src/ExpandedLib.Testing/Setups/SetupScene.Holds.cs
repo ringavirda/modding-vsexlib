@@ -352,13 +352,24 @@ public sealed partial class SetupScene
   private void TickSecond(double hours, IReadOnlySet<long> except) =>
     RunSlices(1000 / TestWorld.SliceMs, hours, except);
 
-  /// <summary>Runs what is left of the running second, a whole second when none is running.</summary>
-  private void FinishSecond() =>
+  // Set when a wait's last slice closed the second and nothing has run since.
+  private bool _waitClosedSecond;
+
+  /// <summary>Runs what is left of the running second, a whole second when none is running, and nothing when
+  /// a wait has just run the second to its end.</summary>
+  private void FinishSecond()
+  {
+    if (_waitClosedSecond)
+    {
+      _waitClosedSecond = false;
+      return;
+    }
     RunSlices(
       (1000 - World.MsIntoSecond) / TestWorld.SliceMs,
       TestWorld.GameHoursPerSecond,
       _lineListeners
     );
+  }
 
   /// <summary>Runs <paramref name="count"/> slices of <see cref="TestWorld.SliceMs"/> of the world. A slice
   /// that opens a second first advances the calendar by <paramref name="hours"/>. Every block entity listener
@@ -371,6 +382,7 @@ public sealed partial class SetupScene
   /// <param name="except">Ids of the listeners that do not fire; the line listeners belong in it.</param>
   private void RunSlices(int count, double hours, IReadOnlySet<long> except)
   {
+    _waitClosedSecond = false;
     for (int i = 0; i < count; i++)
     {
       if (World.MsIntoSecond == 0)

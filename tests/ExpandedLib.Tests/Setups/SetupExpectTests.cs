@@ -570,6 +570,18 @@ public class SetupExpectTests : IDisposable
     Assert.Equal(PulseTicks(plain.Run(PulseMods)), ticks);
   }
 
+  // Fails when a wait that ends on the second's end is followed by a whole further second before the sample.
+  [Fact]
+  public void A_wait_to_the_second_s_end_leaves_the_sample_on_time()
+  {
+    using SetupScene waited = Pulse("[{\"at\": 1, \"step\": {\"wait\": 1}}]");
+    using SetupScene plain = Pulse("[]");
+
+    double[] ticks = PulseTicks(waited.Run(PulseMods));
+
+    Assert.Equal(PulseTicks(plain.Run(PulseMods)), ticks);
+  }
+
   // Fails when max is read as whole seconds: a max of 0.2 s waits on to 300 ms and meets the reading.
   [Fact]
   public void A_wait_until_fails_at_a_max_under_a_second()

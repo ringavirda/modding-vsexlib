@@ -227,6 +227,7 @@ public sealed partial class SetupScene
         return;
       }
       RunSlices(1, TestWorld.GameHoursPerSecond, _lineListeners);
+      _waitClosedSecond = World.MsIntoSecond == 0;
     }
   }
 
