@@ -1,0 +1,37 @@
+{
+  "setup": "hand-assembly",
+  "description": "Pipe straights fixed by hand: placed with arms, stepped to a candidate, refused when no candidate has the arms, taken off.",
+  "mods": ["setupasm"],
+  "steps": [
+    {
+      "place": {
+        "id": "first",
+        "code": "setupasm:pipe-straight-we",
+        "at": [0, 0, 0],
+        "face": "u",
+        "arms": "ew"
+      }
+    },
+    {
+      "assemble": {
+        "id": "second",
+        "code": "setupasm:pipe-straight-we",
+        "at": [1, 0, 0],
+        "arms": "ew"
+      }
+    },
+    {
+      "assemble": {
+        "code": "setupasm:pipe-straight-we",
+        "at": [2, 0, 0],
+        "arms": "es",
+        "fails": "harness-nocandidate"
+      }
+    },
+    { "expect": { "at": [0, 0, 0], "asm": "fixed", "equals": true } },
+    { "expect": { "at": [1, 0, 0], "asm": "w", "equals": 2 } },
+    { "takeoff": { "at": [1, 0, 0] } }
+  ],
+  "seconds": 10,
+  "record": {}
+}

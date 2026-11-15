@@ -1,0 +1,24 @@
+{
+  "code": "pipe",
+  "class": "exlib.BlockPipe",
+  "entityClass": "exlib.BlockEntityPipe",
+  "variantgroups": [
+    { "code": "type", "states": ["straight"] },
+    { "code": "orientation", "states": ["ns", "we", "ud"] }
+  ],
+  "behaviors": [
+    { "name": "HandAssembly" },
+    {
+      "name": "ExOrientable",
+      "properties": { "mode": "network", "scheme": "Axis" }
+    }
+  ],
+  "entityBehaviors": [{ "name": "exlib.BEBehaviorAssembled" }],
+  "attributes": {
+    "handAssembly": {
+      "tool": "setupasm:wrench",
+      "fastener": "setupasm:bolt",
+      "perJoint": 2
+    }
+  }
+}

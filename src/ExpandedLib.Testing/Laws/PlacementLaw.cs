@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using ExpandedLib.Assembling;
 using ExpandedLib.Checks;
 using ExpandedLib.Networks;
 using NSubstitute;
@@ -86,21 +87,24 @@ public static class PlacementLaw {
             string failure = "";
             bool went;
             try {
-              went = held.TryPlaceBlock(
-                world.World,
-                player.Player,
-                new ItemStack(held),
-                new BlockSelection {
-                  Position = at.Copy(),
-                  Face = face,
-                  HitPosition = new Vec3d(
-                    0.5 + 0.5 * face.Normali.X,
-                    0.5 + 0.5 * face.Normali.Y,
-                    0.5 + 0.5 * face.Normali.Z
-                  ),
-                },
-                ref failure
-              );
+              BlockSelection aim = new() {
+                Position = at.Copy(),
+                Face = face,
+                HitPosition = new Vec3d(
+                  0.5 + 0.5 * face.Normali.X,
+                  0.5 + 0.5 * face.Normali.Y,
+                  0.5 + 0.5 * face.Normali.Z
+                ),
+              };
+              went = HandAssemblySpec.Of(held) is { } spec
+                ? PlaceByHand(world, player, held, spec, aim, out failure)
+                : held.TryPlaceBlock(
+                  world.World,
+                  player.Player,
+                  new ItemStack(held),
+                  aim,
+                  ref failure
+                );
             } catch (Exception e) {
               findings.Add(
                 $"{held.Code} placed {against} threw {BlockLaws.Describe(e)}"
@@ -160,6 +164,61 @@ public static class PlacementLaw {
       }
     }
     return new BlockLaws.Law(Name, blocks, cases, findings);
+  }
+
+  /// <summary>Fixes <paramref name="held"/> at the aim through the server's handler with its tool in
+  /// the off hand and fasteners in the hotbar, taking the first candidate the server offers.</summary>
+  /// <param name="failure">The refusal's code, or empty when the part went down.</param>
+  /// <returns>Whether the part was placed.</returns>
+  internal static bool PlaceByHand(
+    TestWorld world,
+    TestPlayer player,
+    Block held,
+    HandAssemblySpec spec,
+    BlockSelection aim,
+    out string failure
+  ) {
+    failure = "";
+    Item? tool = world
+      .World.SearchItems(new AssetLocation(spec.Tool))
+      ?.FirstOrDefault();
+    Item? fastener = world.World.GetItem(new AssetLocation(spec.Fastener));
+    if (tool == null || fastener == null) {
+      failure = $"{(tool == null ? spec.Tool : spec.Fastener)} is not loaded";
+      return false;
+    }
+    player.Hold(new ItemStack(held));
+    player.HoldOffHand(new ItemStack(tool));
+    player.Hotbar[1].Itemstack = new ItemStack(fastener, fastener.MaxStackSize);
+    IReadOnlyList<AssemblyCandidate> offered = HandAssemblyCandidates.Of(
+      world.World,
+      player.Player,
+      held,
+      aim
+    );
+    if (offered.Count == 0) {
+      failure = "no candidate";
+      return false;
+    }
+    AssemblyResult? refused = HandAssemblyServer.Fix(
+      world.World,
+      player.Player,
+      new AssemblyFix {
+        X = aim.Position.X,
+        Y = aim.Position.Y,
+        Z = aim.Position.Z,
+        Dimension = aim.Position.dimension,
+        Face = aim.Face.Index,
+        HitX = aim.HitPosition.X,
+        HitY = aim.HitPosition.Y,
+        HitZ = aim.HitPosition.Z,
+        Slot = player.ActiveNumber,
+        PartCode = held.Code.ToString(),
+        CandidateCode = offered[0].Block.Code.ToString(),
+      }
+    );
+    failure = refused?.Code ?? "";
+    return refused == null;
   }
 
   private static string HeldKey(Block variant, string[] placed) =>

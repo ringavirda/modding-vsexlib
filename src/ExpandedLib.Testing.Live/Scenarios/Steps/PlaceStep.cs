@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using System.Linq;
+using ExpandedLib.Assembling;
 using ExpandedLib.Scenarios;
 using ExpandedLib.Structures;
 using Newtonsoft.Json;
@@ -10,7 +11,9 @@ using Vintagestory.API.MathTools;
 namespace ExpandedLib.Testing.Live;
 
 /// <summary><c>place</c> by the world: the block accessor sets the block with a stack of it, so
-/// its entity is created and a megablock fills its footprint.</summary>
+/// its entity is created and a megablock fills its footprint. A block that declares
+/// <c>handAssembly</c> is fixed by the scenario player instead, on the click <c>face</c> (up by
+/// default), taking the first candidate or the one <c>arms</c> and <c>turn</c> name.</summary>
 internal sealed class PlaceStep : ScenarioStep {
   public override string Kind => "place";
 
@@ -69,7 +72,26 @@ internal sealed class PlaceStep : ScenarioStep {
     string code = (string)o["code"]!;
     Block block = ctx.BlockOf(code);
     BlockPos local = ctx.Position(step, o["at"], "at");
-    List<BlockPos> cells = Put(ctx, block, code, local);
+    List<BlockPos> cells;
+    if (ctx.Player is { } player && HandAssemblySpec.Of(block) != null) {
+      string? failure = AssembleStep.Fix(
+        ctx,
+        player,
+        block,
+        code,
+        local,
+        AssembleStep.Face((string?)o["face"]),
+        new AssemblyPick(Arms: (string?)o["arms"], Turn: (string?)o["turn"]),
+        out _
+      );
+      if (failure != null)
+        throw new StepFailure(
+          $"the player could not fix {block.Code} at {FailureDetail.Cell(local)}: {failure}.",
+          Suspect.Mod
+        );
+      cells = [local];
+    } else
+      cells = Put(ctx, block, code, local);
     ctx.Player?.RaisePlacedInBeltPath(ctx.Setup.Absolute(local));
     if (step.Id != null)
       ctx.Setup.Place(

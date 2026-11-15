@@ -561,6 +561,34 @@ public sealed class ExBlockDef : IExDef {
     );
   }
 
+  /// <summary>Declares this block as placed only by hand assembly: writes <c>attributes.handAssembly</c>, puts the <c>HandAssembly</c> behaviour first among the block's behaviours so it runs ahead of any behaviour that places the block, and adds <see cref="Assembling.BEBehaviorAssembled"/> to the block entity. A def with no <c>entityClass</c> gets <see cref="Assembling.BlockEntityAssembled"/> to carry it. Call it after <see cref="EntityClass(string)"/>.</summary>
+  /// <param name="tool">Item code of the tool held in the off hand, wildcards allowed.</param>
+  /// <param name="fastener">Item code of the fastener a joint spends.</param>
+  /// <param name="perJoint">Count of <paramref name="fastener"/> items one joint spends, at least 1.</param>
+  /// <exception cref="ArgumentOutOfRangeException"><paramref name="perJoint"/> is below 1.</exception>
+  public ExBlockDef HandAssembly(string tool, string fastener, int perJoint) {
+    if (perJoint < 1)
+      throw new ArgumentOutOfRangeException(
+        nameof(perJoint),
+        perJoint,
+        "A joint spends at least one fastener."
+      );
+
+    Attribute(
+      Assembling.HandAssemblySpec.AttributeKey,
+      new {
+        tool,
+        fastener,
+        perJoint,
+      }
+    );
+    NestedArray("behaviors")
+      .Insert(0, new JObject { ["name"] = "HandAssembly" });
+    if (_root["entityClass"] == null)
+      EntityClass<Assembling.BlockEntityAssembled>();
+    return EntityBehavior<Assembling.BEBehaviorAssembled>();
+  }
+
   /// <summary>Sets <c>skipVariants</c> - variant-code wildcards the loader must not expand (e.g. rock types a
   /// block doesn't ship a texture for).</summary>
   public ExBlockDef SkipVariants(params string[] wildcards) =>

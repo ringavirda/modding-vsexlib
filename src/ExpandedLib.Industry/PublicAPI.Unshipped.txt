@@ -983,3 +983,5 @@ ExpandedLib.Industry.Machining.MachineSpindle.MachineSpindle(Vintagestory.API.Ma
 ExpandedLib.Industry.Machining.MachineSpindle.Through.get -> System.Numerics.Vector3
 ExpandedLib.Industry.Machining.MachineSpindle.Through.init -> void
 static ExpandedLib.Industry.Machining.MachineAnchors.Compose(ExpandedLib.Industry.Machining.MachineAnchor! anchor, Vintagestory.API.MathTools.Vec3f! blockRotationDeg, ExpandedLib.Industry.Machining.MachineSpindle? spindle, float angleRad) -> float[]!
+override ExpandedLib.Industry.Pipes.BlockPipe.IsCrackedAt(Vintagestory.API.Common.IWorldAccessor! world, Vintagestory.API.MathTools.BlockPos! pos) -> bool
+override ExpandedLib.Industry.Pipes.BlockPipe.WrenchFixed(Vintagestory.API.Common.IWorldAccessor! world, Vintagestory.API.MathTools.BlockPos! pos, Vintagestory.API.Common.BlockSelection! selection) -> bool

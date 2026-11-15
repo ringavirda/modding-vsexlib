@@ -610,6 +610,7 @@ public sealed class TestPlayer {
 #pragma warning restore CS0618
 #endif
     player.WorldData.PlayerUID.Returns(uid);
+    player.WorldData.PickingRange.Returns(GlobalConstants.DefaultPickingRange);
     player.WorldData.EntityControls.Returns(entity.Controls);
     world.AddPlayer(uid, player);
 

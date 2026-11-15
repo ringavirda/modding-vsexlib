@@ -896,6 +896,18 @@ internal sealed class PipeFlowStore {
     return true;
   }
 
+  /// <summary>Re-makes every weeping joint of an edge at <paramref name="node"/>, closing its weep.</summary>
+  /// <returns>False when no edge at the node weeps, or the ones that do are cracked and must be replaced.</returns>
+  /// <exception cref="ArgumentOutOfRangeException">The node does not exist.</exception>
+  public bool RemakeAt(int node) {
+    CheckNode(node);
+    bool remade = false;
+    for (int e = 0; e < EdgeCount; e++)
+      if ((_from[e] == node || _to[e] == node) && Remake(e))
+        remade = true;
+    return remade;
+  }
+
   /// <summary>The failure state at <paramref name="node"/> as the bits of <see cref="WeepingBit"/>, <see cref="CrackedBit"/>, <see cref="BurstBit"/>, <see cref="IcedBit"/> and <see cref="DroppedBit"/>; an edge's bits are set at both of its ends, a node's own at the node.</summary>
   /// <exception cref="ArgumentOutOfRangeException">The node does not exist.</exception>
   public byte DamageOf(int node) {

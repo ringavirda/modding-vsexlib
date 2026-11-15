@@ -2,6 +2,7 @@ using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
+using ExpandedLib.Assembling;
 using ExpandedLib.Blocks;
 using ExpandedLib.Definitions;
 using ExpandedLib.Helpers;
@@ -10,6 +11,7 @@ using ExpandedLib.Structures;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.MathTools;
+using Vintagestory.API.Server;
 using Vintagestory.GameContent;
 
 namespace ExpandedLib.Networks;
@@ -97,6 +99,13 @@ public abstract class BlockNetworkNode
   /// <summary>Drops every pending placement choice; run when a world starts loading.</summary>
   internal static void ResetForWorld() => _tempOrientationsStore.Clear();
 
+  /// <summary>Sets the orientation choices the next placement at <paramref name="pos"/> stores on its block entity, as <see cref="TryPlaceBlock"/> does before it places.</summary>
+  internal static void StoreChoices(
+    IWorldAccessor world,
+    BlockPos pos,
+    string[] choices
+  ) => _tempOrientationsStore[(world, pos.Copy())] = choices;
+
   /// <summary>
   /// Determines the best orientation for this block at the target position by
   /// examining neighbouring network blocks, then delegates to <c>DoPlaceBlock</c>.
@@ -108,6 +117,19 @@ public abstract class BlockNetworkNode
     BlockSelection blockSel,
     ref string failureCode
   ) {
+    if (HandAssemblyGate.Refuses(world, byPlayer, itemstack, ref failureCode))
+      return false;
+    if (
+      HandAssemblyGate.PlacesFirst(
+        world,
+        byPlayer,
+        itemstack,
+        blockSel,
+        ref failureCode,
+        out bool placedFirst
+      )
+    )
+      return placedFirst;
     if (!world.BlockAccessor.GetBlock(blockSel.Position).IsReplacableBy(this)) {
       failureCode = "notreplaceable";
       return false;
@@ -237,6 +259,17 @@ public abstract class BlockNetworkNode
         beNet.PossibleOrientations = finalChoices;
         beNet.MarkDirty(true);
       }
+    } else if (
+        Orientation != null
+        && HandAssemblySpec.Of(this) != null
+        && BEBehaviorAssembled.At(world.BlockAccessor, blockPos) is { } record
+        && world.BlockAccessor.GetBlockEntity(blockPos)
+          is BlockEntityNetworkNode beSet
+      ) {
+      beSet.Orientation = Orientation;
+      beSet.PossibleOrientations = [Orientation];
+      record.Fixed = true;
+      beSet.MarkDirty(true);
     } else {
       RecalculateAndSyncOrientations(world, blockPos);
     }
@@ -255,6 +288,58 @@ public abstract class BlockNetworkNode
     if (!AllowedOrientations.TryGetValue(type, out string[]? validOrientations))
       return [];
 
+    var (requiredChars, forbiddenChars) = ScanNeighbours(
+      blockAccessor,
+      pos,
+      currentOrientation
+    );
+
+    // A linear (single-axis) shape connects via any one required face; a bendable shape requires all of them.
+    bool connectsAny = validOrientations.All(IsSingleAxisOrientation);
+
+    bool Matches(string orient) =>
+      !forbiddenChars.Any(c => orient.Contains(c))
+      && (
+        connectsAny
+          ? requiredChars.Count == 0
+            || requiredChars.Any(c => orient.Contains(c))
+          : requiredChars.All(c => orient.Contains(c))
+      );
+
+    var choices = validOrientations.Where(Matches).ToArray();
+
+    // Fallback: relax the requirement for non-network faces if no orientation matched.
+    if (
+      choices.Length == 0
+      && requiredChars.Count > 0
+      && currentOrientation != null
+    ) {
+      requiredChars.RemoveAll(c => {
+        // Orientation tokens are single letters; BlockFacing.FromCode only recognizes full words.
+        BlockFacing? facing = BlockNetworkModSystem.SideToFace(c.ToString());
+        if (facing == null)
+          return false;
+        BlockPos nPos = pos.AddCopy(facing);
+        return !BlockNetworkModSystem.IsCompatibleNetworkBlockAt(
+          blockAccessor,
+          nPos,
+          blockAccessor.GetBlock(nPos),
+          ((INetworkMember)this).NetworkTypeAt(blockAccessor, pos)
+        );
+      });
+
+      choices = validOrientations.Where(Matches).ToArray();
+    }
+
+    return choices;
+  }
+
+  /// <summary>Sorts the six neighbours of <paramref name="pos"/> into the faces an orientation must carry (a compatible network neighbour with a connector back, an attachable neighbour of the current orientation) and the faces it must not (a compatible network neighbour with none).</summary>
+  private (List<char> Required, List<char> Forbidden) ScanNeighbours(
+    IBlockAccessor blockAccessor,
+    BlockPos pos,
+    string? currentOrientation
+  ) {
     List<char> requiredChars = [];
     List<char> forbiddenChars = [];
 
@@ -300,45 +385,18 @@ public abstract class BlockNetworkNode
       }
     }
 
-    // A linear (single-axis) shape connects via any one required face; a bendable shape requires all of them.
-    bool connectsAny = validOrientations.All(IsSingleAxisOrientation);
-
-    bool Matches(string orient) =>
-      !forbiddenChars.Any(c => orient.Contains(c))
-      && (
-        connectsAny
-          ? requiredChars.Count == 0
-            || requiredChars.Any(c => orient.Contains(c))
-          : requiredChars.All(c => orient.Contains(c))
-      );
-
-    var choices = validOrientations.Where(Matches).ToArray();
-
-    // Fallback: relax the requirement for non-network faces if no orientation matched.
-    if (
-      choices.Length == 0
-      && requiredChars.Count > 0
-      && currentOrientation != null
-    ) {
-      requiredChars.RemoveAll(c => {
-        // Orientation tokens are single letters; BlockFacing.FromCode only recognizes full words.
-        BlockFacing? facing = BlockNetworkModSystem.SideToFace(c.ToString());
-        if (facing == null)
-          return false;
-        BlockPos nPos = pos.AddCopy(facing);
-        return !BlockNetworkModSystem.IsCompatibleNetworkBlockAt(
-          blockAccessor,
-          nPos,
-          blockAccessor.GetBlock(nPos),
-          ((INetworkMember)this).NetworkTypeAt(blockAccessor, pos)
-        );
-      });
-
-      choices = validOrientations.Where(Matches).ToArray();
-    }
-
-    return choices;
+    return (requiredChars, forbiddenChars);
   }
+
+  /// <summary>The faces of the cell at <paramref name="pos"/> where a compatible network neighbour offers no connector back, so an arm there would meet a forbidden crossing.</summary>
+  /// <param name="world">The accessor to read the six neighbours from.</param>
+  /// <param name="pos">The cell this block would fill.</param>
+  internal BlockFacing[] ForbiddenFaces(IBlockAccessor world, BlockPos pos) =>
+    [
+      .. ScanNeighbours(world, pos, null)
+        .Forbidden.Select(c => BlockNetworkModSystem.SideToFace(c.ToString()))
+        .OfType<BlockFacing>(),
+    ];
 
   /// <summary>True when every connector face in <paramref name="orientation"/> lies on the same axis (e.g. "ns", "we", "ud").</summary>
   private static bool IsSingleAxisOrientation(string orientation) =>
@@ -347,7 +405,7 @@ public abstract class BlockNetworkNode
       .Distinct()
       .Count() == 1;
 
-  /// <summary>Recalculates this block's valid orientations when a neighbour changes and breaks it when unsupported: no connected network neighbours and no solid surface to attach to.</summary>
+  /// <summary>Recalculates this block's valid orientations when a neighbour changes, unless hand assembly fixed it, and breaks it when unsupported: no connected network neighbours and no solid surface to attach to.</summary>
   public override void OnNeighbourBlockChange(
     IWorldAccessor world,
     BlockPos pos,
@@ -384,7 +442,7 @@ public abstract class BlockNetworkNode
       world.BlockAccessor.BreakBlock(pos, null);
   }
 
-  /// <summary>Removes this block's position from the network graph, then calls the base break logic.</summary>
+  /// <summary>Removes this block's position from the network graph, then calls the base break logic. A fixed piece's own fasteners are lost with it.</summary>
   public override void OnBlockBroken(
     IWorldAccessor world,
     BlockPos pos,
@@ -396,6 +454,12 @@ public abstract class BlockNetworkNode
       .RemoveNode(world.BlockAccessor, pos);
 
     base.OnBlockBroken(world, pos, byPlayer, dropQuantityMultiplier);
+  }
+
+  /// <summary>Clears the fastener records the neighbours hold toward this block's position; runs for a break, a burst and a take-off alike.</summary>
+  public override void OnBlockRemoved(IWorldAccessor world, BlockPos pos) {
+    HandAssemblyServer.ClearRecordsToward(world.BlockAccessor, pos);
+    base.OnBlockRemoved(world, pos);
   }
   #endregion
 
@@ -412,6 +476,17 @@ public abstract class BlockNetworkNode
     IWorldAccessor world = byEntity.World;
     BlockPos pos = blockSel.Position;
     BlockEntity? be = world.BlockAccessor.GetBlockEntity(pos);
+
+    if (BEBehaviorAssembled.At(world.BlockAccessor, pos)?.Fixed == true) {
+      if (
+        world.Side == EnumAppSide.Server
+        && !byEntity.Controls.Sneak
+        && !WrenchFixed(world, pos, blockSel)
+        && byEntity is EntityPlayer { Player: IServerPlayer player }
+      )
+        HandAssemblyServer.Tell(world, player, HandAssemblyServer.Fixed);
+      return;
+    }
 
     if (!CanWrenchRotate(world, pos))
       return;
@@ -477,6 +552,26 @@ public abstract class BlockNetworkNode
       ((INetworkMember)this).NetworkTypeAt(world.BlockAccessor, pos)
     );
   }
+
+  /// <summary>Serves a plain wrench click on a fixed piece; the wrench wears either way.</summary>
+  /// <param name="world">The server world.</param>
+  /// <param name="pos">The piece's position.</param>
+  /// <param name="selection">The aim of the click.</param>
+  /// <returns>True when the click did something, so the player needs no message; false by default.</returns>
+  protected internal virtual bool WrenchFixed(
+    IWorldAccessor world,
+    BlockPos pos,
+    BlockSelection selection
+  ) => false;
+
+  /// <summary>Whether the piece at <paramref name="pos"/> is cracked beyond re-making, so taking it off returns its fasteners and not the piece; false by default.</summary>
+  /// <param name="world">The server world.</param>
+  /// <param name="pos">The piece's position.</param>
+  /// <returns>True when taking the piece off returns only its fasteners.</returns>
+  protected internal virtual bool IsCrackedAt(
+    IWorldAccessor world,
+    BlockPos pos
+  ) => false;
 
   /// <summary>Returns the orientation cycle a wrench rotates through at <paramref name="pos"/>: recomputed from topology for full cubes, or read from the block entity for thin-profile pipes.</summary>
   protected string[] GetWrenchOrientations(IWorldAccessor world, BlockPos pos) {
@@ -858,7 +953,7 @@ public abstract class BlockNetworkNode
     Cuboidi attachmentArea
   ) => HasConnectorAt(blockFace);
 
-  /// <summary>Recomputes the valid orientations for the block at <paramref name="pos"/>, updates the block entity, and swaps it out when the current orientation has become invalid.</summary>
+  /// <summary>Recomputes the valid orientations for the block at <paramref name="pos"/>, updates the block entity, and swaps it out when the current orientation has become invalid. A piece hand assembly fixed keeps its token and is left as it is.</summary>
   public virtual void RecalculateAndSyncOrientations(
     IWorldAccessor world,
     BlockPos pos
@@ -872,6 +967,8 @@ public abstract class BlockNetworkNode
       world.BlockAccessor.GetBlockEntity(pos)
       is not BlockEntityNetworkNode beNet
     )
+      return;
+    if (BEBehaviorAssembled.At(world.BlockAccessor, pos)?.Fixed == true)
       return;
 
     string[] finalChoices = netBlock.ComputeValidOrientations(
