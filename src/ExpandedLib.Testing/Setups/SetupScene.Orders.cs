@@ -9,7 +9,6 @@ namespace ExpandedLib.Testing;
 
 public sealed partial class SetupScene
 {
-  private bool _ordered;
   private long? _networkBefore;
 
   /// <summary>The network tick a second runs once, after the listeners or in the place a tick
@@ -35,7 +34,6 @@ public sealed partial class SetupScene
           .TickCallbacks()
           .Select(l => l.Id)
           .First(groups[network].Contains);
-    _ordered = true;
   }
 
   private HashSet<long> ListenersOf(string id)

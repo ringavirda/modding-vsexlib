@@ -5,11 +5,11 @@ using Xunit;
 namespace ExpandedLib.Tests.Setups;
 
 /// <summary>The listeners a tick names in its except set do not fire, under either
-/// <see cref="TestWorld"/> overload the setup runner ticks the world with.</summary>
+/// <see cref="TestWorld"/> call that ticks the world with one.</summary>
 public class SetupTickExceptTests {
-  // Fails when FireBlockEntityTicks ignores its except set and fires a listener named in it.
+  // Fails when FireBlockEntityTicks or RunSecond ignores its except set and fires a listener named in it.
   [Fact]
-  public void A_listener_named_in_except_does_not_fire_under_either_tick_overload() {
+  public void A_listener_named_in_except_does_not_fire_under_either_tick() {
     var world = new TestWorld();
     int skipped = 0;
     int ticked = 0;
@@ -21,7 +21,7 @@ public class SetupTickExceptTests {
     Assert.Equal(0, skipped);
     Assert.Equal(1, ticked);
 
-    world.FireBlockEntityTicks(1f, except, () => { }, null);
+    world.RunSecond(except, () => { }, null);
     Assert.Equal(0, skipped);
     Assert.Equal(2, ticked);
   }
@@ -37,8 +37,7 @@ public class SetupTickExceptTests {
     );
     world.World.RegisterGameTickListener(_ => order.Add("after"), 1000);
 
-    world.FireBlockEntityTicks(
-      1f,
+    world.RunSecond(
       new HashSet<long> { anchor },
       () => order.Add("network"),
       anchor

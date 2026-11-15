@@ -346,21 +346,17 @@ public sealed partial class SetupScene
   private void TickSecond(double hours) => TickSecond(hours, _lineListeners);
 
   /// <summary>Advances the calendar by <paramref name="hours"/> and runs one second of the world:
-  /// every block entity listener not in <paramref name="except"/> fires once, in tick order when the
-  /// setup names one, and the network tick steps the line listeners between its fires.</summary>
+  /// every block entity listener not in <paramref name="except"/> fires at its own registered
+  /// interval with that interval as dt, those due together in tick order when the setup names one,
+  /// and the network tick, once at the second's end or in the place the tick order gives it, steps
+  /// the line listeners between its fires.</summary>
   /// <param name="hours">Game hours the calendar moves.</param>
   /// <param name="except">Ids of the listeners that do not fire this second; the line listeners
   /// belong in it.</param>
   private void TickSecond(double hours, IReadOnlySet<long> except)
   {
     World.AdvanceHours(hours);
-    if (_ordered)
-      World.FireBlockEntityTicks(1f, except, NetworkTick, _networkBefore);
-    else
-    {
-      World.FireBlockEntityTicks(1f, except);
-      NetworkTick();
-    }
+    World.RunSecond(except, NetworkTick, _networkBefore);
   }
 
   private List<int> SlotsOf(JToken slot, string where)

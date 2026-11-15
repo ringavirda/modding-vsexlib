@@ -796,28 +796,57 @@ public sealed partial class TestWorld : IDisposable {
     AdvanceCallbacks((long)System.Math.Round(dt * 1000f));
   }
 
-  /// <summary>Fires every listener not in <paramref name="except"/> once with
-  /// <paramref name="dt"/> in firing order, runs <paramref name="network"/> just before the
-  /// listener <paramref name="networkBefore"/> even when that listener is in except, advances
-  /// sim time and fires the delayed callbacks that come due, and runs <paramref name="network"/>
-  /// last when it has not run (that listener is null or fires nowhere).</summary>
-  internal void FireBlockEntityTicks(
-    float dt,
+  /// <summary>Runs one second of block-entity time. Each listener not in <paramref name="except"/>
+  /// fires at its own registered interval with that interval in seconds as dt, at the moments of
+  /// the second its accrued time reaches the interval; a listener over 1000 ms carries its accrued
+  /// time into the next second. Listeners due at the same moment fire in firing order. At the
+  /// second's end <paramref name="network"/> runs just before the listener
+  /// <paramref name="networkBefore"/>, even when that listener is in except or not due; then sim
+  /// time advances 1000 ms and the delayed callbacks that come due fire; <paramref name="network"/>
+  /// runs last when it has not run (that listener is null or gone).</summary>
+  /// <remarks>The accrued time of a listener in <paramref name="except"/> is left as it was. A
+  /// listener registered during the second starts accruing at the next moment of it.</remarks>
+  internal void RunSecond(
     IReadOnlySet<long> except,
     System.Action network,
     long? networkBefore
   ) {
+    const int second = 1000;
     bool ran = false;
-    foreach (var (id, listener) in _tickListeners.ToList()) {
-      if (!ran && id == networkBefore) {
-        network();
-        ran = true;
+    for (int elapsed = 0; elapsed < second;) {
+      int step = second - elapsed;
+      foreach (var (id, listener) in _tickListeners)
+        if (!except.Contains(id))
+          step = System.Math.Min(
+            step,
+            System.Math.Max(
+              1,
+              System.Math.Max(1, listener.IntervalMs) - _tickAccumMs[id]
+            )
+          );
+      elapsed += step;
+      // Snapshot: a listener may unregister (or a block entity may register a new one) while firing.
+      foreach (long id in _tickListeners.Keys.ToList()) {
+        if (!ran && elapsed == second && id == networkBefore) {
+          network();
+          ran = true;
+        }
+        if (
+          except.Contains(id)
+          || !_tickListeners.TryGetValue(id, out TickListener listener)
+        )
+          continue;
+        int interval = System.Math.Max(1, listener.IntervalMs);
+        int accum = _tickAccumMs[id] + step;
+        while (accum >= interval && _tickListeners.ContainsKey(id)) {
+          accum -= interval;
+          listener.Callback(interval / 1000f);
+        }
+        if (_tickListeners.ContainsKey(id))
+          _tickAccumMs[id] = accum;
       }
-      if (except.Contains(id))
-        continue;
-      listener.Callback(dt);
     }
-    AdvanceCallbacks((long)System.Math.Round(dt * 1000f));
+    AdvanceCallbacks(second);
     if (!ran)
       network();
   }
