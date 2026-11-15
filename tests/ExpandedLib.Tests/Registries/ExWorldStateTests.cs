@@ -113,6 +113,7 @@ public class ExWorldStateTests {
     ["ExpandedLib.Helpers.ExOrientations.CanalBend"] = Orientations,
     ["ExpandedLib.Helpers.ExOrientations.PipeTee"] = Orientations,
     ["ExpandedLib.Helpers.ExOrientations.CanalTee"] = Orientations,
+    ["ExpandedLib.Helpers.ExOrientations.PipeCorner"] = Orientations,
     ["ExpandedLib.Helpers.ExOrientations.PipeCross"] = Orientations,
     ["ExpandedLib.Helpers.ExOrientations.CanalCross"] = Orientations,
     ["ExpandedLib.Industry.Helpers.ExSounds.ClipLengths"] =

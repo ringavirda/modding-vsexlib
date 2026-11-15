@@ -836,3 +836,4 @@ virtual ExpandedLib.Networks.BlockNetworkNode.IsCrackedAt(Vintagestory.API.Commo
 virtual ExpandedLib.Networks.BlockNetworkNode.WrenchFixed(Vintagestory.API.Common.IWorldAccessor! world, Vintagestory.API.MathTools.BlockPos! pos, Vintagestory.API.Common.BlockSelection! selection) -> bool
 ExpandedLib.Networks.NetworkFaces
 static ExpandedLib.Networks.NetworkFaces.ClosesOpening(Vintagestory.API.Common.IBlockAccessor! blockAccessor, Vintagestory.API.MathTools.BlockPos! neighbourPos, Vintagestory.API.MathTools.BlockFacing! faceTowardPipe) -> bool
+static readonly ExpandedLib.Helpers.ExOrientations.PipeCorner -> ExpandedLib.Helpers.ExOrientationScheme!

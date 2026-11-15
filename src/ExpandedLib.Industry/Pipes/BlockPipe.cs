@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using ExpandedLib.Definitions;
+using ExpandedLib.Helpers;
 using ExpandedLib.Networks;
 using ExpandedLib.Registries;
 using Vintagestory.API.Client;
@@ -37,9 +38,7 @@ public partial class BlockPipe
   /// <summary>The defs this class declares itself, used only to derive
   /// <see cref="BlockNetworkNode.AllowedOrientations"/>; empty for the <c>exlib</c> domain.</summary>
   public static IEnumerable<ExBlockDef> Definitions(string domain) =>
-    domain == "exlib"
-      ? []
-      : [.. Segments(domain, tier: null), Junction(domain, tier: null)];
+    domain == "exlib" ? [] : SetSegments(domain, tier: null);
 
   /// <summary>The four plain pipe segments (straight / bend / T / X junction) of one
   /// <paramref name="tier"/> under <paramref name="domain"/>; a null <paramref name="tier"/> yields a
@@ -50,6 +49,25 @@ public partial class BlockPipe
       Bend(domain, tier),
       TJunction(domain, tier),
       XJunction(domain, tier),
+    ];
+
+  /// <summary>The six forms of one <paramref name="tier"/> under <paramref name="domain"/>, in the order straight,
+  /// bend, T junction, corner, X junction, junction box: <see cref="Segments"/> with <see cref="Corner"/> and
+  /// <see cref="Junction"/> in place. A null <paramref name="tier"/> yields a tierless family.</summary>
+  /// <param name="domain">The domain the blocks are declared in.</param>
+  /// <param name="tier">The tier name, or null for a tierless family.</param>
+  /// <returns>The six definitions.</returns>
+  public static IEnumerable<ExBlockDef> SetSegments(
+    string domain,
+    string? tier
+  ) =>
+    [
+      Straight(domain, tier),
+      Bend(domain, tier),
+      TJunction(domain, tier),
+      Corner(domain, tier),
+      XJunction(domain, tier),
+      Junction(domain, tier),
     ];
 
   /// <summary>The asset path a tier's segment is declared and drawn at: <c>pipe/{tier}/{leaf}</c>, or
@@ -98,6 +116,7 @@ public partial class BlockPipe
       $"{prefix}straight-*",
       $"{prefix}bend-*",
       $"{prefix}tjunction-*",
+      $"{prefix}corner-*",
       $"{prefix}xjunction-*",
       $"{prefix}junction-*",
     ];
@@ -190,6 +209,37 @@ public partial class BlockPipe
       .CollisionBox(0.3125f, 0.3125f, 0f, 0.6875f, 0.6875f, 0.3125f)
       .SelectionBox(0f, 0.3125f, 0.3125f, 1f, 0.6875f, 0.6875f)
       .SelectionBox(0.3125f, 0.3125f, 0f, 0.6875f, 0.6875f, 0.3125f);
+  }
+
+  /// <summary>The corner of one <paramref name="tier"/> under <paramref name="domain"/>: three mutually
+  /// perpendicular arms, eight variants (<see cref="ExOrientations.PipeCorner"/>: the vertical letter, then the
+  /// horizontal bend's token), one shape, <c>pipe/{tier}/corner</c>, drawn at <c>unw</c> (arms north, west, up) and
+  /// turned per token. It is not in <see cref="Segments"/>.</summary>
+  /// <param name="domain">The domain the block is declared in.</param>
+  /// <param name="tier">The tier name, or null for a tierless family.</param>
+  /// <returns>The definition of the corner.</returns>
+  public static ExBlockDef Corner(string domain, string? tier) {
+    string s = $"{domain}:" + Asset(tier, "corner");
+    return Common(domain, tier, Asset(tier, "corner"), 8, "*-corner-unw")
+      .VariantGroup("type", "corner")
+      .VariantGroup("orientation", [.. ExOrientations.PipeCorner.Tokens])
+      .NetworkOriented()
+      .ShapeByType("*-corner-unw", s)
+      .ShapeByType("*-corner-uen", s, rotateY: 270)
+      .ShapeByType("*-corner-use", s, rotateY: 180)
+      .ShapeByType("*-corner-uws", s, rotateY: 90)
+      .ShapeByType("*-corner-den", s, rotateZ: 180)
+      .ShapeByType("*-corner-dnw", s, rotateY: 90, rotateZ: 180)
+      .ShapeByType("*-corner-dws", s, rotateY: 180, rotateZ: 180)
+      .ShapeByType("*-corner-dse", s, rotateY: 270, rotateZ: 180)
+      .CollisionBox(0.25f, 0.25f, 0.25f, 0.75f, 0.75f, 0.75f)
+      .CollisionBox(0.3125f, 0.3125f, 0f, 0.6875f, 0.6875f, 0.25f)
+      .CollisionBox(0f, 0.3125f, 0.3125f, 0.25f, 0.6875f, 0.6875f)
+      .CollisionBox(0.3125f, 0.75f, 0.3125f, 0.6875f, 1f, 0.6875f)
+      .SelectionBox(0.25f, 0.25f, 0.25f, 0.75f, 0.75f, 0.75f)
+      .SelectionBox(0.3125f, 0.3125f, 0f, 0.6875f, 0.6875f, 0.25f)
+      .SelectionBox(0f, 0.3125f, 0.3125f, 0.25f, 0.6875f, 0.6875f)
+      .SelectionBox(0.3125f, 0.75f, 0.3125f, 0.6875f, 1f, 0.6875f);
   }
 
   private static ExBlockDef XJunction(string domain, string? tier) {

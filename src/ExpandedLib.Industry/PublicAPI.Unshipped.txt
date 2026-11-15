@@ -995,3 +995,5 @@ ExpandedLib.Industry.Pipes.PipeFaceClass.Other = 4 -> ExpandedLib.Industry.Pipes
 ExpandedLib.Industry.Pipes.PipeFaces
 static ExpandedLib.Industry.Pipes.PipeFaces.Classify(Vintagestory.API.Common.IBlockAccessor! blockAccessor, ExpandedLib.Industry.Pipes.IPipeVentStrategy? vent, ExpandedLib.Networks.BlockNetworkNode? node, Vintagestory.API.MathTools.BlockPos! nodePos, Vintagestory.API.MathTools.BlockFacing! face) -> ExpandedLib.Industry.Pipes.PipeFaceClass
 ExpandedLib.Industry.Pipes.PipeNetwork.VentFor(ExpandedLib.Networks.BlockNetworkNode! node) -> ExpandedLib.Industry.Pipes.IPipeVentStrategy?
+static ExpandedLib.Industry.Pipes.BlockPipe.Corner(string! domain, string? tier) -> ExpandedLib.Definitions.ExBlockDef!
+static ExpandedLib.Industry.Pipes.BlockPipe.SetSegments(string! domain, string? tier) -> System.Collections.Generic.IEnumerable<ExpandedLib.Definitions.ExBlockDef!>!

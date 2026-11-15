@@ -833,6 +833,32 @@ public abstract class BlockNetworkNode
         rotY = 270;
         break;
 
+      // Corners are drawn at unw
+      case "uen":
+        rotY = 270;
+        break;
+      case "use":
+        rotY = 180;
+        break;
+      case "uws":
+        rotY = 90;
+        break;
+      case "den":
+        rotZ = 180;
+        break;
+      case "dnw":
+        rotZ = 180;
+        rotY = 90;
+        break;
+      case "dws":
+        rotZ = 180;
+        rotY = 180;
+        break;
+      case "dse":
+        rotZ = 180;
+        rotY = 270;
+        break;
+
       // Complex multi-axis
       case "uns":
         rotX = 90;

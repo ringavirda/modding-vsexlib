@@ -241,9 +241,9 @@ public class SetupLayoutTests {
     );
   }
 
-  // Fails when a straight pipe code takes anything but the five shapes of its material.
+  // Fails when a straight pipe code takes anything but the six shapes of its material.
   [Fact]
-  public void A_straight_pipe_code_takes_the_five_shapes_of_its_material() {
+  public void A_straight_pipe_code_takes_the_six_shapes_of_its_material() {
     SetupLayout layout = Load(
       """
       { legend: { "a": { run: "r", code: "ppex:pipe-straight-ns-cast-iron" } }, layers: { "0": ["a"] } }
@@ -256,6 +256,7 @@ public class SetupLayoutTests {
         "ppex:pipe-straight-*-cast-iron",
         "ppex:pipe-bend-*-cast-iron",
         "ppex:pipe-tjunction-*-cast-iron",
+        "ppex:pipe-corner-*-cast-iron",
         "ppex:pipe-junction-*-cast-iron",
         "ppex:pipe-xjunction-*-cast-iron",
       },
@@ -263,10 +264,10 @@ public class SetupLayoutTests {
     );
   }
 
-  // Fails when a tier-first straight pipe code takes anything but the five shapes of its tier, or
+  // Fails when a tier-first straight pipe code takes anything but the six shapes of its tier, or
   // the tier wildcard widens to the valves and fittings that share the tier prefix.
   [Fact]
-  public void A_tier_first_straight_pipe_code_takes_the_five_shapes_of_its_tier() {
+  public void A_tier_first_straight_pipe_code_takes_the_six_shapes_of_its_tier() {
     SetupLayout layout = Load(
       """
       { legend: { "a": { run: "r", code: "iiex:pipe-cast-straight-ns" } }, layers: { "0": ["a"] } }
@@ -279,6 +280,7 @@ public class SetupLayoutTests {
         "iiex:pipe-cast-straight-*",
         "iiex:pipe-cast-bend-*",
         "iiex:pipe-cast-tjunction-*",
+        "iiex:pipe-cast-corner-*",
         "iiex:pipe-cast-junction-*",
         "iiex:pipe-cast-xjunction-*",
       },
