@@ -125,6 +125,18 @@ public class HandAssemblyCandidatesTests {
     Assert.Contains(BlockFacing.NORTH, box.OpenArms);
   }
 
+  // Fails when the box's arm toward a neighbour with no connector back refuses the placement instead of staying open.
+  [Fact]
+  public void Box_ForbiddenFaceLeavesFaceOpen() {
+    var scene = Scene.Standing(["nsweud"], keepsOpen: true);
+    scene.Pipe(Cell.AddCopy(BlockFacing.EAST), "ns");
+
+    var offered = scene.Offer(Ground, BlockFacing.UP);
+
+    AssemblyCandidate box = Assert.Single(offered);
+    Assert.Contains(BlockFacing.EAST, box.OpenArms);
+  }
+
   // Fails when an arm meeting a neighbour with no connector back is still offered.
   [Fact]
   public void No_candidate_has_an_arm_toward_a_neighbour_that_offers_no_connector_back() {

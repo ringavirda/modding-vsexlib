@@ -210,7 +210,13 @@ public static class HandAssemblyCandidates {
     if (part is BlockNetworkNode node) {
       string key = BlockBehaviorExOrientable.OrientationVariant;
       IEnumerable<string> tokens =
-        orientable?.Scheme.Tokens ?? node.AllowedOrientations.Values.First();
+        orientable?.Scheme.Tokens
+        ?? (
+          node.Type != null
+          && node.AllowedOrientations.TryGetValue(node.Type, out var own)
+            ? own
+            : node.AllowedOrientations.Values.First()
+        );
       if (
         node.Type != null
         && node.AllowedOrientations.TryGetValue(node.Type, out var allowed)

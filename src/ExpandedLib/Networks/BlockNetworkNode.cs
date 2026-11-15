@@ -921,7 +921,7 @@ public abstract class BlockNetworkNode
   /// <summary>Whether this node will physically join <paramref name="neighbour"/>, beyond the geometric checks (matching connectors, same network type). The walk asks both nodes of a pair, so a refusal from either keeps them apart.</summary>
   public virtual bool AcceptsNeighbour(Block neighbour) => true;
 
-  /// <summary>Whether hand assembly offers this block with an arm open where the crossing is refused or forbidden, in place of refusing the placement. Defaults to false.</summary>
+  /// <summary>Whether hand assembly offers this block with an arm open where the crossing is refused or forbidden, in place of refusing the placement.</summary>
   internal virtual bool KeepsRefusedArmsOpen => false;
 
   /// <summary>Returns true if <see cref="Orientation"/> contains the single-char code for <paramref name="face"/>.</summary>

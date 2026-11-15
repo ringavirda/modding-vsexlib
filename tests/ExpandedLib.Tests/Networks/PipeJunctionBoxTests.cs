@@ -1,4 +1,5 @@
 using System.Linq;
+using ExpandedLib.Assembling;
 using ExpandedLib.Definitions;
 using ExpandedLib.Industry.Pipes;
 using ExpandedLib.Testing;
@@ -52,6 +53,42 @@ public class PipeJunctionBoxTests {
     Assert.Equal(6, token.Distinct().Count());
     Assert.True(Piece("junction", token, 401).KeepsRefusedArmsOpen);
     Assert.False(Piece("xjunction", "nswe", 402).KeepsRefusedArmsOpen);
+  }
+
+  // Fails when hand assembly takes the box's tokens from the first type's list, so a configured box is never offered.
+  [Fact]
+  public void Box_IsOfferedByHandAssembly() {
+    var w = new TestWorld();
+    var cell = new BlockPos(64, 16, 64, 0);
+    var ground = new BlockPos(64, 15, 64, 0);
+    w.Place(ground, TestBlocks.Configure(new Block(), "game:rock", 5));
+    string token = Assert.Single(Tokens);
+    var box = TestBlocks.Configure(
+      new BlockPipe(),
+      $"test:pipe-cast-junction-{token}",
+      403,
+      ("tier", "cast"),
+      ("type", "junction"),
+      ("orientation", token)
+    );
+    box.SetNetworkTypeForTest("junction");
+    box.ApplyOrientationForTest(token);
+    w.Register(box);
+    TestPlayer player = w.Player();
+    player.StandAt(cell, BlockFacing.SOUTH);
+
+    var offered = HandAssemblyCandidates.Of(
+      w.World,
+      player.Player,
+      box,
+      new BlockSelection {
+        Position = ground.Copy(),
+        Face = BlockFacing.UP,
+        HitPosition = new Vec3d(0.5, 0.5, 0.5),
+      }
+    );
+
+    Assert.Equal(Tokens, offered.Select(c => c.Token));
   }
 
   // Fails when arm boxes are declared only for some faces: each face of the cell needs a box that reaches it.

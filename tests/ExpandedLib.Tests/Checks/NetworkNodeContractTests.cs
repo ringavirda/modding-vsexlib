@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using System.Reflection;
 using ExpandedLib.Checks;
 using ExpandedLib.Definitions;
+using ExpandedLib.Industry.Pipes;
 using ExpandedLib.Networks;
 using ExpandedLib.Registries;
 using ExpandedLib.Testing;
@@ -121,6 +122,24 @@ public class NetworkNodeContractTests {
     NetworkNodeContractCheck
       .Run(new AssemblyCheckSource((Union, Here)), Union)
       .Errors;
+
+  // Fails when a node with a single orientation state, the pipe junction box, is asked for a scheme it cannot have.
+  [Fact]
+  public void A_node_with_one_orientation_state_needs_no_scheme() {
+    Assembly industry = typeof(BlockPipe).Assembly;
+
+    var violations = NetworkNodeContract.SchemeViolations(
+      TestModDomain.Id,
+      industry,
+      out int checkedDefs
+    );
+
+    Assert.Single(
+      BlockPipe.Junction(TestModDomain.Id, "cast").VariantStates("orientation")
+    );
+    Assert.True(checkedDefs > 0);
+    Assert.DoesNotContain(violations, v => v.Contains("junction.json"));
+  }
 
   // Fails when NetworkNodeContractCheck stops selecting a node by its resolved class.
   [Fact]

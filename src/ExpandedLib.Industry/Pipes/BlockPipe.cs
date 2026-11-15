@@ -259,7 +259,8 @@ public partial class BlockPipe
   internal override bool KeepsRefusedArmsOpen => Type == "junction";
 
   /// <summary>The asset path of the cap overlay drawn on a capped end: <c>pipe/{tier}/cap</c>, or
-  /// <c>pipe/cap</c> for a tierless family, in this block's domain.</summary>
+  /// <c>pipe/cap</c> for a tierless family, in this block's domain. The asset is the cap overlay drawing,
+  /// <c>fittings/caps/pipe-block-{tier}-cap</c>, meshed with this block as its texture source.</summary>
   internal string CapAsset => Asset(Tier, "cap");
 
   private readonly Dictionary<int, MeshData[]> _capMeshes = [];
