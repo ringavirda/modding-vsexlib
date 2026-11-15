@@ -230,6 +230,27 @@ internal sealed class SetupHoldEntity : BlockEntity
   }
 }
 
+/// <summary>Ticks every 100 ms; <see cref="Raised"/> is 1 from the 3rd to the 6th tick of each second, so
+/// from 300 ms into it until 700 ms, else 0.</summary>
+internal sealed class SetupHoldPulse : BlockEntity
+{
+  public int Ticks;
+  public int Raised;
+
+  public override void Initialize(ICoreAPI api)
+  {
+    base.Initialize(api);
+    RegisterGameTickListener(
+      _ =>
+      {
+        Ticks++;
+        Raised = Ticks % 10 is >= 3 and < 7 ? 1 : 0;
+      },
+      100
+    );
+  }
+}
+
 internal sealed class SetupTickEntity(List<string> log) : BlockEntity
 {
   public int Count;

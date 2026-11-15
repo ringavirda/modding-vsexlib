@@ -169,4 +169,85 @@ public class TestWorldRunSecondTests {
 
     Assert.Equal([1, 3, 5, 7, 9], seen);
   }
+
+  private static List<string> SecondLog(
+    System.Action<TestWorld, System.Action> run
+  ) {
+    var world = new TestWorld();
+    var log = new List<string>();
+    world.World.RegisterGameTickListener(_ => log.Add("a"), 250);
+    world.World.RegisterGameTickListener(_ => log.Add("b"), 1000);
+    world.World.RegisterGameTickListener(_ => log.Add("c"), 300);
+    world.World.RegisterCallback(_ => log.Add("callback"), 10);
+    for (int s = 0; s < 2; s++)
+      run(world, () => log.Add("network"));
+    log.Add($"at {world.MsIntoSecond}");
+    return log;
+  }
+
+  // Fails when a slice restarts the network's 200 ms count, or a delayed callback comes due before
+  // the second's end.
+  [Fact]
+  public void Slices_of_any_lengths_run_a_second_as_run_second_does() {
+    List<string> whole = SecondLog((w, n) => w.RunSecond(None, n, null));
+    List<string> sliced = SecondLog(
+      (w, n) => {
+        foreach (int ms in new[] { 30, 170, 130, 70, 450, 150 })
+          w.RunSlice(ms, None, n, null);
+      }
+    );
+
+    Assert.Equal(
+      [
+        "network",
+        "a",
+        "c",
+        "network",
+        "a",
+        "c",
+        "network",
+        "a",
+        "network",
+        "c",
+        "a",
+        "b",
+        "callback",
+        "network",
+        "c",
+        "network",
+        "a",
+        "network",
+        "a",
+        "c",
+        "network",
+        "a",
+        "c",
+        "network",
+        "a",
+        "b",
+        "network",
+        "at 0",
+      ],
+      whole
+    );
+    Assert.Equal(whole, sliced);
+  }
+
+  // Fails when a slice may run past the second's end or no time at all, or a second ended leaves its
+  // time standing.
+  [Fact]
+  public void A_slice_stops_at_the_second_s_end() {
+    var world = new TestWorld();
+    Assert.Throws<System.ArgumentOutOfRangeException>(() =>
+      world.RunSlice(0, None, () => { }, null)
+    );
+    world.RunSlice(600, None, () => { }, null);
+
+    Assert.Equal(600, world.MsIntoSecond);
+    Assert.Throws<System.ArgumentOutOfRangeException>(() =>
+      world.RunSlice(500, None, () => { }, null)
+    );
+    world.RunSlice(400, None, () => { }, null);
+    Assert.Equal(0, world.MsIntoSecond);
+  }
 }
