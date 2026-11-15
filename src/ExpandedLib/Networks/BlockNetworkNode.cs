@@ -442,13 +442,20 @@ public abstract class BlockNetworkNode
       world.BlockAccessor.BreakBlock(pos, null);
   }
 
-  /// <summary>Removes this block's position from the network graph, then calls the base break logic. A fixed piece's own fasteners are lost with it.</summary>
+  /// <summary>Removes this block's position from the network graph, then calls the base break logic. A fixed piece's own fasteners are lost with it, and the caps fitted to it drop.</summary>
   public override void OnBlockBroken(
     IWorldAccessor world,
     BlockPos pos,
     IPlayer byPlayer,
     float dropQuantityMultiplier = 1
   ) {
+    if (
+      BEBehaviorAssembled.At(world.BlockAccessor, pos) is { } record
+      && byPlayer?.WorldData.CurrentGameMode != EnumGameMode.Creative
+    )
+      foreach (ItemStack cap in record.Caps)
+        world.SpawnItemEntity(cap.Clone(), pos.ToVec3d().Add(0.5, 0.5, 0.5));
+
     world
       .Api.ModLoader.GetModSystem<BlockNetworkModSystem>()
       .RemoveNode(world.BlockAccessor, pos);
@@ -464,7 +471,7 @@ public abstract class BlockNetworkNode
   #endregion
 
   #region IWrenchOrientable
-  /// <summary>Cycles the block's orientation through <see cref="GetWrenchOrientations"/> and re-registers the node in the network graph.</summary>
+  /// <summary>Cycles the block's orientation through <see cref="GetWrenchOrientations"/> and re-registers the node in the network graph. On a fixed piece it cycles nothing: a server click without sneak that is not a weep re-make fits the def's cap on, or takes the cap off, the crossing nearest the hit point, and tells the player a refusal.</summary>
   public virtual void Rotate(
     EntityAgent byEntity,
     BlockSelection blockSel,
@@ -483,8 +490,15 @@ public abstract class BlockNetworkNode
         && !byEntity.Controls.Sneak
         && !WrenchFixed(world, pos, blockSel)
         && byEntity is EntityPlayer { Player: IServerPlayer player }
+        && HandAssemblyServer.Cap(
+          world,
+          player,
+          pos,
+          blockSel.HitPosition ?? new Vec3d(0.5, 0.5, 0.5)
+        )
+          is { } refusal
       )
-        HandAssemblyServer.Tell(world, player, HandAssemblyServer.Fixed);
+        HandAssemblyServer.Tell(world, player, refusal.Code, refusal.Args);
       return;
     }
 
@@ -833,6 +847,32 @@ public abstract class BlockNetworkNode
         rotY = 270;
         break;
 
+      // Corners are drawn at unw
+      case "uen":
+        rotY = 270;
+        break;
+      case "use":
+        rotY = 180;
+        break;
+      case "uws":
+        rotY = 90;
+        break;
+      case "den":
+        rotZ = 180;
+        break;
+      case "dnw":
+        rotZ = 180;
+        rotY = 90;
+        break;
+      case "dws":
+        rotZ = 180;
+        rotY = 180;
+        break;
+      case "dse":
+        rotZ = 180;
+        rotY = 270;
+        break;
+
       // Complex multi-axis
       case "uns":
         rotX = 90;
@@ -920,6 +960,9 @@ public abstract class BlockNetworkNode
 
   /// <summary>Whether this node will physically join <paramref name="neighbour"/>, beyond the geometric checks (matching connectors, same network type). The walk asks both nodes of a pair, so a refusal from either keeps them apart.</summary>
   public virtual bool AcceptsNeighbour(Block neighbour) => true;
+
+  /// <summary>Whether hand assembly offers this block with an arm open where the crossing is refused or forbidden, in place of refusing the placement.</summary>
+  internal virtual bool KeepsRefusedArmsOpen => false;
 
   /// <summary>Returns true if <see cref="Orientation"/> contains the single-char code for <paramref name="face"/>.</summary>
   public virtual bool HasConnectorAt(BlockFacing face) =>

@@ -18,7 +18,8 @@
     "handAssembly": {
       "tool": "setupasm:wrench",
       "fastener": "setupasm:bolt",
-      "perJoint": 2
+      "perJoint": 2,
+      "cap": "setupasm:cap"
     }
   }
 }

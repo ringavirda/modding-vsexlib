@@ -76,6 +76,8 @@ internal sealed class SetupLayout {
     "straight",
     "bend",
     "tjunction",
+    "corner",
+    "junction",
     "xjunction",
   ];
 
@@ -434,7 +436,7 @@ internal sealed class SetupLayout {
 
   /// <summary>The wildcards of the codes a run's shapes come from: <paramref name="family"/> as
   /// written, or for a straight pipe code (<c>pipe-straight-&lt;faces&gt;-&lt;material&gt;</c> or
-  /// <c>pipe-&lt;tier&gt;-straight-&lt;faces&gt;</c>) its four shapes.</summary>
+  /// <c>pipe-&lt;tier&gt;-straight-&lt;faces&gt;</c>) its six shapes.</summary>
   /// <param name="code">The run's straight segment.</param>
   /// <param name="family">The <c>family</c> key, a string or an array, or null.</param>
   /// <param name="where">The entry or step the key belongs to.</param>

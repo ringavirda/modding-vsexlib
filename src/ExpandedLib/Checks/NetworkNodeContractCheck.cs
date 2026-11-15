@@ -64,12 +64,16 @@ public static class NetworkNodeContractCheck {
     return problems;
   }
 
+  // A node with one orientation state has nothing to orient: it needs no scheme.
   private static string? SchemeViolation(
     string domain,
     ExBlockDef def,
     JObject json
   ) {
     string where = $"{def.Location} ({domain}:{def.Code})";
+
+    if (def.VariantStates("orientation").Length == 1)
+      return null;
 
     JObject[] declared = [.. OrientableDeclarations(json)];
     if (declared.Length != 1)

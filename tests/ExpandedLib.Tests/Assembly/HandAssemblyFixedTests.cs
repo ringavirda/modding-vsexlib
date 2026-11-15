@@ -395,6 +395,40 @@ public class HandAssemblyFixedTests {
     );
   }
 
+  // Fails when the cap click is served before the weep re-make, so a weeping capped pipe has its cap taken off and the weep stays.
+  [Fact]
+  public void Cap_WeepRemakePrecedes() {
+    var scene = Pipes.Laid();
+    scene.Weep();
+    TestNetworkBlock node = (TestNetworkBlock)
+      scene.World.GetBlock(Pipes.Cell(0));
+    node.Attributes = new JsonObject(
+      JToken.Parse(
+        """{"handAssembly":{"tool":"test:wrench-*","fastener":"test:bolt","perJoint":2,"cap":"test:cap-cast"}}"""
+      )
+    );
+    Item wrench = scene.World.RegisterItem("test:wrench-iron");
+    Item cap = scene.World.RegisterItem("test:cap-cast");
+    scene.Player.Hold(new ItemStack(wrench));
+    BEBehaviorAssembled record = scene
+      .World.GetBlockEntity(Pipes.Cell(0))!
+      .GetBehavior<BEBehaviorAssembled>();
+    record.SetCap(BlockFacing.WEST, new ItemStack(cap), null);
+
+    scene.Pipe.Rotate(
+      scene.Player.Entity,
+      new BlockSelection {
+        Position = Pipes.Cell(0),
+        Face = BlockFacing.UP,
+        HitPosition = new Vec3d(0, 0.5, 0.5),
+      },
+      1
+    );
+
+    Assert.False(scene.Store.IsWeeping(scene.Edge));
+    Assert.NotNull(record.CapAt(BlockFacing.WEST));
+  }
+
   // Fails when a pipe's cracked joint is not reported, or the wrench re-makes it.
   [Fact]
   public void A_cracked_pipe_is_reported_and_the_wrench_does_not_re_make_it() {

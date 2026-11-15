@@ -185,6 +185,7 @@ internal static class SetupSteps {
       "turn",
     ],
     ["takeoff"] = ["at"],
+    ["cap"] = ["at", "face", "fails"],
   };
 
   private static readonly Dictionary<string, string[]> Required = new() {
@@ -203,6 +204,7 @@ internal static class SetupSteps {
     ["break"] = ["at"],
     ["assemble"] = ["code", "at"],
     ["takeoff"] = ["at"],
+    ["cap"] = ["at", "face"],
     ["repeat"] = ["steps"],
     ["advance"] = ["hours"],
     ["fillInventory"] = ["code"],

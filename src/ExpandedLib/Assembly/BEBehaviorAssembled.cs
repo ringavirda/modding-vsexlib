@@ -77,6 +77,12 @@ public class BEBehaviorAssembled(BlockEntity blockentity)
   /// <summary>The stacks of every joint this part's record holds.</summary>
   internal IReadOnlyCollection<ItemStack> Spent => [.. _fasteners.Values];
 
+  /// <summary>The cap stacks fitted to this part.</summary>
+  internal IReadOnlyCollection<ItemStack> Caps => [.. _caps.Values];
+
+  /// <summary>The fasteners the fitted caps' joints spent.</summary>
+  internal IReadOnlyCollection<ItemStack> CapSpent => [.. _capFasteners.Values];
+
   private static string FaceKey(BlockFacing face) => JointKey + face.Code;
 
   private void Set(string key, ItemStack? stack) {

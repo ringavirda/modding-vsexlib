@@ -1,10 +1,14 @@
 using System;
+using System.Collections.Generic;
+using System.Linq;
 using System.Text;
+using ExpandedLib.Assembling;
 using ExpandedLib.Catalogues;
 using ExpandedLib.Helpers;
 using ExpandedLib.Industry.Helpers;
 using ExpandedLib.Networks;
 using ExpandedLib.Registries;
+using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Config;
 using Vintagestory.API.Datastructures;
@@ -274,6 +278,35 @@ public class BlockEntityPipe : BlockEntityNetworkNode, IPipeNode {
 
   #endregion
 
+  #region Caps
+
+  private int _capKey;
+
+  private IReadOnlyList<BlockFacing> CappedFaces() =>
+    GetBehavior<BEBehaviorAssembled>() is { } assembled
+      ? [.. BlockFacing.ALLFACES.Where(face => assembled.CapAt(face) != null)]
+      : [];
+
+  /// <summary>The mesh key of the faces this piece is capped on, 0 when none (<see cref="PipeCapOverlays.Key"/>).</summary>
+  internal int CapKey => PipeCapOverlays.Key(CappedFaces());
+
+  /// <summary>The cap overlays this piece draws, one per capped face.</summary>
+  internal IReadOnlyList<PipeCapOverlay> CapOverlays() =>
+    PipeCapOverlays.For(CappedFaces());
+
+  /// <inheritdoc/>
+  public override bool OnTesselation(
+    ITerrainMeshPool mesher,
+    ITesselatorAPI tesselator
+  ) {
+    if (Block is BlockPipe pipe && Api is ICoreClientAPI capi)
+      foreach (MeshData mesh in pipe.CapMeshes(capi, tesselator, CappedFaces()))
+        mesher.AddMeshData(mesh);
+    return base.OnTesselation(mesher, tesselator);
+  }
+
+  #endregion
+
   #region Serialization
 
   public override void ToTreeAttributes(ITreeAttribute tree) {
@@ -298,6 +331,11 @@ public class BlockEntityPipe : BlockEntityNetworkNode, IPipeNode {
     _openingsCount = tree.GetInt("openings");
     _clientFlowRate = tree.GetFloat("flow");
     Pressure = tree.GetFloat("pressure");
+
+    if (Api?.Side == EnumAppSide.Client && CapKey != _capKey) {
+      _capKey = CapKey;
+      MarkDirty(true);
+    }
   }
 
   #endregion

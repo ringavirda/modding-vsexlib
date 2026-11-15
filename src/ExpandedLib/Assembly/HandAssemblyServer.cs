@@ -24,6 +24,8 @@ internal static class HandAssemblyServer {
   internal const string Fixed = "exlib-handassembly-fixed";
   internal const string NotFixed = "exlib-handassembly-notfixed";
   internal const string NeedsToolMain = "exlib-handassembly-needstoolmain";
+  internal const string CapClosed = "exlib-handassembly-capclosed";
+  internal const string CapJoined = "exlib-handassembly-capjoined";
 
   // Blocks added to the player's picking range.
   private const float RangeSlack = 1f;
@@ -176,8 +178,11 @@ internal static class HandAssemblyServer {
       return Refusal(Fixed);
 
     var returned = new List<ItemStack>();
-    if (record != null)
+    if (record != null) {
       returned.AddRange(record.Spent.Select(s => s.Clone()));
+      returned.AddRange(record.Caps.Select(s => s.Clone()));
+      returned.AddRange(record.CapSpent.Select(s => s.Clone()));
+    }
     foreach (BlockFacing face in BlockFacing.ALLFACES) {
       BEBehaviorAssembled? neighbour = BEBehaviorAssembled.At(
         accessor,
@@ -206,6 +211,155 @@ internal static class HandAssemblyServer {
         world.SpawnItemEntity(stack, player.Entity.Pos.XYZ);
     return null;
   }
+
+  /// <summary>Serves a plain wrench click on a fixed piece that is not a weeping one: fits the cap in the off hand on the open crossing nearest the hit, or takes off the cap that crossing already carries. The wrench's wear is the wrench item's, as for any click on a wrench-orientable block.</summary>
+  /// <param name="world">The server world.</param>
+  /// <param name="player">The clicking player; the wrench is read from the active hotbar slot and the cap from the off hand.</param>
+  /// <param name="cell">The piece's position.</param>
+  /// <param name="hit">The hit point inside the cell, each axis in 0 to 1; the crossing whose face centre is nearest is the one served.</param>
+  /// <returns>Null when a cap was fitted or taken off; otherwise the refusal to send, with nothing taken. A click that offers no cap, on a crossing with none fitted, answers <see cref="Fixed"/>.</returns>
+  internal static AssemblyResult? Cap(
+    IWorldAccessor world,
+    IPlayer player,
+    BlockPos cell,
+    Vec3d hit
+  ) {
+    if (!InRange(player, cell))
+      return Refusal(OutOfRange);
+    if (
+      !world.Claims.TryAccess(player, cell, EnumBlockAccessFlags.BuildOrBreak)
+    )
+      return Refusal(Claimed);
+
+    IBlockAccessor accessor = world.BlockAccessor;
+    if (
+      accessor.GetBlock(cell) is not BlockNetworkNode node
+      || HandAssemblySpec.Of(node) is not { } spec
+      || BEBehaviorAssembled.At(accessor, cell) is not { Fixed: true } record
+    )
+      return Refusal(Fixed);
+
+    BlockFacing? face = NearestArm(accessor, node, cell, hit);
+    if (face == null)
+      return Refusal(Fixed);
+    bool capped = record.CapAt(face) != null;
+    ItemSlot capSlot = player.Entity.LeftHandItemSlot;
+    if (!capped && (spec.Cap == null || capSlot.Empty))
+      return Refusal(Fixed);
+
+    bool creative = HandAssemblyGate.IsCreative(player);
+    if (
+      !creative
+      && !HoldsTool(player.InventoryManager.ActiveHotbarSlot, spec.Tool)
+    )
+      return Refusal(
+        NeedsToolMain,
+        ToolName(world, spec.Tool, LanguageOf(player))
+      );
+
+    if (capped)
+      return TakeCapOff(world, player, node, cell, record, face, creative);
+    if (!HoldsTool(capSlot, spec.Cap!))
+      return Refusal(NeedsTool, ToolName(world, spec.Cap, LanguageOf(player)));
+
+    INetworkMember member =
+      NetworkMembership.Resolve(
+        accessor,
+        cell,
+        ((INetworkMember)node).NetworkTypeAt(accessor, cell)
+      ) ?? node;
+    if (
+      !world
+        .Api.ModLoader.GetModSystem<BlockNetworkModSystem>()
+        .GetOpenConnectorFaces(accessor, cell, member)
+        .Contains(face)
+    )
+      return Refusal(CapJoined);
+    if (NetworkFaces.ClosesOpening(accessor, cell.AddCopy(face), face.Opposite))
+      return Refusal(CapClosed);
+
+    int cost = spec.PerJoint;
+    if (!creative && cost > 0) {
+      int carried = ExCarried.Count(player, spec.Fastener);
+      if (carried < cost)
+        return Refusal(
+          NeedsFasteners,
+          cost.ToString(),
+          FastenerName(world, spec.Fastener, LanguageOf(player)),
+          carried.ToString()
+        );
+    }
+
+    ItemStack cap;
+    ItemStack? spent = null;
+    if (creative)
+      cap = ExactlyOne(capSlot.Itemstack!);
+    else {
+      if (cost > 0)
+        spent = ExCarried.Take(player, spec.Fastener, cost);
+      cap = capSlot.TakeOut(1);
+      capSlot.MarkDirty();
+    }
+    record.SetCap(face, cap, spent);
+    record.Blockentity.MarkDirty(true);
+    RebuildNetworks(world, node, cell);
+    return null;
+  }
+
+  private static AssemblyResult? TakeCapOff(
+    IWorldAccessor world,
+    IPlayer player,
+    BlockNetworkNode node,
+    BlockPos cell,
+    BEBehaviorAssembled record,
+    BlockFacing face,
+    bool creative
+  ) {
+    ItemStack?[] returned = [record.CapAt(face), record.CapFastenersAt(face)];
+    record.SetCap(face, null, null);
+    record.Blockentity.MarkDirty(true);
+    RebuildNetworks(world, node, cell);
+    if (creative)
+      return null;
+    foreach (ItemStack? stack in returned)
+      if (
+        stack != null
+        && !player.InventoryManager.TryGiveItemstack(stack.Clone(), true)
+      )
+        world.SpawnItemEntity(stack.Clone(), player.Entity.Pos.XYZ);
+    return null;
+  }
+
+  private static void RebuildNetworks(
+    IWorldAccessor world,
+    BlockNetworkNode node,
+    BlockPos cell
+  ) {
+    var networks = world.Api.ModLoader.GetModSystem<BlockNetworkModSystem>();
+    networks.RemoveNode(world.BlockAccessor, cell);
+    networks.AddNode(
+      world.BlockAccessor,
+      cell,
+      ((INetworkMember)node).NetworkTypeAt(world.BlockAccessor, cell)
+    );
+  }
+
+  private static BlockFacing? NearestArm(
+    IBlockAccessor accessor,
+    BlockNetworkNode node,
+    BlockPos cell,
+    Vec3d hit
+  ) =>
+    BlockFacing
+      .ALLFACES.Where(face => node.ShapeConnectorAt(accessor, cell, face))
+      .OrderBy(face =>
+        new Vec3d(
+          0.5 + 0.5 * face.Normali.X,
+          0.5 + 0.5 * face.Normali.Y,
+          0.5 + 0.5 * face.Normali.Z
+        ).SquareDistanceTo(hit)
+      )
+      .FirstOrDefault();
 
   /// <summary>Clears the fastener each neighbour of <paramref name="cell"/> holds for its joint toward it; the fasteners are lost.</summary>
   /// <param name="world">The accessor to read the neighbours from.</param>

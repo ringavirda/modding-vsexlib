@@ -807,7 +807,6 @@ ExpandedLib.Assembling.HandAssemblyModSystem.HandAssemblyModSystem() -> void
 ExpandedLib.Assembling.HandAssemblySpec
 ExpandedLib.Assembling.HandAssemblySpec.Fastener.get -> string!
 ExpandedLib.Assembling.HandAssemblySpec.Fastener.init -> void
-ExpandedLib.Assembling.HandAssemblySpec.HandAssemblySpec(string! Tool, string! Fastener, int PerJoint) -> void
 ExpandedLib.Assembling.HandAssemblySpec.PerJoint.get -> int
 ExpandedLib.Assembling.HandAssemblySpec.PerJoint.init -> void
 ExpandedLib.Assembling.HandAssemblySpec.Tool.get -> string!
@@ -823,7 +822,6 @@ ExpandedLib.Assembling.HandAssemblyTarget.Joinable.get -> bool
 ExpandedLib.Assembling.HandAssemblyTarget.Joinable.init -> void
 ExpandedLib.Assembling.IHandAssemblyPart
 ExpandedLib.Assembling.IHandAssemblyPart.Allows(Vintagestory.API.Common.IWorldAccessor! world, Vintagestory.API.MathTools.BlockPos! pos, Vintagestory.API.Common.Block! candidate, out string? failureCode) -> bool
-ExpandedLib.Definitions.ExBlockDef.HandAssembly(string! tool, string! fastener, int perJoint) -> ExpandedLib.Definitions.ExBlockDef!
 const ExpandedLib.Assembling.HandAssemblySpec.AttributeKey = "handAssembly" -> string!
 static ExpandedLib.Assembling.HandAssemblyCandidates.JointsMade(Vintagestory.API.Common.IBlockAccessor! world, Vintagestory.API.MathTools.BlockPos! cell, Vintagestory.API.Common.Block! candidate) -> int
 static ExpandedLib.Assembling.HandAssemblyCandidates.Of(Vintagestory.API.Common.IWorldAccessor! world, Vintagestory.API.Common.IPlayer! player, Vintagestory.API.Common.Block! part, Vintagestory.API.Common.BlockSelection! selection) -> System.Collections.Generic.IReadOnlyList<ExpandedLib.Assembling.AssemblyCandidate!>!
@@ -841,3 +839,8 @@ virtual ExpandedLib.Networks.BlockNetworkNode.IsCrackedAt(Vintagestory.API.Commo
 virtual ExpandedLib.Networks.BlockNetworkNode.WrenchFixed(Vintagestory.API.Common.IWorldAccessor! world, Vintagestory.API.MathTools.BlockPos! pos, Vintagestory.API.Common.BlockSelection! selection) -> bool
 ExpandedLib.Networks.NetworkFaces
 static ExpandedLib.Networks.NetworkFaces.ClosesOpening(Vintagestory.API.Common.IBlockAccessor! blockAccessor, Vintagestory.API.MathTools.BlockPos! neighbourPos, Vintagestory.API.MathTools.BlockFacing! faceTowardPipe) -> bool
+ExpandedLib.Assembling.HandAssemblySpec.Cap.get -> string?
+ExpandedLib.Assembling.HandAssemblySpec.Cap.init -> void
+ExpandedLib.Assembling.HandAssemblySpec.HandAssemblySpec(string! Tool, string! Fastener, int PerJoint, string? Cap = null) -> void
+ExpandedLib.Definitions.ExBlockDef.HandAssembly(string! tool, string! fastener, int perJoint, string? cap = null) -> ExpandedLib.Definitions.ExBlockDef!
+static readonly ExpandedLib.Helpers.ExOrientations.PipeCorner -> ExpandedLib.Helpers.ExOrientationScheme!

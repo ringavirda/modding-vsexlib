@@ -706,6 +706,9 @@ public sealed partial class SetupScene : IDisposable
         case "takeoff":
           TakeOffStep(step);
           break;
+        case "cap":
+          CapStep(step);
+          break;
       }
       foreach (var (code, count) in step.Gives)
         _pack?.Give(code, count);

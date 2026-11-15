@@ -415,7 +415,7 @@ public class ExItemDefTests {
     ["EntityBehavior(String,JObject)"] =
       "no block-entity analogue: items carry no BlockEntity",
     // Hand assembly is placing a block.
-    ["HandAssembly(String,String,Int32)"] =
+    ["HandAssembly(String,String,Int32,String)"] =
       "hand assembly is a block placement behaviour: items are not placed",
     // BlockType-only fields (verified absent from CollectibleType/ItemType).
     ["Material(EnumBlockMaterial)"] =

@@ -108,6 +108,92 @@ public sealed partial class SetupScene
       );
   }
 
+  /// <summary>The <c>cap</c> step: the player clicks the named crossing of a fixed piece with the
+  /// wrench in the main hand, fitting the def's cap from the off hand, or taking off the cap the
+  /// crossing carries; the step's <c>fails</c> names the refusal the server must answer.</summary>
+  private void CapStep(SetupStep step)
+  {
+    BlockPos at = At(step, "at");
+    Block block = World.GetBlock(at);
+    HandAssemblySpec spec =
+      HandAssemblySpec.Of(block)
+      ?? throw Fail(
+        step.Path,
+        $"{block.Code} at {Describe(at)} does not declare handAssembly."
+      );
+    BlockFacing face = FaceOf(step, (string?)step.Body["face"]);
+    bool capped =
+      BEBehaviorAssembled.At(World.World.BlockAccessor, at)?.CapAt(face)
+      != null;
+    if (!capped && spec.Cap == null)
+      throw Fail(step.Path, $"{block.Code} at {Describe(at)} declares no cap.");
+    ItemStack? cap = null;
+    if (!capped)
+      cap = ToolFor(step.Path, spec with { Tool = spec.Cap! });
+    Player.Hold(ToolFor(step.Path, spec));
+    Player.HoldOffHand(cap);
+    if (!capped)
+      Supply(step.Path, spec, spec.PerJoint);
+    Dictionary<string, int> before = ExCarried.Totals(Player.Player);
+    bool sneaking = Player.Sneaking;
+    Player.Sneaking = false;
+    AssemblyResult? refused;
+    try
+    {
+      refused = HandAssemblyServer.Cap(
+        World.World,
+        Player.Player,
+        at,
+        new Vec3d(
+          0.5 + 0.5 * face.Normali.X,
+          0.5 + 0.5 * face.Normali.Y,
+          0.5 + 0.5 * face.Normali.Z
+        )
+      );
+      ItemSlot wrench = Player.ActiveSlot;
+      if (!HandAssemblyGate.IsCreative(Player.Player))
+        wrench.Itemstack.Collectible.DamageItem(
+          World.World,
+          Player.Player.Entity,
+          wrench
+        );
+    }
+    finally
+    {
+      Player.Sneaking = sneaking;
+      Give(Player.ActiveSlot.Itemstack);
+      Give(Player.OffHandSlot.Itemstack);
+      Player.Hold(null);
+      Player.HoldOffHand(null);
+      foreach ((string code, int now) in ExCarried.Totals(Player.Player))
+      {
+        int rise = now - before.GetValueOrDefault(code);
+        if (rise > 0 && ExCarried.Take(Player.Player, code, rise) is { } taken)
+          _pack?.Give(code, taken.StackSize);
+      }
+    }
+    string? fails = (string?)step.Body["fails"];
+    if (fails != null)
+    {
+      if (refused == null)
+        throw Fail(
+          step.Path,
+          $"{block.Code} at {Describe(at)} took the click on face {face.Code}; the step expected the refusal {fails}."
+        );
+      if (refused.Code != fails)
+        throw Fail(
+          step.Path,
+          $"{block.Code} at {Describe(at)} was refused with {Refusal(refused)}; the step expected {fails}."
+        );
+      return;
+    }
+    if (refused != null)
+      throw Fail(
+        step.Path,
+        $"the player could not cap {block.Code} at {Describe(at)} on face {face.Code}: {Refusal(refused)}."
+      );
+  }
+
   /// <summary>Lays <paramref name="block"/> into <paramref name="at"/> through
   /// <see cref="Assemble"/> as a <c>place</c> of an opted-in block and a run cell do, and draws it
   /// from the pack once the server has fixed it.</summary>

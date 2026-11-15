@@ -168,6 +168,19 @@ public static class ExOrientations {
     "dwu"
   );
 
+  /// <summary>Three mutually perpendicular faces: the vertical letter, then the horizontal bend's token.</summary>
+  public static readonly ExOrientationScheme PipeCorner = new(
+    "PipeCorner",
+    "unw",
+    "uen",
+    "use",
+    "uws",
+    "dnw",
+    "den",
+    "dse",
+    "dws"
+  );
+
   /// <summary>Four horizontal tees.</summary>
   public static readonly ExOrientationScheme CanalTee = new(
     "CanalTee",
@@ -204,6 +217,7 @@ public static class ExOrientations {
       CanalBend,
       PipeTee,
       CanalTee,
+      PipeCorner,
       PipeCross,
       CanalCross,
     ];

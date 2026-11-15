@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using ExpandedLib.Assembling;
@@ -7,6 +8,7 @@ using ExpandedLib.Testing;
 using ExpandedLib.Testing.Live;
 using Newtonsoft.Json.Linq;
 using Vintagestory.API.Common;
+using Vintagestory.API.Common.Entities;
 using Vintagestory.API.MathTools;
 using Xunit;
 
@@ -158,6 +160,168 @@ public class SetupAssemblyStepTests {
     );
 
     Assert.Contains("harness-nocandidate", e.Message);
+  }
+
+  private const string WePipe =
+    """{ "place": { "id": "first", "code": "setupasm:pipe-straight-we", "at": [0, 0, 0], "face": "u", "arms": "ew" } }""";
+
+  // Fails when the cap step ignores its face and clicks the centre, so the first arm is capped whichever is named; a second click on the capped face must take the cap off.
+  [Fact]
+  public void CapStep_FitsTheNamedFace() {
+    using SetupScene scene = BuildInline(
+      "[" + WePipe + ", { \"cap\": { \"at\": [0, 0, 0], \"face\": \"w\" } }]"
+    );
+
+    BEBehaviorAssembled record = RecordAt(scene, 0, 0, 0);
+    Assert.NotNull(record.CapAt(BlockFacing.WEST));
+    Assert.Null(record.CapAt(BlockFacing.EAST));
+    Assert.Equal(2, record.CapFastenersAt(BlockFacing.WEST)!.StackSize);
+
+    using SetupScene off = BuildInline(
+      "["
+        + WePipe
+        + ", { \"cap\": { \"at\": [0, 0, 0], \"face\": \"w\" } }, { \"cap\": { \"at\": [0, 0, 0], \"face\": \"w\" } }]"
+    );
+    Assert.Null(RecordAt(off, 0, 0, 0).CapAt(BlockFacing.WEST));
+  }
+
+  // Fails when a take-off step stages a fresh cap and fasteners before the server removes the fitted ones: the pack, holding one cap and one joint's bolts, is overdrawn.
+  [Fact]
+  public void CapStep_TakeOffDrawsNothingFromThePack() {
+    using SetupScene scene = BuildInline(
+      "["
+        + WePipe
+        + ", { \"cap\": { \"at\": [0, 0, 0], \"face\": \"w\" } }, { \"cap\": { \"at\": [0, 0, 0], \"face\": \"w\" } }]",
+      "\"pack\": { \"scope\": \"all\", \"gathered\": { \"setupasm:wrench\": 1, \"setupasm:pipe-straight-we\": 1, \"setupasm:cap\": 1, \"setupasm:bolt\": 2 } }, "
+    );
+
+    Assert.Null(RecordAt(scene, 0, 0, 0).CapAt(BlockFacing.WEST));
+  }
+
+  // Fails when the cap step wears the wrench only on a click the server took, or in creative: a refusal wears it as a fit does.
+  [Theory]
+  [InlineData("fit", 1)]
+  [InlineData("refusal", 1)]
+  public void CapStep_WearsTheWrenchOnEveryClick(string click, int wear) {
+    string face = click == "fit" ? "w" : "e";
+    string fails =
+      click == "fit" ? "" : ", \"fails\": \"exlib-handassembly-capjoined\"";
+    string beside =
+      click == "fit"
+        ? ""
+        : "{ \"assemble\": { \"code\": \"setupasm:pipe-straight-we\", \"at\": [1, 0, 0], \"arms\": \"ew\" } },";
+    string cap =
+      "{ \"cap\": { \"at\": [0, 0, 0], \"face\": \""
+      + face
+      + "\""
+      + fails
+      + " } }";
+
+    int Uses(string last) {
+      int uses = 0;
+      using SetupScene scene = SetupScene.Build(
+        SetupFile.Parse(
+          "{\"setup\": \"t\", \"description\": \"d\", \"mods\": [\"setupasm\"], \"steps\": ["
+            + WePipe
+            + ","
+            + beside
+            + last
+            + "], \"seconds\": 10, \"record\": {}}",
+          "t.json"
+        ),
+        [FixturePath],
+        w => {
+          Item plain = w.World.GetItem(new AssetLocation("setupasm:wrench"));
+          w.Register(
+            new WearCounter(() => uses++) {
+              Code = plain.Code,
+              ItemId = plain.ItemId,
+              Durability = 100,
+            }
+          );
+        }
+      );
+      return uses;
+    }
+
+    Assert.Equal(wear, Uses(cap) - Uses("{ \"wait\": 1 }"));
+  }
+
+  private sealed class WearCounter(System.Action worn) : Item {
+    public override void DamageItem(
+      IWorldAccessor world,
+      Entity byEntity,
+      ItemSlot itemslot,
+      int amount = 1,
+      bool destroyOnZeroDurability = true
+    ) => worn();
+  }
+
+  // Fails when the step names the refusal and a joined face is capped, or the refusal code is not compared.
+  [Fact]
+  public void CapStep_FailsNamesTheRefusal() {
+    using SetupScene scene = BuildInline(
+      "["
+        + WePipe
+        + ", { \"assemble\": { \"code\": \"setupasm:pipe-straight-we\", \"at\": [1, 0, 0], \"arms\": \"ew\" } },"
+        + " { \"cap\": { \"at\": [0, 0, 0], \"face\": \"e\", \"fails\": \"exlib-handassembly-capjoined\" } }]"
+    );
+
+    Assert.Null(RecordAt(scene, 0, 0, 0).CapAt(BlockFacing.EAST));
+  }
+
+  // Fails when a step naming another refusal than the server's passes.
+  [Fact]
+  public void CapStep_FailsOnAnotherRefusalThanNamed() {
+    Exception e = Assert.ThrowsAny<Exception>(() =>
+      BuildInline(
+        "["
+          + WePipe
+          + ", { \"assemble\": { \"code\": \"setupasm:pipe-straight-we\", \"at\": [1, 0, 0], \"arms\": \"ew\" } },"
+          + " { \"cap\": { \"at\": [0, 0, 0], \"face\": \"e\", \"fails\": \"exlib-handassembly-capclosed\" } }]"
+      )
+    );
+
+    Assert.Contains("was refused with exlib-handassembly-capjoined", e.Message);
+  }
+
+  // Fails when a step expecting a refusal passes after the cap was fitted.
+  [Fact]
+  public void CapStep_FailsWhenTheFitSucceeds() {
+    Exception e = Assert.ThrowsAny<Exception>(() =>
+      BuildInline(
+        "["
+          + WePipe
+          + ", { \"cap\": { \"at\": [0, 0, 0], \"face\": \"e\", \"fails\": \"exlib-handassembly-capclosed\" } }]"
+      )
+    );
+
+    Assert.Contains("expected the refusal", e.Message);
+  }
+
+  // Fails when a step with no refusal named passes a refused click.
+  [Fact]
+  public void CapStep_RefusalWithoutFailsFailsTheStep() {
+    Exception e = Assert.ThrowsAny<Exception>(() =>
+      BuildInline(
+        "["
+          + WePipe
+          + ", { \"assemble\": { \"code\": \"setupasm:pipe-straight-we\", \"at\": [1, 0, 0], \"arms\": \"ew\" } },"
+          + " { \"cap\": { \"at\": [0, 0, 0], \"face\": \"e\" } }]"
+      )
+    );
+
+    Assert.Contains("could not cap", e.Message);
+  }
+
+  // Fails when face is dropped from the required fields: a cap step with no face clicks the up face.
+  [Fact]
+  public void CapStep_FieldsRequired() {
+    Exception e = Assert.ThrowsAny<Exception>(() =>
+      BuildInline("[" + WePipe + ", { \"cap\": { \"at\": [0, 0, 0] } }]")
+    );
+
+    Assert.Contains("takes \"face\"", e.Message);
   }
 
   // Fails when the fixed flag is read as anything but the record's.
