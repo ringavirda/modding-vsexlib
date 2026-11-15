@@ -51,6 +51,9 @@ public sealed partial class SetupScene
       Draw(step.Path, offHand);
     Player.HoldOffHand(offHand);
     string? control = (string?)step.Body["control"];
+    Vec3d? aim = step.Body["hit"] is JArray point
+      ? new Vec3d((double)point[0], (double)point[1], (double)point[2])
+      : null;
     bool answer;
     try
     {
@@ -75,7 +78,8 @@ public sealed partial class SetupScene
             keys.Contains("sprint"),
             seconds,
             face,
-            TickSecond
+            TickSecond,
+            aim
           );
     }
     catch (ArgumentException e)
