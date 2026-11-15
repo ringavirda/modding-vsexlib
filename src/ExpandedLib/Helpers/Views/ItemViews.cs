@@ -122,12 +122,14 @@ public static class ItemViews {
   /// <param name="api">The api of the side whose world is loaded.</param>
   /// <param name="shape">The shape's base, selectiveElements and rotateX/Y/Z are read.</param>
   /// <param name="kind">Longtool, Plate, Bulk, Bar, Lump or Pile.</param>
-  /// <param name="tip">The working end as a sign and an axis letter ("+y"), or null.</param>
+  /// <param name="tip">The working end as a sign and an axis letter ("+y"), or null; ignored for a pile.</param>
   /// <param name="guiRotation">The slot rotation in degrees about x, y and z, or null for the kind's; the slot
-  /// origin is computed for it, and its scale too except for a longtool's, which keeps the spear's close-up.</param>
+  /// origin is computed for it, and its scale too except for a longtool's, which keeps the spear's close-up. Ignored
+  /// for a pile, whose slot keeps the nails' rotation.</param>
   /// <returns>The views, as the collectible overload gives an item of that shape and kind.</returns>
   /// <exception cref="ArgumentException"><paramref name="kind"/> is None, Tool, Workpiece or a block kind,
-  /// whose reference is a collectible or a block; or <paramref name="tip"/> is not a sign and one of x, y, z.</exception>
+  /// whose reference is a collectible or a block; or, for a kind other than Pile, <paramref name="tip"/> is not a sign
+  /// and one of x, y, z.</exception>
   /// <exception cref="InvalidOperationException">The shape does not load or has no drawn face.</exception>
   public static ItemViewSet Compute(
     ICoreAPI api,
