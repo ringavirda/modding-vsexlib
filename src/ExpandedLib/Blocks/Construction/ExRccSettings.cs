@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
-using System.Linq;
 using System.Runtime.CompilerServices;
 using ExpandedLib.Registries;
 
@@ -47,9 +46,10 @@ public static class ExRccSettings {
       : null;
 
   /// <summary>Registers the codes of <paramref name="domain"/>'s broken RCC mega-blocks that are
-  /// lost at the salvage ratio; every other returned stack comes back whole. A later registration
-  /// for the domain replaces the earlier one, and one from another assembly logs a Warning naming
-  /// both assemblies. The list replaces a <c>brokenDropsLost</c> list in the block JSON.</summary>
+  /// lost at the salvage ratio; every other returned stack comes back whole, so an empty list loses
+  /// nothing, and a domain with no list returns every stack at the ratio. A later registration
+  /// replaces the earlier one, and one from another assembly logs a Warning naming both. The list
+  /// replaces a <c>brokenDropsLost</c> list in the block JSON.</summary>
   /// <param name="domain">The mod domain whose blocks the list applies to.</param>
   /// <param name="codes">Full item or block codes with a domain, each matched as a wildcard
   /// (<c>game:clay-*</c>) against the resolved code of a returned stack.</param>
@@ -83,7 +83,9 @@ public static class ExRccSettings {
   }
 
   /// <summary>The codes registered by <see cref="RegisterBrokenDropsLost"/> for
-  /// <paramref name="domain"/>, or null when the domain registered none.</summary>
+  /// <paramref name="domain"/>.</summary>
+  /// <returns>Null when the domain never registered a list (every stack is then at the ratio); an
+  /// empty list when it registered one with no codes (every stack is whole).</returns>
   public static IReadOnlyList<string>? BrokenDropsLost(string domain) =>
     _brokenDropsLost.TryGetValue(domain, out var entry) ? entry.Codes : null;
 

@@ -28,7 +28,7 @@ public class ExRightClickConstructable
     IControlStates {
   private readonly ExRightClickConstruction rcc = new();
   private float brokenDropsRatio = 1f;
-  private string[] brokenDropsLost = [];
+  private string[]? brokenDropsLost;
 
   /// <summary>The block's shape with the elements of the stages built so far selected.</summary>
   public CompositeShape shape { get; protected set; }
@@ -86,7 +86,9 @@ public class ExRightClickConstructable
   public override void Initialize(ICoreAPI api, JsonObject properties) {
     base.Initialize(api, properties);
     brokenDropsRatio = properties["brokenDropsRatio"].AsFloat(1f);
-    brokenDropsLost = properties["brokenDropsLost"].AsArray<string>([]) ?? [];
+    brokenDropsLost = properties["brokenDropsLost"].Exists
+      ? properties["brokenDropsLost"].AsArray<string>([])
+      : null;
     GatesProduction = properties["gatesProduction"].AsBool(true);
     var stages = properties["stages"].AsObject<ExConstructionStage[]>(null);
     rcc.LateInit(
@@ -297,11 +299,13 @@ public class ExRightClickConstructable
     ExRccSettings.BrokenDropsRatio(Block.Code.Domain) ?? brokenDropsRatio;
 
   // The codes lost at the salvage ratio: the owning mod's registered list, else the JSON list.
-  internal IReadOnlyList<string> EffectiveBrokenDropsLost =>
+  internal IReadOnlyList<string>? EffectiveBrokenDropsLost =>
     ExRccSettings.BrokenDropsLost(Block.Code.Domain) ?? brokenDropsLost;
 
   internal bool IsBrokenDropLost(string code) {
-    foreach (string entry in EffectiveBrokenDropsLost)
+    if (EffectiveBrokenDropsLost is not { } list)
+      return true;
+    foreach (string entry in list)
       if (WildcardUtil.Match(entry, code))
         return true;
     return false;
@@ -326,21 +330,27 @@ public class ExRightClickConstructable
 #endif
   }
 
-  /// <summary>The materials this block would scatter when broken, across every completed stage:
-  /// a stack whose code the domain lists as lost (<see cref="ExRccSettings.BrokenDropsLost"/>, else
-  /// the block's <c>brokenDropsLost</c>) at <paramref name="ratio"/> (0..1) of the consumed size,
-  /// every other stack whole.</summary>
-  /// <param name="ratio">The fraction of a listed stack returned, 0..1.</param>
+  /// <summary>The materials this block would scatter when broken, across every completed stage.
+  /// With no list (neither <see cref="ExRccSettings.BrokenDropsLost"/> nor the block's
+  /// <c>brokenDropsLost</c>) every stack is at <paramref name="ratio"/> of the consumed size; with an
+  /// empty list every stack is whole; with a list a stack whose code it lists is at
+  /// <paramref name="ratio"/> and every other stack whole.</summary>
+  /// <param name="ratio">The fraction of a lost stack returned, 0..1.</param>
   /// <param name="rand">The rounding source.</param>
+  /// <returns>The stacks, empty below completed stage 1.</returns>
   [MethodImpl(MethodImplOptions.NoInlining)]
   public ItemStack[] GetConstructionDrops(float ratio, Random rand) =>
-    rcc.GetDrops(ratio, rand, IsBrokenDropLost);
+    EffectiveBrokenDropsLost == null
+      ? rcc.GetDrops(ratio, rand)
+      : rcc.GetDropsLosing(ratio, rand, IsBrokenDropLost);
 
   /// <summary>The materials of a block destroyed rather than taken apart (a burst), across every
   /// completed stage, every stack at <paramref name="ratio"/> (0..1) of the consumed size whether
   /// listed as lost or not.</summary>
   /// <param name="ratio">The fraction of each stack returned, 0..1.</param>
   /// <param name="rand">The rounding source.</param>
+  /// <returns>The stacks, empty below completed stage 1.</returns>
+  [MethodImpl(MethodImplOptions.NoInlining)]
   public ItemStack[] GetWreckDrops(float ratio, Random rand) =>
     rcc.GetDrops(ratio, rand);
 

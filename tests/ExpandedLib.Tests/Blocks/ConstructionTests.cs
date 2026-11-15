@@ -584,16 +584,16 @@ public class ConstructionTests {
       );
   }
 
-  // Fails when a null list is read as every code listed.
+  // Fails when an empty registered or JSON list is read as no list.
   [Fact]
-  public void With_no_list_registered_every_stack_returns_whole() {
+  public void An_empty_list_returns_every_stack_whole() {
     var world = new TestWorld();
     world.RegisterItem("game:ingot-iron");
     world.RegisterItem("game:burnedbrick-fire");
     ExRightClickConstructable behavior = Dismantled(
       world,
-      "lostnone",
-      new JObject { ["brokenDropsRatio"] = 0.5f },
+      "lostempty",
+      Lost(),
       ("game:ingot-iron", 3, null),
       ("game:burnedbrick-fire", 7, null)
     );
@@ -603,6 +603,67 @@ public class ConstructionTests {
       Assert.Equal(3, Total(drops, "game:ingot-iron"));
       Assert.Equal(7, Total(drops, "game:burnedbrick-fire"));
     }
+  }
+
+  // Fails when the no-list branch goes through the list rule (every stack whole).
+  [Fact]
+  public void With_no_list_every_stack_returns_at_the_ratio() {
+    var world = new TestWorld();
+    world.RegisterItem("game:ingot-iron");
+    ExRightClickConstructable behavior = Dismantled(
+      world,
+      "lostnone",
+      new JObject { ["brokenDropsRatio"] = 0.5f },
+      ("game:ingot-iron", 10, null)
+    );
+
+    int total = 0;
+    for (int seed = 0; seed < 200; seed++)
+      total += Total(
+        behavior.GetConstructionDrops(0.5f, new Random(seed)),
+        "game:ingot-iron"
+      );
+
+    Assert.InRange(total, 200 * 10 * 0.5 - 150, 200 * 10 * 0.5 + 150);
+  }
+
+  // Fails when GetDrops gains a second overload: Harmony looks it up by name alone.
+  [Fact]
+  public void ExRightClickConstruction_has_one_GetDrops() {
+    Assert.Single(
+      typeof(ExRightClickConstruction)
+        .GetMethods(
+          BindingFlags.Instance
+            | BindingFlags.Static
+            | BindingFlags.Public
+            | BindingFlags.NonPublic
+            | BindingFlags.DeclaredOnly
+        )
+        .Where(m => m.Name == nameof(ExRightClickConstruction.GetDrops))
+    );
+  }
+
+  // Fails when a registered empty list is stored as null.
+  [Fact]
+  public void A_registered_empty_list_is_not_a_missing_one() {
+    ExRccSettings.RegisterBrokenDropsLost("lostregempty", []);
+    try {
+      Assert.NotNull(ExRccSettings.BrokenDropsLost("lostregempty"));
+      Assert.Empty(ExRccSettings.BrokenDropsLost("lostregempty")!);
+      Assert.Null(ExRccSettings.BrokenDropsLost("lostregnever"));
+    } finally {
+      ExRccSettings.ResetForWorld();
+    }
+  }
+
+  // Fails when GetWreckDrops loses NoInlining.
+  [Fact]
+  public void GetWreckDrops_is_not_inlined() {
+    Assert.True(
+      typeof(ExRightClickConstructable)
+        .GetMethod(nameof(ExRightClickConstructable.GetWreckDrops))!
+        .MethodImplementationFlags.HasFlag(MethodImplAttributes.NoInlining)
+    );
   }
 
   // Fails when the brokenDropsLost JSON property is ignored.

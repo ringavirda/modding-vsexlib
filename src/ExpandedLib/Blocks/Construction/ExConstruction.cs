@@ -418,11 +418,11 @@ public class ExRightClickConstruction {
   /// returned.</exception>
   [MethodImpl(MethodImplOptions.NoInlining)]
   public ItemStack[] GetDrops(float dropRatio = 1f, Random? rnd = null) =>
-    GetDrops(dropRatio, rnd, null);
+    GetDropsLosing(dropRatio, rnd, null);
 
   // lost: whether a returned stack's resolved code is scaled by dropRatio; null scales every stack,
   // and a stack it rejects is returned at its full size.
-  internal ItemStack[] GetDrops(
+  internal ItemStack[] GetDropsLosing(
     float dropRatio,
     Random? rnd,
     System.Func<string, bool>? lost
