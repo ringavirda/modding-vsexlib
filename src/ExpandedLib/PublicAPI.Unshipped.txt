@@ -834,3 +834,5 @@ override ExpandedLib.Assembling.HandAssemblyModSystem.StartServerSide(Vintagesto
 override ExpandedLib.Networks.BlockNetworkNode.OnBlockRemoved(Vintagestory.API.Common.IWorldAccessor! world, Vintagestory.API.MathTools.BlockPos! pos) -> void
 virtual ExpandedLib.Networks.BlockNetworkNode.IsCrackedAt(Vintagestory.API.Common.IWorldAccessor! world, Vintagestory.API.MathTools.BlockPos! pos) -> bool
 virtual ExpandedLib.Networks.BlockNetworkNode.WrenchFixed(Vintagestory.API.Common.IWorldAccessor! world, Vintagestory.API.MathTools.BlockPos! pos, Vintagestory.API.Common.BlockSelection! selection) -> bool
+ExpandedLib.Networks.NetworkFaces
+static ExpandedLib.Networks.NetworkFaces.ClosesOpening(Vintagestory.API.Common.IBlockAccessor! blockAccessor, Vintagestory.API.MathTools.BlockPos! neighbourPos, Vintagestory.API.MathTools.BlockFacing! faceTowardPipe) -> bool

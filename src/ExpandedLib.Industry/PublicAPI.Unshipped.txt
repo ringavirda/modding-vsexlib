@@ -985,3 +985,12 @@ ExpandedLib.Industry.Machining.MachineSpindle.Through.init -> void
 static ExpandedLib.Industry.Machining.MachineAnchors.Compose(ExpandedLib.Industry.Machining.MachineAnchor! anchor, Vintagestory.API.MathTools.Vec3f! blockRotationDeg, ExpandedLib.Industry.Machining.MachineSpindle? spindle, float angleRad) -> float[]!
 override ExpandedLib.Industry.Pipes.BlockPipe.IsCrackedAt(Vintagestory.API.Common.IWorldAccessor! world, Vintagestory.API.MathTools.BlockPos! pos) -> bool
 override ExpandedLib.Industry.Pipes.BlockPipe.WrenchFixed(Vintagestory.API.Common.IWorldAccessor! world, Vintagestory.API.MathTools.BlockPos! pos, Vintagestory.API.Common.BlockSelection! selection) -> bool
+ExpandedLib.Industry.Pipes.PipeFaceClass
+ExpandedLib.Industry.Pipes.PipeFaceClass.Vent = 0 -> ExpandedLib.Industry.Pipes.PipeFaceClass
+ExpandedLib.Industry.Pipes.PipeFaceClass.Air = 1 -> ExpandedLib.Industry.Pipes.PipeFaceClass
+ExpandedLib.Industry.Pipes.PipeFaceClass.Structure = 2 -> ExpandedLib.Industry.Pipes.PipeFaceClass
+ExpandedLib.Industry.Pipes.PipeFaceClass.Solid = 3 -> ExpandedLib.Industry.Pipes.PipeFaceClass
+ExpandedLib.Industry.Pipes.PipeFaceClass.Other = 4 -> ExpandedLib.Industry.Pipes.PipeFaceClass
+ExpandedLib.Industry.Pipes.PipeFaces
+static ExpandedLib.Industry.Pipes.PipeFaces.Classify(Vintagestory.API.Common.IBlockAccessor! blockAccessor, ExpandedLib.Industry.Pipes.IPipeVentStrategy? vent, ExpandedLib.Networks.BlockNetworkNode! node, Vintagestory.API.MathTools.BlockPos! nodePos, Vintagestory.API.MathTools.BlockFacing! face) -> ExpandedLib.Industry.Pipes.PipeFaceClass
+ExpandedLib.Industry.Pipes.PipeNetwork.VentFor(ExpandedLib.Networks.BlockNetworkNode! node) -> ExpandedLib.Industry.Pipes.IPipeVentStrategy?

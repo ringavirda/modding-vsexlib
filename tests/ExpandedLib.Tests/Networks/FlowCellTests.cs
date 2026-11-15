@@ -1,4 +1,5 @@
 using System;
+using ExpandedLib.Assembling;
 using ExpandedLib.Industry.Pipes;
 using ExpandedLib.Networks;
 using ExpandedLib.Testing;
@@ -88,6 +89,18 @@ public class FlowCellTests {
     }
 
     public LumpedCellEntity() => Behaviors.Add(new CastMainCell(this));
+  }
+
+  private sealed class CappableCellEntity : BlockEntityNetworkNode {
+    public override string NetworkType {
+      get => "pipeflow";
+      set { }
+    }
+
+    public CappableCellEntity() {
+      Behaviors.Add(new CastMainCell(this));
+      Behaviors.Add(new BEBehaviorAssembled(this));
+    }
   }
 
   private static TestWorld NewWorld() {
@@ -214,6 +227,56 @@ public class FlowCellTests {
     Assert.True(
       store.EdgeBetween(store.IndexOf(Key(1)), store.IndexOf(Key(2))) >= 0
     );
+  }
+
+  // Fails when the opening of a capped end is shaped from the position-less connector test, so the cap leaves it venting.
+  [Fact]
+  public void Cap_FlowShutsCappedEnd() {
+    var w = NewWorld();
+    var be = new CappableCellEntity();
+    Lay(w, 10, Entry(3));
+    Lay(w, 11, Entry(3), be);
+    be.GetBehavior<BEBehaviorAssembled>()
+      .SetCap(
+        BlockFacing.EAST,
+        new ItemStack(w.RegisterItem("test:cap")),
+        null
+      );
+
+    Tick(w, 10, 2e-5f);
+
+    var store = RunAt(w, 10).Store;
+    int east = store.FindOpening(
+      store.IndexOf(Key(11)),
+      (byte)(1 + BlockFacing.EAST.Index)
+    );
+    Assert.True(east < 0 || store.OpeningFlowKgPerSecond(east) == 0);
+    Assert.Equal(1, FlowingOpenings(store));
+  }
+
+  // Fails when a face with no cap is shut, so the open end of the run no longer vents.
+  [Fact]
+  public void Cap_FlowOpenEndStillVents() {
+    var w = NewWorld();
+    var be = new CappableCellEntity();
+    Lay(w, 10, Entry(3));
+    Lay(w, 11, Entry(3), be);
+    be.GetBehavior<BEBehaviorAssembled>()
+      .SetCap(
+        BlockFacing.EAST,
+        new ItemStack(w.RegisterItem("test:cap")),
+        null
+      );
+
+    Tick(w, 10, 2e-5f);
+
+    var store = RunAt(w, 10).Store;
+    int west = store.FindOpening(
+      store.IndexOf(Key(10)),
+      (byte)(1 + BlockFacing.WEST.Index)
+    );
+    Assert.True(west >= 0);
+    Assert.True(Math.Abs(store.OpeningFlowKgPerSecond(west)) > 1e-6);
   }
 
   // Fails when a face toward a joined neighbour also opens.

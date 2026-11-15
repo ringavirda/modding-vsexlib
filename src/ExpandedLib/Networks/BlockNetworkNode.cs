@@ -925,19 +925,21 @@ public abstract class BlockNetworkNode
   public virtual bool HasConnectorAt(BlockFacing face) =>
     Orientation != null && Orientation.Contains(face.Code[0]);
 
-  /// <summary>The connector test the orientation pass of a neighbour reads: the block's shape, not a latch a block entity closes at <paramref name="pos"/>. Defaults to the position-aware answer.</summary>
+  /// <summary>The connector test the orientation pass of a neighbour reads: the block's shape, not a latch a block entity closes at <paramref name="pos"/> and not a cap fitted there. Defaults to the position-less answer.</summary>
   protected internal virtual bool ShapeConnectorAt(
     IBlockAccessor world,
     BlockPos pos,
     BlockFacing face
-  ) => HasConnectorAt(world, pos, face);
+  ) => HasConnectorAt(face);
 
-  /// <summary>Position-aware connector test, answering <see cref="INetworkMember.HasConnectorAt"/>. Defaults to the position-less answer.</summary>
+  /// <summary>Position-aware connector test, answering <see cref="INetworkMember.HasConnectorAt"/>. Defaults to the position-less answer, <c>false</c> on a face a cap is fitted to (<see cref="BEBehaviorAssembled.CapAt"/>).</summary>
   public virtual bool HasConnectorAt(
     IBlockAccessor world,
     BlockPos pos,
     BlockFacing face
-  ) => HasConnectorAt(face);
+  ) =>
+    HasConnectorAt(face)
+    && BEBehaviorAssembled.At(world, pos)?.CapAt(face) == null;
 
   /// <summary>Returns all block faces that have a network connector, or null if unorientated; null and empty mean different things.</summary>
   public virtual BlockFacing[]? GetConnectorFaces() =>

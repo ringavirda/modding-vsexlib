@@ -6,14 +6,18 @@ using Vintagestory.API.MathTools;
 
 namespace ExpandedLib.Assembling;
 
-/// <summary>Holds what hand assembly records on a placed part: whether it is fixed and the fasteners each joint spent. Absent records read as not fixed, with no fasteners.</summary>
+/// <summary>Holds what hand assembly records on a placed part: whether it is fixed, the fasteners each joint spent, and the cap fitted to each face with the fasteners its joint spent. Absent records read as not fixed, with no fasteners and no caps.</summary>
 [BlockEntityBehaviorRegister]
 public class BEBehaviorAssembled(BlockEntity blockentity)
   : BlockEntityBehavior(blockentity) {
   private const string FixedKey = "asmFixed";
   private const string JointKey = "asmFast";
+  private const string CapKey = "asmCap";
+  private const string CapFastenerKey = "asmCapFast";
 
   private readonly Dictionary<string, ItemStack> _fasteners = [];
+  private readonly Dictionary<string, ItemStack> _caps = [];
+  private readonly Dictionary<string, ItemStack> _capFasteners = [];
 
   /// <summary>Whether hand assembly fixed this part. A fixed part keeps its token.</summary>
   public bool Fixed { get; set; }
@@ -33,6 +37,35 @@ public class BEBehaviorAssembled(BlockEntity blockentity)
   public ItemStack? Joint {
     get => _fasteners.GetValueOrDefault(JointKey);
     set => Set(JointKey, value);
+  }
+
+  /// <summary>The cap fitted to <paramref name="face"/>, held on the piece it closes.</summary>
+  /// <param name="face">The face of this part the cap is on.</param>
+  /// <returns>The cap stack, or null when the face has none.</returns>
+  internal ItemStack? CapAt(BlockFacing face) =>
+    _caps.GetValueOrDefault(face.Code);
+
+  /// <summary>The fasteners the joint of the cap on <paramref name="face"/> spent.</summary>
+  /// <param name="face">The face of this part the cap is on.</param>
+  /// <returns>The fastener stack, or null when the cap spent none or the face has no cap.</returns>
+  internal ItemStack? CapFastenersAt(BlockFacing face) =>
+    _capFasteners.GetValueOrDefault(face.Code);
+
+  /// <summary>Records the cap on <paramref name="face"/> and the fasteners its joint spent. Records only: the caller marks the block entity dirty and the networks to rebuild.</summary>
+  /// <param name="face">The face of this part the cap is on.</param>
+  /// <param name="cap">The cap stack, or null to clear both records of the face.</param>
+  /// <param name="fasteners">The fasteners the cap's joint spent, or null for none; ignored when <paramref name="cap"/> is null.</param>
+  internal void SetCap(BlockFacing face, ItemStack? cap, ItemStack? fasteners) {
+    if (cap == null) {
+      _caps.Remove(face.Code);
+      _capFasteners.Remove(face.Code);
+      return;
+    }
+    _caps[face.Code] = cap;
+    if (fasteners == null)
+      _capFasteners.Remove(face.Code);
+    else
+      _capFasteners[face.Code] = fasteners;
   }
 
   /// <summary>The record of the part at <paramref name="pos"/>.</summary>
@@ -59,6 +92,10 @@ public class BEBehaviorAssembled(BlockEntity blockentity)
       tree.SetBool(FixedKey, true);
     foreach ((string key, ItemStack stack) in _fasteners)
       tree.SetItemstack(key, stack.Clone());
+    foreach ((string code, ItemStack stack) in _caps)
+      tree.SetItemstack(CapKey + code, stack.Clone());
+    foreach ((string code, ItemStack stack) in _capFasteners)
+      tree.SetItemstack(CapFastenerKey + code, stack.Clone());
   }
 
   /// <inheritdoc/>
@@ -76,9 +113,27 @@ public class BEBehaviorAssembled(BlockEntity blockentity)
       stack.ResolveBlockOrItem(worldAccessForResolve);
       _fasteners[key] = stack;
     }
+    ReadFaces(tree, worldAccessForResolve, CapKey, _caps);
+    ReadFaces(tree, worldAccessForResolve, CapFastenerKey, _capFasteners);
   }
 
-  /// <summary>Clears the fastener records of a part a schematic or a paste brings in, and keeps <see cref="Fixed"/>: nothing was spent on its joints.</summary>
+  private static void ReadFaces(
+    ITreeAttribute tree,
+    IWorldAccessor world,
+    string prefix,
+    Dictionary<string, ItemStack> into
+  ) {
+    into.Clear();
+    foreach (BlockFacing face in BlockFacing.ALLFACES) {
+      ItemStack? stack = tree.GetItemstack(prefix + face.Code);
+      if (stack == null)
+        continue;
+      stack.ResolveBlockOrItem(world);
+      into[face.Code] = stack;
+    }
+  }
+
+  /// <summary>Clears the fastener records of a part a schematic or a paste brings in, caps' included, and keeps <see cref="Fixed"/> and the caps: nothing was spent on its joints.</summary>
   public override void OnLoadCollectibleMappings(
     IWorldAccessor worldForNewMappings,
     Dictionary<int, AssetLocation> oldBlockIdMapping,
@@ -94,6 +149,7 @@ public class BEBehaviorAssembled(BlockEntity blockentity)
       resolveImports
     );
     _fasteners.Clear();
+    _capFasteners.Clear();
   }
 
   private static IEnumerable<string> FaceKeys() {

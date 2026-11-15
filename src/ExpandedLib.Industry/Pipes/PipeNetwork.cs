@@ -707,7 +707,11 @@ public class PipeNetwork : BlockNetwork {
 
   /// <summary>The strategy that classifies <paramref name="node"/>'s faces: the one its block
   /// supplies, else the factory's; <c>null</c> when neither exists.</summary>
-  private IPipeVentStrategy? VentFor(BlockNetworkNode node) {
+  /// <remarks>The first call for an <see cref="IPipeVentSource"/> block creates that block's
+  /// strategy and adds it to the network's per-block strategies and to the strategies it vents with
+  /// each tick, as the tick's own classification does; later calls return the same one.</remarks>
+  /// <param name="node">The node block whose strategy is wanted.</param>
+  public IPipeVentStrategy? VentFor(BlockNetworkNode node) {
     if (node is not IPipeVentSource source)
       return _vent;
     if (!_nodeVents.TryGetValue(node, out IPipeVentStrategy? vent)) {
