@@ -254,12 +254,13 @@ public class FlowCellTests {
     Assert.Equal(1, FlowingOpenings(store));
   }
 
-  // Fails when a face with no cap is shut, so the open end of the run no longer vents.
+  // Fails when a face with no cap is shut, so the open end of the run no longer vents beside a cap on another face of its cell.
   [Fact]
   public void Cap_FlowOpenEndStillVents() {
     var w = NewWorld();
     var be = new CappableCellEntity();
-    Lay(w, 10, Entry(3));
+    var west = new CappableCellEntity();
+    Lay(w, 10, Entry(3), west);
     Lay(w, 11, Entry(3), be);
     be.GetBehavior<BEBehaviorAssembled>()
       .SetCap(
@@ -267,16 +268,18 @@ public class FlowCellTests {
         new ItemStack(w.RegisterItem("test:cap")),
         null
       );
+    west.GetBehavior<BEBehaviorAssembled>()
+      .SetCap(BlockFacing.UP, new ItemStack(w.RegisterItem("test:cap")), null);
 
     Tick(w, 10, 2e-5f);
 
     var store = RunAt(w, 10).Store;
-    int west = store.FindOpening(
+    int opening = store.FindOpening(
       store.IndexOf(Key(10)),
       (byte)(1 + BlockFacing.WEST.Index)
     );
-    Assert.True(west >= 0);
-    Assert.True(Math.Abs(store.OpeningFlowKgPerSecond(west)) > 1e-6);
+    Assert.True(opening >= 0);
+    Assert.True(Math.Abs(store.OpeningFlowKgPerSecond(opening)) > 1e-6);
   }
 
   // Fails when a face toward a joined neighbour also opens.
