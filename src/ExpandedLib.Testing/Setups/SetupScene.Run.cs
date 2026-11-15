@@ -10,8 +10,10 @@ public sealed partial class SetupScene
   internal const string DefaultWriteVariable = "EX_WRITE_SETUPS";
   internal const string DefaultScenesVariable = "EX_SETUP_SCENES";
 
-  /// <summary>Runs the file's <c>seconds</c>: each second its due <c>during</c> actions, then its
-  /// ticks, then the <c>record</c> sample of that second.</summary>
+  /// <summary>Runs the file's <c>seconds</c>: each second its due <c>during</c> actions, then the
+  /// rest of its ticks, then the <c>record</c> sample of that second.</summary>
+  /// <remarks>A <c>wait</c> met inside a second leaves that second running; its ticks then run only
+  /// what is left of it.</remarks>
   /// <param name="mods">The header's <c>mods</c> map, in order.</param>
   /// <param name="game">The game series that runs the case, as the recording names it; null for
   /// the file's <c>game</c>.</param>
@@ -28,7 +30,7 @@ public sealed partial class SetupScene
         RunSteps(action.Steps);
       JoinLines();
       run.Before(second);
-      TickSecond();
+      FinishSecond();
       GiveSpawns();
       run.Sample(second);
     }

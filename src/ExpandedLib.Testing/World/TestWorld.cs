@@ -805,16 +805,15 @@ public sealed partial class TestWorld : IDisposable {
     AdvanceCallbacks((long)System.Math.Round(dt * 1000f));
   }
 
-  /// <summary>Runs one second of block-entity time. Each listener not in <paramref name="except"/>
-  /// fires at its own registered interval with that interval in seconds as dt, at the moments of
-  /// the second its accrued time reaches the interval; a listener over 1000 ms carries its accrued
-  /// time into the next second. <paramref name="network"/> is one fire of the network listener and
-  /// runs at 200, 400, 600, 800 and 1000 ms, among the listeners due at the same moment. Listeners
-  /// due at one moment fire in firing order; the network fire due with them runs just before the
-  /// listener <paramref name="networkBefore"/>, even when that listener is in except or not due, and
-  /// after them when it is null or gone. At the second's end sim time advances 1000 ms and the
-  /// delayed callbacks that come due fire, after the listeners and before a network fire that runs
-  /// after them.</summary>
+  /// <summary>Runs one second of block-entity time as ten 100 ms <see cref="RunSlice"/> calls. Each listener
+  /// not in <paramref name="except"/> fires at its own registered interval with that interval in seconds as dt,
+  /// at the moments of the second its accrued time reaches the interval; a listener over 1000 ms carries its
+  /// accrued time into the next second. <paramref name="network"/> is one fire of the network listener and
+  /// runs at 200, 400, 600, 800 and 1000 ms, among the listeners due at the same moment. Listeners due at one
+  /// moment fire in firing order; the network fire due with them runs just before the listener
+  /// <paramref name="networkBefore"/>, even when that listener is in except or not due, and after them when it
+  /// is null or gone. At the second's end sim time advances 1000 ms and the delayed callbacks that come due
+  /// fire, after the listeners and before a network fire that runs after them.</summary>
   /// <remarks>The accrued time of a listener in <paramref name="except"/> is left as it was. A
   /// listener registered during the second starts accruing at the next moment of it.</remarks>
   internal void RunSecond(
@@ -822,11 +821,47 @@ public sealed partial class TestWorld : IDisposable {
     System.Action network,
     long? networkBefore
   ) {
+    for (int i = 0; i < 1000 / SliceMs; i++)
+      RunSlice(SliceMs, except, network, networkBefore);
+  }
+
+  /// <summary>The length of the slices <see cref="RunSecond"/> is cut into, in ms.</summary>
+  internal const int SliceMs = 100;
+
+  /// <summary>How far the second <see cref="RunSlice"/> is running has got, in ms: 0 between seconds, under
+  /// 1000 inside one.</summary>
+  internal int MsIntoSecond { get; private set; }
+
+  // Sim time (ms) since the network last fired inside the running second.
+  private int _msSinceFire;
+
+  /// <summary>Runs the next <paramref name="ms"/> of the running second, firing the listeners, the network and
+  /// the delayed callbacks at the moments <see cref="RunSecond"/> fires them; slices that add up to 1000 ms run
+  /// that second exactly as <see cref="RunSecond"/> does, whatever their lengths.</summary>
+  /// <param name="ms">Sim time to run, in ms, from 1 up to what is left of the second.</param>
+  /// <param name="except">Ids of the listeners that do not fire in this slice.</param>
+  /// <param name="network">One fire of the network listener.</param>
+  /// <param name="networkBefore">The listener a network fire due with it runs just before; null for after the
+  /// listeners due.</param>
+  /// <exception cref="System.ArgumentOutOfRangeException"><paramref name="ms"/> is under 1 or runs past the
+  /// second's end.</exception>
+  internal void RunSlice(
+    int ms,
+    IReadOnlySet<long> except,
+    System.Action network,
+    long? networkBefore
+  ) {
     const int second = 1000;
     const int fire = BlockNetworkModSystem.ListenerIntervalMs;
-    int sinceFire = 0;
-    for (int elapsed = 0; elapsed < second;) {
-      int step = System.Math.Min(second - elapsed, fire - sinceFire);
+    if (ms < 1 || ms > second - MsIntoSecond)
+      throw new System.ArgumentOutOfRangeException(
+        nameof(ms),
+        ms,
+        $"a slice runs 1 to {second - MsIntoSecond} ms of the second"
+      );
+    int end = MsIntoSecond + ms;
+    while (MsIntoSecond < end) {
+      int step = System.Math.Min(end - MsIntoSecond, fire - _msSinceFire);
       foreach (var (id, listener) in _tickListeners)
         if (!except.Contains(id))
           step = System.Math.Min(
@@ -836,11 +871,11 @@ public sealed partial class TestWorld : IDisposable {
               System.Math.Max(1, listener.IntervalMs) - _tickAccumMs[id]
             )
           );
-      elapsed += step;
-      sinceFire += step;
-      bool ran = sinceFire < fire;
+      MsIntoSecond += step;
+      _msSinceFire += step;
+      bool ran = _msSinceFire < fire;
       if (!ran)
-        sinceFire = 0;
+        _msSinceFire = 0;
       // Snapshot: a listener may unregister (or a block entity may register a new one) while firing.
       foreach (long id in _tickListeners.Keys.ToList()) {
         if (!ran && id == networkBefore) {
@@ -861,11 +896,13 @@ public sealed partial class TestWorld : IDisposable {
         if (_tickListeners.ContainsKey(id))
           _tickAccumMs[id] = accum;
       }
-      if (elapsed == second)
+      if (MsIntoSecond == second)
         AdvanceCallbacks(second);
       if (!ran)
         network();
     }
+    if (MsIntoSecond == second)
+      MsIntoSecond = 0;
   }
 
   /// <summary>The tick listeners in firing order, each with its id and callback.</summary>
