@@ -290,16 +290,18 @@ public class StructureBreaksTests
     Assert.Equal(ThreeStageBreaks * (1 + TwoCells.Length), result.Breaks);
   }
 
-  // Fails when Build takes the salvage ratio as 1: a half refund of 3 is 1..2, never 3.
+  // Fails when Build applies the ratio to an unlisted code: a casting of 3 is expected whole, never
+  // 1..2, and a listed brick of 3 at half is 1..2, never 3.
   [Fact]
-  public void A_construction_refunds_at_its_salvage_ratio()
+  public void A_construction_refunds_castings_whole_and_listed_codes_at_its_salvage_ratio()
   {
     StructureBreaks.Result result = Run(
       Mega("salvage")
         .EntityClass("test-plain")
         .Construction(c =>
           c.BrokenDropsRatio(0.5f)
-            .Stage(s => s.Require("game:stick", 1))
+            .BrokenDropsLost("game:plank-*")
+            .Stage(s => s.Require("game:stick", 3))
             .Stage(s => s.Require("game:plank-oak", 3))
         )
     );
