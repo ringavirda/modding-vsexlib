@@ -102,5 +102,13 @@
         }
       }
     }
-  }
+  },
+  "checks": [
+    {
+      "id": "basin-holds-ten",
+      "says": "the basin holds 10 units after the close, as the live run does",
+      "window": "steady",
+      "always": { "series": "bm.BurdenUnits", "min": 10, "max": 10 }
+    }
+  ]
 }
