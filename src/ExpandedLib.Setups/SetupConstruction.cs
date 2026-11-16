@@ -26,6 +26,19 @@ internal static class SetupConstruction {
     return (int)to;
   }
 
+  /// <summary>Fails a stage index asked of a block that has no construction.</summary>
+  /// <param name="to">The step's <c>to</c>, or null.</param>
+  /// <param name="has">Whether the block carries a construction.</param>
+  /// <param name="block">The block and cell, as the message names them.</param>
+  /// <exception cref="SetupFileException"><paramref name="to"/> is an integer and
+  /// <paramref name="has"/> is false.</exception>
+  public static void RequireConstruction(JToken? to, bool has, string block) {
+    if (to is { Type: JTokenType.Integer } && !has)
+      throw new SetupFileException(
+        $"\"to\" {to} needs a construction, and {block} carries none."
+      );
+  }
+
   /// <summary>The variant each stored wildcard key is supplied in.</summary>
   /// <exception cref="SetupFileException">The token is not an object of strings.</exception>
   public static Dictionary<string, string> Materials(JToken? token) {

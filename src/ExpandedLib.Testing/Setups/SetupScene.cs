@@ -161,9 +161,10 @@ public sealed partial class SetupScene : IDisposable
   /// <exception cref="ArgumentException"><paramref name="modPaths"/> does not hold one folder for
   /// each of the file's mods.</exception>
   /// <exception cref="InvalidOperationException">The file uses a step kind the fake world cannot
-  /// run or a key the reader refuses (<c>tree</c>, <c>materials</c> of a placement); or a step
-  /// fails: a code the load did not register, a cell that is not air, a layout or run that does not fit, a step at a cell without the block entity,
-  /// member, key, slot or method it names, a hold, <c>returns</c>, <c>wait</c> or <c>repeat</c> not
+  /// run or a key the reader refuses (<c>tree</c>, <c>materials</c> of a placement,
+  /// <c>complete</c> to a stage on a placement or legend entry); or a step
+  /// fails: a code the load did not register, a cell that is not air, a layout or run that does not
+  /// fit, a step at a cell without the block entity, member, key, slot or method it names, a hold, <c>returns</c>, <c>wait</c> or <c>repeat</c> not
   /// met, or an <c>expect</c> that does not hold. The message names the file and where.</exception>
   public static SetupScene Build(
     SetupFile file,
@@ -311,7 +312,7 @@ public sealed partial class SetupScene : IDisposable
       throw Fail(
         where,
         key == "complete"
-          ? "\"complete\" to a stage is refused: the fake world completes every stage or none."
+          ? "\"complete\" to a stage on a place or legend entry is refused: the harness completes to a stage only in a complete step."
           : $"\"{key}\" is not built; the harness reader refuses it."
       );
     }
@@ -569,6 +570,11 @@ public sealed partial class SetupScene : IDisposable
       target,
       variants
     );
+    if (
+      ReflectionHelpers.GetField(construction, "rcc")
+      is ExRightClickConstruction paid
+    )
+      StoreWildCards(paid, target, variants);
     bool last = target == construction.Construction.Stages.Length - 1;
     if (
       last
@@ -590,6 +596,49 @@ public sealed partial class SetupScene : IDisposable
     return true;
   }
 
+  private void StoreWildCards(
+    ExRightClickConstruction construction,
+    int target,
+    IReadOnlyDictionary<string, string> variants
+  )
+  {
+    for (int i = construction.CurrentCompletedStage + 1; i <= target; i++)
+      foreach (
+        ExConstructionIngredient need in construction.Stages[i].RequireStacks
+          ?? []
+      )
+      {
+        if (need.StoreWildCard is not { } key)
+          continue;
+        string? variant =
+          variants.GetValueOrDefault(key) ?? FirstVariant(need, key);
+        if (variant != null)
+          construction.StoredWildCards[key] = variant;
+      }
+  }
+
+  private string? FirstVariant(ExConstructionIngredient need, string key)
+  {
+    ExConstructionIngredient ingredient = need.Clone();
+    ingredient.Resolve(World.World, "setup complete");
+    IEnumerable<CollectibleObject> registered =
+      ingredient.Type == EnumItemClass.Item
+        ? World.World.Items
+        : World.World.Blocks;
+    foreach (CollectibleObject c in registered)
+      if (
+        c?.Code != null
+        && c.Id != 0
+        && c.Variant.TryGetValue(key, out string? variant)
+        && ingredient.SatisfiesAsIngredient(
+          new ItemStack(c, ingredient.Quantity),
+          false
+        )
+      )
+        return variant;
+    return null;
+  }
+
   private void Complete(
     BlockPos pos,
     string where,
@@ -604,14 +653,18 @@ public sealed partial class SetupScene : IDisposable
         where,
         $"cell {Describe(pos)} has no block entity to complete."
       );
-    if (
-      to is { Type: JTokenType.Integer }
-      && be.GetBehavior<ExRightClickConstructable>() == null
-    )
-      throw Fail(
-        where,
-        $"\"to\" {to} needs a construction, and {block.Code} at {Describe(pos)} carries none."
+    try
+    {
+      SetupConstruction.RequireConstruction(
+        to,
+        be.GetBehavior<ExRightClickConstructable>() != null,
+        $"{block.Code} at {Describe(pos)}"
       );
+    }
+    catch (SetupFileException e)
+    {
+      throw Fail(where, e.Message);
+    }
     bool completed = false;
     if (SetupStructureCheck.IsMultiblock(block, be))
     {

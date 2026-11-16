@@ -69,7 +69,8 @@ public class SetupPackCompleteTests : IDisposable
     string mod,
     string pack,
     string steps,
-    System.Func<string, SetupFileModel?>? stages = null
+    System.Func<string, SetupFileModel?>? stages = null,
+    bool oakPlank = false
   ) =>
     SetupScene.Build(
       SetupFile.Parse(
@@ -87,6 +88,12 @@ public class SetupPackCompleteTests : IDisposable
       {
         w.RegisterItem("game:stick");
         w.RegisterItem("game:flint");
+        if (oakPlank)
+        {
+          Vintagestory.API.Common.Item plank = w.RegisterItem("game:plank-oak");
+          plank.VariantStrict = new() { ["wood"] = "oak" };
+          plank.Variant = new(plank.VariantStrict);
+        }
       },
       w =>
         w.RegisterClass(
@@ -559,6 +566,70 @@ public class SetupPackCompleteTests : IDisposable
     SetupPackRecord pack = scene.Run(Mods).Pack!;
 
     Assert.Contains(("steps[1]", "game:plank-pine", 3), pack.Draws);
+  }
+
+  private static ExpandedLib.Blocks.ExRightClickConstruction KeyFrameRcc(
+    SetupScene scene
+  ) =>
+    (ExpandedLib.Blocks.ExRightClickConstruction)
+      ExpandedLib.Testing.ReflectionHelpers.GetField(
+        scene
+          .World.GetBlockEntity(scene.PositionOf("key"))!
+          .GetBehavior<ExpandedLib.Blocks.ExRightClickConstructable>()!,
+        "rcc"
+      )!;
+
+  private const string PlacedKey =
+    "{\"place\": {\"id\": \"key\", \"code\": \"setupbuild:keyframe\", \"at\": [0, 0, 0]}}";
+
+  // Fails when a paid stage's StoreWildCard variant is not stored under the key materials names, so
+  // the stage keyed on it reads no variant.
+  [Fact]
+  public void A_complete_stores_the_variant_materials_names_for_a_paid_stage()
+  {
+    using SetupScene scene = Build(
+      "setupbuild",
+      Gathered("all", "{\"setupbuild:keyframe\": 1, \"game:plank-pine\": 1}"),
+      PlacedKey
+        + ", {\"complete\": {\"of\": \"key\", \"to\": 1, \"materials\": {\"wood\": \"pine\"}}}"
+    );
+
+    scene.Run(Mods);
+
+    Assert.Equal("pine", KeyFrameRcc(scene).StoredWildCards["wood"]);
+  }
+
+  // Fails when no variant is stored without materials, or the stored one is not the first
+  // registered collectible's.
+  [Fact]
+  public void A_complete_without_materials_stores_the_first_registered_variant()
+  {
+    using SetupScene scene = Build(
+      "setupbuild",
+      Gathered("all", "{\"setupbuild:keyframe\": 1, \"game:plank-oak\": 1}"),
+      PlacedKey + ", {\"complete\": {\"of\": \"key\", \"to\": 1}}",
+      oakPlank: true
+    );
+
+    scene.Run(Mods);
+
+    Assert.Equal("oak", KeyFrameRcc(scene).StoredWildCards["wood"]);
+  }
+
+  // Fails when a stage left unpaid by to stores its variant.
+  [Fact]
+  public void A_complete_stores_no_variant_for_a_stage_it_does_not_pay()
+  {
+    using SetupScene scene = Build(
+      "setupbuild",
+      Gathered("stacks", "{}"),
+      PlacedKey
+        + ", {\"complete\": {\"of\": \"key\", \"to\": 0, \"materials\": {\"wood\": \"pine\"}}}"
+    );
+
+    scene.Run(Mods);
+
+    Assert.Empty(KeyFrameRcc(scene).StoredWildCards);
   }
 
   // Fails when complete raises a structure's cells without drawing them.

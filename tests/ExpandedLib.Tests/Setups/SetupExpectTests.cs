@@ -747,8 +747,7 @@ public class SetupExpectTests : IDisposable
     Assert.Contains("no weather", message);
   }
 
-  // Fails when a numbered stage is rejected by the parser as a position, or a block with nothing
-  // to complete is read as completing to a stage.
+  // Fails when a numbered stage is rejected by the parser as a position.
   [Fact]
   public void A_complete_to_a_stage_number_of_a_block_with_no_construction_is_refused()
   {
