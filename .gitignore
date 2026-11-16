@@ -59,6 +59,10 @@ _ReSharper*/
 # Repo-specific
 #
 
+# Setup recording differences a run writes beside the committed files.
+**/Recordings/**/*.received.json
+**/Recordings/**/*.moved.txt
+
 # Downloaded Vintage Story installs + cached archives.
 /.game
 

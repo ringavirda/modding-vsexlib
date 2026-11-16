@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text.RegularExpressions;
+using ExpandedLib.Scenarios;
 using ExpandedLib.Testing;
 using Vintagestory.API.Common;
 using Vintagestory.API.MathTools;
@@ -63,7 +64,8 @@ public class SetupCasesTests : IDisposable
 
   private SetupRunOptions Options(
     Action<string>? output = null,
-    string? scenesVariable = null
+    string? scenesVariable = null,
+    string? gateVariable = null
   ) =>
     new()
     {
@@ -77,6 +79,7 @@ public class SetupCasesTests : IDisposable
       },
       Output = output,
       ScenesVariable = scenesVariable ?? "EX_SETUP_SCENES",
+      GateVariable = gateVariable ?? "EX_GATE_RECORDINGS_UNSET",
     };
 
   private IReadOnlyList<SetupCaseRow> Rows() =>
@@ -464,10 +467,10 @@ public class SetupCasesTests : IDisposable
     );
   }
 
-  // Fails when a second run does not compare with the committed recording, or a difference writes
-  // no received file.
+  // Fails when a second run does not compare with the committed recording, a difference writes
+  // no received file, or Record ignores the gate variable the options carry.
   [Fact]
-  public void A_main_case_whose_recording_differs_from_the_committed_one_fails_with_a_received_file()
+  public void A_main_case_whose_recording_differs_passes_with_a_moved_line_and_fails_when_gated()
   {
     Write("c.json", SetupCaseTests.Cases(""));
     SetupCases.Run(Row("cases"), Options());
@@ -478,14 +481,27 @@ public class SetupCasesTests : IDisposable
       committed,
       File.ReadAllText(committed).Replace("idle", "busy")
     );
+    string folder = Path.GetDirectoryName(committed)!;
+    List<string> lines = [];
+    string gate = "EX_GATE_RECORDINGS_T" + Guid.NewGuid().ToString("N");
 
-    Assert.ThrowsAny<Exception>(() => SetupCases.Run(Row("cases"), Options()));
+    SetupCases.Run(Row("cases"), Options(lines.Add, gateVariable: gate));
 
-    Assert.True(
-      File.Exists(
-        Path.Combine(Path.GetDirectoryName(committed)!, "cases.received.json")
-      )
-    );
+    string moved = Assert.Single(lines, l => l.StartsWith("recording moved: "));
+    Assert.StartsWith("recording moved: cases\t", moved);
+    Assert.True(File.Exists(Path.Combine(folder, "cases.received.json")));
+    Assert.True(File.Exists(Path.Combine(folder, "cases.moved.txt")));
+    Environment.SetEnvironmentVariable(gate, "cases");
+    try
+    {
+      Assert.Throws<SetupRecordingMismatchException>(() =>
+        SetupCases.Run(Row("cases"), Options(gateVariable: gate))
+      );
+    }
+    finally
+    {
+      Environment.SetEnvironmentVariable(gate, null);
+    }
   }
 
   // Fails when a variant without a recording of its own writes one.
