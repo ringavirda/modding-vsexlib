@@ -13,7 +13,8 @@ namespace ExpandedLib.Checks;
 /// recipe ingredient, construction stage ingredient and block a creative tab lists.</summary>
 /// <remarks>Made means the output of a loaded recipe or of exlib's process catalogues, a smelted,
 /// crushed or ground stack, a beehive kiln's firing, a stack a block's harvestable behavior, a squeezable behavior or a
-/// <c>juiceableProperties</c> attribute (return, pressed and liquid stacks) gives, the drop of a block of another type, a world
+/// <c>juiceableProperties</c> attribute (return, pressed and liquid stacks) gives, the product of a
+/// transition (<c>transitionableProps</c>), the drop of a block of another type, a world
 /// source vanilla places, or a code a mod declares its machines make
 /// (<see cref="ExlibChecks.Produces"/>) or gathers (<see cref="ExlibChecks.Gathered"/>). A wildcard is made when one code it matches is, among the
 /// states its stack's <c>allowedVariants</c> allow and its <c>skipVariants</c> leave. A block a
@@ -107,7 +108,7 @@ public static class ObtainabilityCheck {
   }
 
   // Every code something makes, per item class; a made pattern is kept apart and matched.
-  private sealed class Made {
+  internal sealed class Made {
     private readonly Dictionary<bool, HashSet<string>> _codes = new() {
       [true] = new(StringComparer.Ordinal),
       [false] = new(StringComparer.Ordinal),
@@ -116,17 +117,23 @@ public static class ObtainabilityCheck {
       [true] = [],
       [false] = [],
     };
+    private readonly Dictionary<(bool Block, string Code), string> _sources =
+      new();
 
     internal Made(
       IEnumerable<CollectibleObject> loaded,
       IEnumerable<LoadedOutput> outputs
     ) {
       foreach (LoadedOutput output in outputs)
-        Add(output.Type, output.Code);
+        Add(output.Type, output.Code, $"recipe {output.Registry}");
       foreach (CollectibleObject c in loaded) {
-        Add(c.CombustibleProps?.SmeltedStack);
-        Add(c.CrushingProps?.CrushedStack);
-        Add(c.GrindingProps?.GroundStack);
+        Add(c.CombustibleProps?.SmeltedStack, $"smelting of {c.Code}");
+        Add(c.CrushingProps?.CrushedStack, $"crushing of {c.Code}");
+        Add(c.GrindingProps?.GroundStack, $"grinding of {c.Code}");
+        foreach (
+          TransitionableProperties transition in c.TransitionableProps ?? []
+        )
+          Add(transition?.TransitionedStack, $"transition of {c.Code}");
         if (c.Attributes?["beehivekiln"] is { Exists: true } kiln)
           foreach (
             JsonItemStack? fired in kiln.AsObject<
@@ -134,28 +141,32 @@ public static class ObtainabilityCheck {
             >(null)?.Values
               ?? Enumerable.Empty<JsonItemStack?>()
           )
-            Add(fired);
+            Add(fired, $"firing of {c.Code}");
         foreach (
           BlockBehaviorHarvestable harvest in (
             (c as Block)?.BlockBehaviors ?? []
           ).OfType<BlockBehaviorHarvestable>()
         )
           foreach (BlockDropItemStack harvested in harvest.harvestedStacks ?? [])
-            Add(harvested?.Type ?? EnumItemClass.Item, harvested?.Code);
+            Add(
+              harvested?.Type ?? EnumItemClass.Item,
+              harvested?.Code,
+              $"harvest of {c.Code}"
+            );
         foreach (
           CollectibleBehaviorSqueezable squeeze in (
             c.CollectibleBehaviors ?? []
           ).OfType<CollectibleBehaviorSqueezable>()
         )
           foreach (JsonItemStack? returned in squeeze.ReturnStacks ?? [])
-            Add(returned);
+            Add(returned, $"squeezing of {c.Code}");
         if (c.Attributes?["juiceableProperties"] is { Exists: true } juice) {
           JuiceableProperties? props = juice.AsObject<JuiceableProperties>(
             null
           );
-          Add(props?.ReturnStack);
-          Add(props?.PressedStack);
-          Add(props?.LiquidStack);
+          Add(props?.ReturnStack, $"juicing of {c.Code}");
+          Add(props?.PressedStack, $"juicing of {c.Code}");
+          Add(props?.LiquidStack, $"juicing of {c.Code}");
         }
         if (c is not Block block || block.Drops == null)
           continue;
@@ -168,14 +179,19 @@ public static class ObtainabilityCheck {
               .Code.ToString()
               .StartsWith(type + "-", StringComparison.Ordinal)
           )
-            Add(drop.Type, drop.Code);
+            Add(drop.Type, drop.Code, $"drop of {block.Code}");
       }
       foreach (GatheredSources.Source source in GatheredSources.All)
-        Add(source.Type, new AssetLocation(source.Pattern));
+        Add(source.Type, new AssetLocation(source.Pattern), "gathered");
     }
 
-    // Adds every loaded collectible code matches, of either class; false when it matches none.
-    internal bool Declare(IEnumerable<CollectibleObject> loaded, string code) {
+    // Adds every loaded collectible code matches, of either class, under source; false when it
+    // matches none.
+    internal bool Declare(
+      IEnumerable<CollectibleObject> loaded,
+      string code,
+      string source = "declared"
+    ) {
       var pattern = new AssetLocation(code);
       int wild = pattern.Path.IndexOfAny(Wild);
       string prefix =
@@ -191,21 +207,27 @@ public static class ObtainabilityCheck {
             ? c.Code.ToString() == pattern.ToString()
             : WildcardUtil.Match(pattern, c.Code)
         ) {
-          Add(c.ItemClass, c.Code);
+          Add(c.ItemClass, c.Code, source);
           any = true;
         }
       return any;
     }
 
-    private void Add(JsonItemStack? stack) {
+    // Every code held and the first source named for it, in the order they were added; a code
+    // with a wildcard is a pattern.
+    internal IEnumerable<(bool IsBlock, string Code, string Source)> Held() =>
+      _sources.Select(s => (s.Key.Block, s.Key.Code, s.Value));
+
+    private void Add(JsonItemStack? stack, string source) {
       if (stack?.Code != null)
-        Add(stack.Type, stack.Code);
+        Add(stack.Type, stack.Code, source);
     }
 
-    private void Add(EnumItemClass type, AssetLocation? code) {
+    private void Add(EnumItemClass type, AssetLocation? code, string source) {
       if (code == null)
         return;
       bool block = type == EnumItemClass.Block;
+      _sources.TryAdd((block, code.ToString()), source);
       if (code.Path.IndexOfAny(Wild) >= 0)
         _patterns[block].Add(code);
       else

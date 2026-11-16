@@ -349,6 +349,120 @@ public class ViewBandsTests {
     );
   }
 
+  private static GateReading SlotFace(ViewGroup group, double face) =>
+    ViewGates
+      .Readings(Bands, group, With(ViewGates.Measure(World, group), "G3", face))
+      .Single(r => r.Gate == "G3");
+
+  private static ViewGroup Stretched(ViewGroup group, double z) =>
+    group with {
+      Kind = ItemViewKind.Multicell,
+      Box = group.Box with {
+        To = new Vec3d(group.Box.To.X, group.Box.To.Y, group.Box.From.Z + z),
+      },
+    };
+
+#if GAME_GE_1_22
+  // Fails when the near-cube band keeps the multicell's upper end: every vanilla full block reads 1.6827 and the stair
+  // 1.3769, above its 1.3354.
+  [Fact]
+  public void Every_vanilla_cube_and_the_stair_pass_the_near_cube_band()
+  {
+    IReadOnlyList<ViewGroup> groups = ViewGates.Groups(World, "game");
+    var cubes = ViewBands
+      .Sets.Where(s => s.Kind == ItemViewKind.Cube)
+      .SelectMany(s => ViewBands.Resolve(World, groups, s))
+      .Select(m => m.Group)
+      .Append(GroupOf("game:stonebrickstairs-andesite-up-north-free"))
+      .ToList();
+    Assert.Equal(12, cubes.Count);
+    foreach (ViewGroup cube in cubes)
+    {
+      ViewGroup group = cube with { Kind = ItemViewKind.Multicell };
+      Assert.True(ViewBands.IsNearCube(group.Box.Extents()));
+      GateReading face = ViewGates
+        .Readings(Bands, group, ViewGates.Measure(World, group))
+        .Single(r => r.Gate == "G3");
+      Assert.True(
+        face.Pass,
+        $"{cube.Representative.Code} G3 {face.Value} outside {face.Min}..{face.Max}"
+      );
+      Assert.True(face.Value > Bands.Bands["multicell"]["G3"].High);
+    }
+  }
+#endif
+
+  // Fails when a near-cube multicell block keeps the multicell's G3 upper end (the widening dropped), or when the
+  // ratio is compared strictly: a 16 x 16 x 20 box is then judged against 1.3354.
+  [Fact]
+  public void A_near_cube_multicell_block_is_judged_up_to_the_cube_band() {
+    Band cube = Bands.Bands["cube"]["G3"];
+    ViewGroup group = Stretched(GroupOf("game:hay-normal-ud"), 20);
+    Assert.Equal(1.25, group.Box.Extents()[0] / group.Box.Extents()[^1], 1e-9);
+
+    GateReading inside = SlotFace(group, 1.6);
+    Assert.True(
+      inside.Pass,
+      $"{inside.Value} outside {inside.Min}..{inside.Max}"
+    );
+    Assert.Equal(cube.High, inside.Max);
+    Assert.Equal(Bands.Bands["multicell"]["G3"].Low, inside.Min);
+
+    GateReading over = SlotFace(group, cube.High + 0.01);
+    Assert.False(over.Pass);
+  }
+
+  // Fails when the near-cube band takes the cube's upper end even below the multicell's: a cube band ending at 1.0
+  // then refuses a near-cube block at 1.3.
+  [Fact]
+  public void A_near_cube_band_never_narrows_the_multicell_band() {
+    var narrow = new SortedDictionary<string, SortedDictionary<string, Band>>(
+      Bands.Bands,
+      StringComparer.Ordinal
+    ) {
+      ["cube"] = new(Bands.Bands["cube"], StringComparer.Ordinal) {
+        ["G3"] = Bands.Bands["cube"]["G3"] with { High = 1.0 },
+      },
+    };
+    ViewGroup group = Stretched(GroupOf("game:hay-normal-ud"), 20);
+    GateReading face = ViewGates
+      .Readings(
+        Bands with {
+          Bands = narrow,
+        },
+        group,
+        With(ViewGates.Measure(World, group), "G3", 1.3)
+      )
+      .Single(r => r.Gate == "G3");
+    Assert.True(face.Pass, $"{face.Value} outside {face.Min}..{face.Max}");
+    Assert.Equal(Bands.Bands["multicell"]["G3"].High, face.Max);
+  }
+
+  // Fails when every multicell block counts as a near cube: a 16 x 16 x 20.1 box then passes G3 at 1.6.
+  [Fact]
+  public void A_block_just_past_the_near_cube_ratio_keeps_the_multicell_band() {
+    ViewGroup group = Stretched(GroupOf("game:hay-normal-ud"), 20.1);
+    Assert.False(ViewBands.IsNearCube(group.Box.Extents()));
+
+    GateReading past = SlotFace(group, 1.6);
+    Assert.False(past.Pass);
+    Assert.Equal(Bands.Bands["multicell"]["G3"].High, past.Max);
+  }
+
+  // Fails when the near-cube band is taken by any kind: a partial with a cube's box then passes G3 at 1.6, over the
+  // partial's 1.4962.
+  [Fact]
+  public void A_near_cube_partial_keeps_the_partial_band() {
+    ViewGroup group = GroupOf("game:hay-normal-ud") with {
+      Kind = ItemViewKind.Partial,
+    };
+    Assert.True(ViewBands.IsNearCube(group.Box.Extents()));
+
+    GateReading face = SlotFace(group, 1.6);
+    Assert.False(face.Pass);
+    Assert.Equal(Bands.Bands["partial"]["G3"].High, face.Max);
+  }
+
   // Fails when the bulk limit is dropped: a grip of 1.5 voxel then fails a bulk group, or the lump limit is widened and passes.
   [Fact]
   public void The_grip_limit_is_wider_for_bulk() {
