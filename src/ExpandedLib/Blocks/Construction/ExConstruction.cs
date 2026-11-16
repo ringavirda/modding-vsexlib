@@ -411,11 +411,22 @@ public class ExRightClickConstruction {
   /// resolved with the stored variants and its stack size scaled by <paramref name="dropRatio"/>
   /// and rounded at random.</summary>
   /// <param name="dropRatio">The fraction of each stack returned, 0..1.</param>
-  /// <param name="rnd">The rounding source; null rounds without randomness.</param>
+  /// <param name="rnd">The rounding source; required, a null one fails on the first stack.</param>
   /// <returns>The stacks, empty below stage 1. An ingredient that does not resolve is
   /// left out.</returns>
+  /// <exception cref="NullReferenceException"><paramref name="rnd"/> is null and a stack is
+  /// returned.</exception>
   [MethodImpl(MethodImplOptions.NoInlining)]
-  public ItemStack[] GetDrops(float dropRatio = 1f, Random? rnd = null) {
+  public ItemStack[] GetDrops(float dropRatio = 1f, Random? rnd = null) =>
+    GetDropsLosing(dropRatio, rnd, null);
+
+  // lost: whether a returned stack's resolved code is scaled by dropRatio; null scales every stack,
+  // and a stack it rejects is returned at its full size.
+  internal ItemStack[] GetDropsLosing(
+    float dropRatio,
+    Random? rnd,
+    System.Func<string, bool>? lost
+  ) {
     if (CurrentCompletedStage < 1)
       return Array.Empty<ItemStack>();
 
@@ -446,10 +457,11 @@ public class ExRightClickConstruction {
           )
         ) {
           var stack = resolved.ResolvedItemStack.Clone();
-          stack.StackSize = GameMath.RoundRandom(
-            rnd,
-            stack.StackSize * dropRatio
-          );
+          if (lost == null || lost(stack.Collectible.Code.ToString()))
+            stack.StackSize = GameMath.RoundRandom(
+              rnd,
+              stack.StackSize * dropRatio
+            );
           list.Add(stack);
         }
       }

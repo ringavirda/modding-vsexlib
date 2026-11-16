@@ -20,37 +20,21 @@ internal static class ConstructionWalk {
   /// <param name="stages">The number of stages the construction has.</param>
   /// <exception cref="StepFailure">The stage is not an index of the construction.</exception>
   public static int Target(JToken? to, int stages) {
-    if (
-      to == null
-      || to.Type == JTokenType.Boolean && (bool)to
-      || to.Type == JTokenType.String && (string?)to == "all"
-    )
-      return stages - 1;
-    if (to.Type != JTokenType.Integer || (int)to < 0 || (int)to >= stages)
-      throw new StepFailure(
-        $"\"to\" {to} is not a stage of a construction of {stages} stage(s), 0 to {stages - 1}.",
-        Suspect.Scenario
-      );
-    return (int)to;
+    try {
+      return SetupConstruction.Target(to, stages);
+    } catch (SetupFileException e) {
+      throw new StepFailure(e.Message, Suspect.Scenario, e);
+    }
   }
 
   /// <summary>The variant each stored wildcard key is supplied in.</summary>
   /// <exception cref="StepFailure">The token is not an object of strings.</exception>
   public static Dictionary<string, string> Materials(JToken? token) {
-    var materials = new Dictionary<string, string>();
-    if (token == null)
-      return materials;
-    if (
-      token is not JObject o
-      || o.Properties().Any(p => p.Value.Type != JTokenType.String)
-    )
-      throw new StepFailure(
-        "\"materials\" maps each wildcard key to a variant name.",
-        Suspect.Scenario
-      );
-    foreach (JProperty p in o.Properties())
-      materials[p.Name] = (string)p.Value!;
-    return materials;
+    try {
+      return SetupConstruction.Materials(token);
+    } catch (SetupFileException e) {
+      throw new StepFailure(e.Message, Suspect.Scenario, e);
+    }
   }
 
   /// <summary>Whether a collectible whose variant under <paramref name="key"/> is

@@ -11,6 +11,7 @@ public sealed class ConstructionStages {
   private readonly JArray _stages = new();
   private readonly HashSet<string> _stored = new(StringComparer.Ordinal);
   private float? _brokenDropsRatio;
+  private string[]? _brokenDropsLost;
   private bool? _gatesProduction;
 
   /// <summary>Appends one build stage configured through <paramref name="configure"/>. Stage order
@@ -37,6 +38,17 @@ public sealed class ConstructionStages {
     return this;
   }
 
+  /// <summary>Sets the top-level <c>brokenDropsLost</c>: the codes returned at the
+  /// <c>brokenDropsRatio</c> when the block breaks, each a wildcard with a domain
+  /// (<c>game:clay-*</c>) matched against the resolved code of a returned stack. Every other stack
+  /// returns whole. A list a mod registers with <see cref="ExRccSettings.RegisterBrokenDropsLost"/>
+  /// replaces this one.</summary>
+  /// <param name="codes">The lost codes.</param>
+  public ConstructionStages BrokenDropsLost(params string[] codes) {
+    _brokenDropsLost = codes;
+    return this;
+  }
+
   /// <summary>Sets the top-level <c>gatesProduction</c>. Default <c>true</c>.</summary>
   public ConstructionStages GatesProduction(bool gates) {
     _gatesProduction = gates;
@@ -47,6 +59,8 @@ public sealed class ConstructionStages {
     var properties = new JObject { ["stages"] = _stages };
     if (_brokenDropsRatio.HasValue)
       properties["brokenDropsRatio"] = _brokenDropsRatio.Value;
+    if (_brokenDropsLost != null)
+      properties["brokenDropsLost"] = new JArray(_brokenDropsLost);
     if (_gatesProduction.HasValue)
       properties["gatesProduction"] = _gatesProduction.Value;
     return properties;

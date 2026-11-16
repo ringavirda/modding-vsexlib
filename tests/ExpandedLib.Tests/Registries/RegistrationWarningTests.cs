@@ -129,6 +129,36 @@ public class RegistrationWarningTests : RegistryLogFixture {
     ExRccSettings.ResetForWorld();
   }
 
+  // Fails when the RegistryLog.Replaced call is removed from RegisterBrokenDropsLost.
+  [Fact]
+  public void ExRccSettings_names_the_assembly_of_a_lost_list_taken_twice() {
+    Log.Expect(EnumLogType.Warning, "");
+    ExRccSettings.RegisterBrokenDropsLost("plantedlost", ["game:mortar"]);
+    typeof(ExRccSettings)
+      .GetMethod(nameof(ExRccSettings.RegisterBrokenDropsLost))!
+      .Invoke(null, ["plantedlost", new[] { "game:lime" }]);
+
+    string warning = Only("ExRccSettings");
+    Assert.Contains("'plantedlost'", warning);
+    Assert.Contains(
+      typeof(RegistrationWarningTests).Assembly.GetName().Name!,
+      warning
+    );
+    Assert.Contains(OtherAssembly, warning);
+    ExRccSettings.ResetForWorld();
+  }
+
+  // Fails when ResetForWorld leaves the lost lists.
+  [Fact]
+  public void ResetForWorld_empties_the_lost_lists() {
+    ExRccSettings.RegisterBrokenDropsLost("plantedreset", ["game:mortar"]);
+    Assert.NotNull(ExRccSettings.BrokenDropsLost("plantedreset"));
+
+    ExRccSettings.ResetForWorld();
+
+    Assert.Null(ExRccSettings.BrokenDropsLost("plantedreset"));
+  }
+
   [Fact]
   public void BlockPipe_burst_names_the_assembly_of_a_tier_taken_twice() {
     Log.Expect(EnumLogType.Warning, "");
