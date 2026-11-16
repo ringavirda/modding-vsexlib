@@ -67,11 +67,7 @@ public class ExlibParitySetupTests : IDisposable
   public void The_parity_folder_yields_its_three_cases()
   {
     Assert.Equal(
-      [
-        "parity-drain-250",
-        "parity-drain-tick",
-        "parity-wait-slice",
-      ],
+      ["parity-drain-250", "parity-drain-tick", "parity-wait-slice"],
       Rows().Select(r => ((SetupCaseRow)r[0]).Setup).Distinct().Order()
     );
   }
