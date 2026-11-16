@@ -152,16 +152,19 @@ internal sealed class SandStationScene {
     float minPourTemp = 1000f,
     string mould = "open",
     int share = 0,
+    string? cavityJson = null,
     params string[] stations
   ) {
     stations = stations.Length == 0 ? [Station] : stations;
-    string cavity = string.Join(
-      ",",
-      Enumerable.Repeat(
-        "{ \"x1\": 3, \"y1\": 1, \"z1\": 3, \"x2\": 13, \"y2\": 4, \"z2\": 13 }",
-        pieces
-      )
-    );
+    string cavity =
+      cavityJson
+      ?? string.Join(
+        ",",
+        Enumerable.Repeat(
+          "{ \"x1\": 3, \"y1\": 1, \"z1\": 3, \"x2\": 13, \"y2\": 4, \"z2\": 13 }",
+          pieces
+        )
+      );
     string stationJson = string.Join(
       ",",
       stations.Select(s =>

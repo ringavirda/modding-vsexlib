@@ -12,6 +12,7 @@ namespace ExpandedLib.Tests.Setups;
 internal sealed class SetupControlBlock : Block
 {
   public string? Seen;
+  public Vec3d? Hit;
 
   public override Cuboidf[] GetSelectionBoxes(
     IBlockAccessor blockAccessor,
@@ -32,6 +33,7 @@ internal sealed class SetupControlBlock : Block
   )
   {
     Seen = blockSel.SelectionBoxId;
+    Hit = blockSel.HitPosition;
     return true;
   }
 
@@ -122,6 +124,53 @@ public class SetupControlTests
     );
 
     Assert.NotNull(scene);
+  }
+
+  // Fails when the interact step drops the hit and the block reads the box's face centre.
+  [Fact]
+  public void A_setup_interact_with_a_hit_hands_that_point_to_the_block()
+  {
+    using SetupScene scene = Build(
+      "["
+        + Valve
+        + ", {\"interact\": {\"at\": {\"of\": \"valve\"}, \"control\": \"handle\", \"hit\": [0.3, 0.6, 0.45]}}]"
+    );
+
+    Vec3d? hit = Assert
+      .IsType<SetupControlBlock>(
+        scene.World.GetBlock(scene.PositionOf("valve"))
+      )
+      .Hit;
+    Assert.Equal(new Vec3d(0.3, 0.6, 0.45), hit);
+  }
+
+  // Fails when a hit with no control is let through to click the body.
+  [Fact]
+  public void A_hit_without_a_control_fails_the_step()
+  {
+    Exception e = Assert.ThrowsAny<Exception>(() =>
+      Build(
+        "["
+          + Valve
+          + ", {\"interact\": {\"at\": {\"of\": \"valve\"}, \"hit\": [0.5, 0.5, 0.5]}}]"
+      )
+    );
+    Assert.Contains("interact).hit:", e.Message);
+    Assert.Contains("needs \"control\"", e.Message);
+  }
+
+  // Fails when a hit off the control's box is let through.
+  [Fact]
+  public void A_hit_outside_the_box_fails_the_step_with_its_bounds()
+  {
+    InvalidOperationException e = Assert.Throws<InvalidOperationException>(() =>
+      Build(
+        "["
+          + Valve
+          + ", {\"interact\": {\"at\": {\"of\": \"valve\"}, \"control\": \"handle\", \"hit\": [0.9, 0.6, 0.4]}}]"
+      )
+    );
+    Assert.Contains("x 0.25 to 0.75", e.Message);
   }
 
   // Fails when an unknown control id is not refused with the ids of the block named.

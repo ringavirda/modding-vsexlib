@@ -736,7 +736,7 @@ public class BlockEntitySandStation : ExBlockEntity, ILiquidMetalSink {
       capi,
       Pos,
       RotationY,
-      spec.Cavity.Take(Math.Max(1, _pressed)).ToArray(),
+      spec.PressedBoxes(Math.Max(1, _pressed)),
       spec.Cavity[0].Y1 / 16f,
       spec.Cavity[0].Y2 - spec.Cavity[0].Y1
     );
@@ -744,15 +744,15 @@ public class BlockEntitySandStation : ExBlockEntity, ILiquidMetalSink {
     UpdateRenderer();
   }
 
-  /// <summary>Creates the renderer of an impression's metal: every pressed piece's box is drawn at once, so the first piece's metal stays as the fill rises past it.</summary>
+  /// <summary>Creates the renderer of an impression's metal: every box of every pressed piece is drawn at once, so the first piece's metal stays as the fill rises past it.</summary>
   internal static MoltenSurfaceRenderer BuildImpressionRenderer(
     ICoreClientAPI capi,
     BlockPos pos,
     float rotY,
-    Cuboidf[] pieces,
+    Cuboidf[] boxes,
     float floorY,
     float height
-  ) => new(pos, capi, pieces, rotY, floorY, height, combine: true);
+  ) => new(pos, capi, boxes, rotY, floorY, height, combine: true);
 
   private void RebuildFeedRenderer(ICoreClientAPI capi) {
     _feedRenderer?.Dispose();

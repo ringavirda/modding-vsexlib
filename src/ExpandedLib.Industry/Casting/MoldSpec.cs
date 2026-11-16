@@ -35,13 +35,14 @@ public enum FillOrder {
 /// <param name="Shape">The filling-shape asset shown while the impression is present.</param>
 /// <param name="Pieces">How many castings one pour at this station yields.</param>
 /// <param name="Capacity">Units of metal the impression holds with every piece pressed: <paramref name="Pieces"/> times the pattern's <c>units</c>.</param>
-/// <param name="Cavity">Molten-renderer fill boxes in 16-space, one per piece, in pressing order.</param>
+/// <param name="Cavity">Molten-renderer fill boxes in 16-space, one per piece, in pressing order; a piece of several boxes gives the box that bounds them.</param>
 /// <param name="Fill">The order the pressed pieces take metal.</param>
 /// <param name="Output">What a full piece yields on shake-out; its quantity is <paramref name="Pieces"/>, the most a pour casts.</param>
 /// <param name="MinPourTemp">Pour temperature (C) below which a fill is a misrun; 0 disables the check.</param>
 /// <param name="Mould">How the pattern is moulded; <see cref="MouldKind.Open"/> unless declared.</param>
 /// <param name="Share">Units of metal the pour's head holds beyond the pieces, returned as scrap on shake-out; 0 unless declared.</param>
 /// <param name="Core">Item code of the dry core each piece is cast around; null when the pieces cast solid.</param>
+/// <param name="PieceBoxes">The fill boxes of each piece in 16-space, one array per piece in pressing order; null when every piece is the one box of its <paramref name="Cavity"/> entry.</param>
 public sealed record MoldSpec(
   int Schema,
   string Station,
@@ -54,13 +55,23 @@ public sealed record MoldSpec(
   float MinPourTemp,
   MouldKind Mould = MouldKind.Open,
   int Share = 0,
-  string? Core = null
+  string? Core = null,
+  Cuboidf[][]? PieceBoxes = null
 ) {
   /// <summary>The attribute key a pattern carries its spec under.</summary>
   public const string AttributeKey = "mold";
 
   /// <summary>Units of metal one piece holds.</summary>
   public int UnitsPerPiece => Capacity / Pieces;
+
+  /// <summary>The fill boxes of each piece in pressing order: the boxes declared for it, or its <see cref="Cavity"/> box alone.</summary>
+  public Cuboidf[][] BoxesPerPiece =>
+    PieceBoxes ?? [.. Cavity.Select(box => new[] { box })];
+
+  /// <summary>Every fill box of the first <paramref name="pressed"/> pieces, in pressing order; at most all the pieces.</summary>
+  /// <param name="pressed">Pieces pressed so far.</param>
+  public Cuboidf[] PressedBoxes(int pressed) =>
+    [.. BoxesPerPiece.Take(pressed).SelectMany(boxes => boxes)];
 
   /// <summary>The schema this parser writes and reads up to. Raise it only alongside the fallback that
   /// reads the form it replaces (<see cref="SpecSchema"/>).</summary>
@@ -216,20 +227,31 @@ public sealed record MoldSpec(
       error = "missing 'cavity' boxes";
       return false;
     }
-    var boxes = new List<Cuboidf>(cavityNodes.Length);
-    foreach (JsonObject box in cavityNodes) {
-      Cuboidf? cuboid = box.AsObject<Cuboidf>(null);
-      if (
-        cuboid is null
-        || cuboid.X2 <= cuboid.X1
-        || cuboid.Y2 <= cuboid.Y1
-        || cuboid.Z2 <= cuboid.Z1
-      ) {
-        error = "a 'cavity' box is malformed (need x1<x2, y1<y2, z1<z2)";
+    var pieceBoxes = new List<Cuboidf[]>(cavityNodes.Length);
+    foreach (JsonObject entry in cavityNodes) {
+      JsonObject[] nodes = entry.IsArray() ? entry.AsArray() : [entry];
+      var group = new List<Cuboidf>(nodes.Length);
+      foreach (JsonObject box in nodes) {
+        Cuboidf? cuboid = box.AsObject<Cuboidf>(null);
+        if (
+          cuboid is null
+          || cuboid.X2 <= cuboid.X1
+          || cuboid.Y2 <= cuboid.Y1
+          || cuboid.Z2 <= cuboid.Z1
+        ) {
+          error = "a 'cavity' box is malformed (need x1<x2, y1<y2, z1<z2)";
+          return false;
+        }
+        group.Add(cuboid);
+      }
+      if (group.Count == 0) {
+        error = "a 'cavity' piece has no boxes";
         return false;
       }
-      boxes.Add(cuboid);
+      pieceBoxes.Add([.. group]);
     }
+    Cuboidf[] boxes = [.. pieceBoxes.Select(Bounds)];
+    bool grouped = pieceBoxes.Any(group => group.Length > 1);
 
     string fillStr = node["fill"].AsString("chain");
     FillOrder? fill = fillStr switch {
@@ -280,14 +302,27 @@ public sealed record MoldSpec(
       shape,
       pieces,
       pieces * units,
-      boxes.ToArray(),
+      boxes,
       fill.Value,
       stationOutput,
       minPourTemp,
       mould,
       share,
-      core
+      core,
+      grouped ? [.. pieceBoxes] : null
     );
     return true;
   }
+
+  private static Cuboidf Bounds(Cuboidf[] group) =>
+    group.Length == 1
+      ? group[0]
+      : new Cuboidf(
+        group.Min(b => b.X1),
+        group.Min(b => b.Y1),
+        group.Min(b => b.Z1),
+        group.Max(b => b.X2),
+        group.Max(b => b.Y2),
+        group.Max(b => b.Z2)
+      );
 }
