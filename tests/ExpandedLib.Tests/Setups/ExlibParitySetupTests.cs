@@ -64,10 +64,16 @@ public class ExlibParitySetupTests : IDisposable
 
   // Fails when the enumeration skips tests/live/setups/parity or drops a case.
   [Fact]
-  public void The_parity_folder_yields_its_two_cases()
+  public void The_parity_folder_yields_its_five_cases()
   {
     Assert.Equal(
-      ["parity-drain-250", "parity-wait-slice"],
+      [
+        "parity-drain-250",
+        "parity-drain-tick",
+        "parity-network-order",
+        "parity-place-order",
+        "parity-wait-slice",
+      ],
       Rows().Select(r => ((SetupCaseRow)r[0]).Setup).Distinct().Order()
     );
   }
