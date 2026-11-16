@@ -246,11 +246,14 @@ public class PipeCornerTests {
   [InlineData(null)]
   public void SetSegments_HandbookGroupsOnlyOwnSegment(string? tier) {
     foreach (ExBlockDef def in BlockPipe.SetSegments("test", tier)) {
-      string type = def.VariantGroups.Single(g => g.Name == "type")
+      string type = def
+        .VariantGroups.Single(g => g.Name == "type")
         .States.Single();
-      string[] groups = [
-        .. def.ToJson()["attributes"]!["handbook"]!["groupBy"]!
-          .Select(t => (string)t!),
+      string[] groups =
+      [
+        .. def.ToJson()["attributes"]!["handbook"]!["groupBy"]!.Select(t =>
+          (string)t!
+        ),
       ];
 
       Assert.Equal(
