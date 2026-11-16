@@ -103,6 +103,13 @@ public sealed class SetupRunOptions
   /// <c>EX_WRITE_SETUPS</c>.</summary>
   public string WriteVariable { get; init; } = SetupScene.DefaultWriteVariable;
 
+  /// <summary>The environment variable that is <c>1</c> or names the setups (<c>&lt;setup&gt;</c> or a
+  /// variant's <c>record</c> name, comma separated) whose recording difference fails the row. Unset,
+  /// a difference writes <c>&lt;record&gt;.received.json</c> and <c>&lt;record&gt;.moved.txt</c> beside the
+  /// committed file and the row passes on its checks; an equal recording deletes both. Default
+  /// <c>EX_GATE_RECORDINGS</c>.</summary>
+  public string GateVariable { get; init; } = SetupScene.DefaultGateVariable;
+
   /// <summary>The environment variable that names the folder <see cref="SetupCases.Run"/> writes
   /// each row's scene dump to, as <c>&lt;setup&gt;.scene.json</c> or <c>&lt;setup&gt;@&lt;variant&gt;.scene.json</c>;
   /// unset or empty writes none. Default <c>EX_SETUP_SCENES</c>.</summary>
@@ -197,7 +204,7 @@ public static class SetupCases
   /// <exception cref="InvalidOperationException">A check fails, the message naming the case (so an
   /// order case names its order) and the check; or the file cannot be built; or a tick-order
   /// machine registered no listener.</exception>
-  /// <exception cref="SetupRecordingMismatchException">The recording differs from the committed file.</exception>
+  /// <exception cref="SetupRecordingMismatchException">The recording differs from the committed file and <see cref="SetupRunOptions.GateVariable"/> names the row.</exception>
   /// <exception cref="IOException">The scenes folder cannot be created or the scene file written, or the census file cannot be appended to.</exception>
   /// <exception cref="UnauthorizedAccessException">The scenes folder or file is not writable.</exception>
   public static void Run(SetupCaseRow row, SetupRunOptions options)
@@ -246,11 +253,16 @@ public static class SetupCases
     )
       SetupOpeningsCensus.Append(scene, row.Setup, row.Variant, census);
     if (row.Order == null && scene.RecordsOwn)
+    {
       scene.Record(
         recording,
         Path.Combine(options.Recordings, Series()),
-        options.WriteVariable
+        options.WriteVariable,
+        options.GateVariable
       );
+      if (recording.Moved is { } moved)
+        options.Output?.Invoke("recording moved: " + moved);
+    }
   }
 
   internal static SetupFileModel? StageOf(

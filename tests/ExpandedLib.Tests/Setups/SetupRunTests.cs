@@ -436,6 +436,7 @@ public class SetupRunTests : IDisposable
     Assert.False(File.Exists(Path.Combine(_folder, "run.received.json")));
   }
 
+  // Fails when Record ignores the gate variable it is given and throws (or never throws) on a difference.
   [Fact]
   public void Record_fails_naming_the_differing_line_and_writes_received()
   {
@@ -449,11 +450,43 @@ public class SetupRunTests : IDisposable
     File.WriteAllLines(committed, lines);
     using SetupScene again = Build("setuphold", $"[{Dial}]", "[]", DialRecord);
     SetupRecording recording = again.Run(HoldMods);
-    var error = Assert.Throws<SetupRecordingMismatchException>(() =>
-      again.Record(recording, _folder)
+    string gate = "EX_GATE_RECORDINGS_T" + Guid.NewGuid().ToString("N");
+    Environment.SetEnvironmentVariable(gate, "run");
+    try
+    {
+      var error = Assert.Throws<SetupRecordingMismatchException>(() =>
+        again.Record(recording, _folder, gateVariable: gate)
+      );
+      Assert.Contains($"line {line + 1}:", error.Message);
+      Assert.True(File.Exists(Path.Combine(_folder, "run.received.json")));
+    }
+    finally
+    {
+      Environment.SetEnvironmentVariable(gate, null);
+    }
+  }
+
+  // Fails when Record throws on a difference without the gate, or returns something other than the recorded text.
+  [Fact]
+  public void Record_returns_the_recorded_text_of_a_differing_file_when_the_gate_is_unset()
+  {
+    string committed = Path.Combine(_folder, "run.json");
+    using (SetupScene first = Build("setuphold", $"[{Dial}]", "[]", DialRecord))
+      first.Record(first.Run(HoldMods), _folder);
+    string was = File.ReadAllText(committed);
+    File.WriteAllText(committed, was.Replace("1.000", "9.000"));
+    using SetupScene again = Build("setuphold", $"[{Dial}]", "[]", DialRecord);
+    SetupRecording recording = again.Run(HoldMods);
+
+    string text = again.Record(
+      recording,
+      _folder,
+      gateVariable: "EX_GATE_RECORDINGS_T" + Guid.NewGuid().ToString("N")
     );
-    Assert.Contains($"line {line + 1}:", error.Message);
-    Assert.True(File.Exists(Path.Combine(_folder, "run.received.json")));
+
+    Assert.Equal(was, text);
+    Assert.NotNull(recording.Moved);
+    Assert.True(File.Exists(Path.Combine(_folder, "run.moved.txt")));
   }
 }
 #endif

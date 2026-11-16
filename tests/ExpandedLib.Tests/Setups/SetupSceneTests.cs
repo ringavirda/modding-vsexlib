@@ -993,7 +993,7 @@ public class SetupSceneTests : IDisposable
       {
         "{\"place\": {\"code\": \"setupfixture:slab\", \"at\": [0, 0, 0], \"complete\": 1}}",
         "steps[0]",
-        "to a stage is refused"
+        "on a place or legend entry is refused: the harness completes to a stage only in a complete step"
       },
       {
         "{\"place\": {\"code\": \"setupfixture:slab\", \"at\": [0, 0, 0], \"tree\": {}}}",

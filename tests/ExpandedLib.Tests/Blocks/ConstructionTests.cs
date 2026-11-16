@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
@@ -17,6 +18,7 @@ namespace ExpandedLib.Tests;
 /// Tests <see cref="ExRightClickConstructable.GatesProduction"/> and readiness, one material per
 /// stage, <see cref="ExRccSettings"/>, and <see cref="ConstructedAnimator.IsConstructed"/>.
 /// </summary>
+[Collection("WorldState")]
 public class ConstructionTests {
   /// <summary>Minimal concrete block entity: only used to host a behavior under test.</summary>
   private sealed class StubBlockEntity : BlockEntity;
@@ -480,6 +482,294 @@ public class ConstructionTests {
     ItemStack drop = Assert.Single(drops);
     Assert.Equal("game:sand-andesite", drop.Collectible.Code.ToString());
     Assert.Equal(3, drop.StackSize);
+  }
+
+  #endregion
+
+  #region Broken drops lost
+
+  private static int blockIds = 6100;
+
+  // A behavior over stage 0 plus one stage per (code, quantity), every stage built.
+  private static ExRightClickConstructable Dismantled(
+    TestWorld world,
+    string domain,
+    JObject? extra,
+    params (string Code, int Quantity, string? Store)[] paid
+  ) {
+    var block = TestBlocks.Configure(
+      new Block(),
+      $"{domain}:rccblock",
+      System.Threading.Interlocked.Increment(ref blockIds)
+    );
+    var be = new StubBlockEntity {
+      Block = block,
+      Pos = new BlockPos(0, 0, 0, 0),
+    };
+    be.Initialize(world.Api);
+    var behavior = new ExRightClickConstructable(be);
+    var stages = new JArray { new JObject() };
+    foreach (var (code, quantity, store) in paid) {
+      var ingredient = new JObject {
+        ["type"] = "item",
+        ["code"] = code,
+        ["quantity"] = quantity,
+      };
+      if (store != null)
+        ingredient["storeWildCard"] = store;
+      stages.Add(new JObject { ["requireStacks"] = new JArray { ingredient } });
+    }
+    var json = extra ?? new JObject();
+    json["stages"] = stages;
+    behavior.Initialize(world.Api, new JsonObject(json));
+    var construction = (ExRightClickConstruction)
+      ReflectionHelpers.GetField(behavior, "rcc")!;
+    construction.CurrentCompletedStage = paid.Length;
+    return behavior;
+  }
+
+  private static JObject Lost(params string[] codes) =>
+    new() { ["brokenDropsLost"] = new JArray(codes) };
+
+  private static int Total(ItemStack[] drops, string code) =>
+    drops
+      .Where(d => d.Collectible.Code.ToString() == code)
+      .Sum(d => d.StackSize);
+
+  // Fails when a listed stack is returned whole.
+  [Fact]
+  public void A_listed_brick_returns_at_the_ratio_and_never_more_than_paid() {
+    var world = new TestWorld();
+    world.RegisterItem("game:burnedbrick-fire");
+    ExRightClickConstructable behavior = Dismantled(
+      world,
+      "lostbrick",
+      Lost("game:burnedbrick-*"),
+      ("game:burnedbrick-fire", 10, null)
+    );
+
+    int total = 0;
+    for (int seed = 0; seed < 200; seed++) {
+      int got = Total(
+        behavior.GetConstructionDrops(0.5f, new Random(seed)),
+        "game:burnedbrick-fire"
+      );
+      Assert.InRange(got, 0, 10);
+      total += got;
+    }
+
+    Assert.True(total < 200 * 10);
+  }
+
+  // Fails when the ratio applies to every stack, as it did before the list.
+  [Fact]
+  public void An_unlisted_casting_returns_whole_at_any_ratio() {
+    var world = new TestWorld();
+    world.RegisterItem("game:ingot-iron");
+    world.RegisterItem("game:burnedbrick-fire");
+    ExRightClickConstructable behavior = Dismantled(
+      world,
+      "lostcast",
+      Lost("game:burnedbrick-*"),
+      ("game:ingot-iron", 1, null)
+    );
+
+    for (int seed = 0; seed < 200; seed++)
+      Assert.Equal(
+        1,
+        Total(
+          behavior.GetConstructionDrops(0.1f, new Random(seed)),
+          "game:ingot-iron"
+        )
+      );
+  }
+
+  // Fails when an empty registered or JSON list is read as no list.
+  [Fact]
+  public void An_empty_list_returns_every_stack_whole() {
+    var world = new TestWorld();
+    world.RegisterItem("game:ingot-iron");
+    world.RegisterItem("game:burnedbrick-fire");
+    ExRightClickConstructable behavior = Dismantled(
+      world,
+      "lostempty",
+      Lost(),
+      ("game:ingot-iron", 3, null),
+      ("game:burnedbrick-fire", 7, null)
+    );
+
+    for (int seed = 0; seed < 50; seed++) {
+      ItemStack[] drops = behavior.GetConstructionDrops(0.5f, new Random(seed));
+      Assert.Equal(3, Total(drops, "game:ingot-iron"));
+      Assert.Equal(7, Total(drops, "game:burnedbrick-fire"));
+    }
+  }
+
+  // Fails when the no-list branch goes through the list rule (every stack whole).
+  [Fact]
+  public void With_no_list_every_stack_returns_at_the_ratio() {
+    var world = new TestWorld();
+    world.RegisterItem("game:ingot-iron");
+    ExRightClickConstructable behavior = Dismantled(
+      world,
+      "lostnone",
+      new JObject { ["brokenDropsRatio"] = 0.5f },
+      ("game:ingot-iron", 10, null)
+    );
+
+    int total = 0;
+    for (int seed = 0; seed < 200; seed++)
+      total += Total(
+        behavior.GetConstructionDrops(0.5f, new Random(seed)),
+        "game:ingot-iron"
+      );
+
+    Assert.InRange(total, 200 * 10 * 0.5 - 150, 200 * 10 * 0.5 + 150);
+  }
+
+  // Fails when GetDrops gains a second overload: Harmony looks it up by name alone.
+  [Fact]
+  public void ExRightClickConstruction_has_one_GetDrops() {
+    Assert.Single(
+      typeof(ExRightClickConstruction)
+        .GetMethods(
+          BindingFlags.Instance
+            | BindingFlags.Static
+            | BindingFlags.Public
+            | BindingFlags.NonPublic
+            | BindingFlags.DeclaredOnly
+        )
+        .Where(m => m.Name == nameof(ExRightClickConstruction.GetDrops))
+    );
+  }
+
+  // Fails when a registered empty list is stored as null.
+  [Fact]
+  public void A_registered_empty_list_is_not_a_missing_one() {
+    ExRccSettings.RegisterBrokenDropsLost("lostregempty", []);
+    try {
+      Assert.NotNull(ExRccSettings.BrokenDropsLost("lostregempty"));
+      Assert.Empty(ExRccSettings.BrokenDropsLost("lostregempty")!);
+      Assert.Null(ExRccSettings.BrokenDropsLost("lostregnever"));
+    } finally {
+      ExRccSettings.ResetForWorld();
+    }
+  }
+
+  // Fails when GetWreckDrops loses NoInlining.
+  [Fact]
+  public void GetWreckDrops_is_not_inlined() {
+    Assert.True(
+      typeof(ExRightClickConstructable)
+        .GetMethod(nameof(ExRightClickConstructable.GetWreckDrops))!
+        .MethodImplementationFlags.HasFlag(MethodImplAttributes.NoInlining)
+    );
+  }
+
+  // Fails when the brokenDropsLost JSON property is ignored.
+  [Fact]
+  public void A_list_given_only_in_JSON_is_honoured() {
+    var world = new TestWorld();
+    world.RegisterItem("game:burnedbrick-fire");
+    ExRightClickConstructable behavior = Dismantled(
+      world,
+      "lostjson",
+      Lost("game:burnedbrick-fire"),
+      ("game:burnedbrick-fire", 10, null)
+    );
+
+    int total = 0;
+    for (int seed = 0; seed < 50; seed++)
+      total += Total(
+        behavior.GetConstructionDrops(0.5f, new Random(seed)),
+        "game:burnedbrick-fire"
+      );
+
+    Assert.True(total < 50 * 10);
+  }
+
+  // Fails when the registered and the JSON lists are merged.
+  [Fact]
+  public void A_registered_list_replaces_the_JSON_list() {
+    var world = new TestWorld();
+    world.RegisterItem("game:burnedbrick-fire");
+    world.RegisterItem("game:mortar");
+    ExRccSettings.RegisterBrokenDropsLost("lostboth", ["game:mortar"]);
+    ExRightClickConstructable behavior = Dismantled(
+      world,
+      "lostboth",
+      Lost("game:burnedbrick-fire"),
+      ("game:burnedbrick-fire", 10, null),
+      ("game:mortar", 10, null)
+    );
+
+    int bricks = 0;
+    int mortar = 0;
+    for (int seed = 0; seed < 50; seed++) {
+      ItemStack[] drops = behavior.GetConstructionDrops(0.5f, new Random(seed));
+      bricks += Total(drops, "game:burnedbrick-fire");
+      mortar += Total(drops, "game:mortar");
+    }
+
+    Assert.Equal(50 * 10, bricks);
+    Assert.True(mortar < 50 * 10);
+  }
+
+  // Fails when the match is made against the stage's wildcard instead of the paid code.
+  [Fact]
+  public void A_wildcard_stage_is_matched_by_the_paid_code() {
+    var world = new TestWorld();
+    world.RegisterItem("game:plank-oak");
+    ExRightClickConstructable behavior = Dismantled(
+      world,
+      "lostplank",
+      Lost("game:plank-oak"),
+      ("game:plank-*", 10, "wood")
+    );
+    (
+      (ExRightClickConstruction)ReflectionHelpers.GetField(behavior, "rcc")!
+    ).StoredWildCards["wood"] = "oak";
+
+    int total = 0;
+    for (int seed = 0; seed < 50; seed++)
+      total += Total(
+        behavior.GetConstructionDrops(0.5f, new Random(seed)),
+        "game:plank-oak"
+      );
+
+    Assert.True(total < 50 * 10);
+    Assert.True(total > 0);
+  }
+
+  // Fails when GetWreckDrops routes through the list.
+  [Fact]
+  public void GetWreckDrops_returns_an_unlisted_casting_at_the_ratio() {
+    var world = new TestWorld();
+    world.RegisterItem("game:ingot-iron");
+    ExRightClickConstructable behavior = Dismantled(
+      world,
+      "lostwreck",
+      Lost("game:burnedbrick-*"),
+      ("game:ingot-iron", 10, null)
+    );
+
+    int total = 0;
+    for (int seed = 0; seed < 50; seed++)
+      total += Total(
+        behavior.GetWreckDrops(0.5f, new Random(seed)),
+        "game:ingot-iron"
+      );
+
+    Assert.True(total < 50 * 10);
+  }
+
+  // Fails when the domain check is removed from RegisterBrokenDropsLost.
+  [Fact]
+  public void A_domainless_entry_throws_at_registration() {
+    Assert.Throws<ArgumentException>(() =>
+      ExRccSettings.RegisterBrokenDropsLost("lostdomainless", ["mortar"])
+    );
+    Assert.Null(ExRccSettings.BrokenDropsLost("lostdomainless"));
   }
 
   #endregion
