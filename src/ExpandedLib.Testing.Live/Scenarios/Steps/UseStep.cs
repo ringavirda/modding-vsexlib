@@ -122,13 +122,13 @@ internal sealed class UseStep : ScenarioStep {
     }
   }
 
-  static Dictionary<BlockPos, int> Around(ScenarioContext ctx, BlockPos local) {
+  internal static Dictionary<BlockPos, int> Around(ScenarioContext ctx, BlockPos local) {
     var cells = new Dictionary<BlockPos, int>();
     for (int x = -Reach; x <= Reach; x++)
       for (int y = -Reach; y <= Reach; y++)
         for (int z = -Reach; z <= Reach; z++) {
           BlockPos cell = local.AddCopy(x, y, z);
-          if (cell.Y >= 0)
+          if (cell.Y >= -(ctx.Model?.Ground ?? 0))
             cells[cell] = ctx.Setup.BlockAt(cell).BlockId;
         }
     return cells;

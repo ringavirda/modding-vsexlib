@@ -25,7 +25,7 @@ internal sealed class ScenarioCase(
 
   public SetupFileModel Model => model;
 
-  /// <summary>The plot size in blocks: x, y, z.</summary>
+  /// <summary>The plot's half-extents in blocks, x, y and z (<c>plot</c>).</summary>
   public IReadOnlyList<int> Plot => model.Plot;
 
   /// <summary>Seconds the runner waits after the last step.</summary>

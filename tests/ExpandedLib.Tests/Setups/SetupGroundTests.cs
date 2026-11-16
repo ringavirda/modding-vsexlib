@@ -150,7 +150,7 @@ public class SetupGroundTests : IDisposable
     Assert.Contains("(0, -1, -3) lies outside the plot's footprint", message);
   }
 
-  // Fails when the dig step's no-ground guard is dropped: the depth guard then refuses instead.
+  // Fails when the dig step's no-ground guard is dropped: the depth guard refuses with other text.
   [Fact]
   public void A_dig_in_a_file_with_no_ground_is_refused()
   {

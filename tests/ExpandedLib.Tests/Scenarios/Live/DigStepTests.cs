@@ -67,8 +67,8 @@ public class DigStepTests {
     Assert.Equal(fixture.Stone.Id, IdAt(fixture, 0, -1, 0));
   }
 
-  /// <summary>Fails when a live place in the stated ground goes over the terrain instead of
-  /// failing as the harness does.</summary>
+  /// <summary>Fails when a live place in the stated ground goes over the terrain, not failing as
+  /// the harness does.</summary>
   [Fact]
   public void A_place_into_ground_that_was_not_dug_fails() {
     LiveFixture fixture = OnStone(
@@ -96,5 +96,28 @@ public class DigStepTests {
       fixture.Lines,
       l => l.StartsWith("[scenario]   1 place") && l.Contains(" ok: ")
     );
+  }
+
+  /// <summary>Fails when a live use records the blocks around it only from y 0 up, so a block placed
+  /// in a dug pit is never seen.</summary>
+  [Fact]
+  public void A_use_reads_the_cells_of_the_stated_ground() {
+    LiveFixture fixture = OnStone("[]");
+
+    var cells = UseStep.Around(fixture.Context, new BlockPos(0, -1, 0));
+
+    Assert.Contains(new BlockPos(0, -2, 0), cells.Keys);
+    Assert.DoesNotContain(new BlockPos(0, -3, 0), cells.Keys);
+  }
+
+  /// <summary>Fails when a live use reads below y 0 in a file that states no ground.</summary>
+  [Fact]
+  public void A_use_reads_nothing_below_y_zero_with_no_ground() {
+    LiveFixture fixture = OnStone("[]", "{}");
+
+    var cells = UseStep.Around(fixture.Context, new BlockPos(0, 1, 0));
+
+    Assert.DoesNotContain(cells.Keys, c => c.Y < 0);
+    Assert.Contains(new BlockPos(0, 0, 0), cells.Keys);
   }
 }

@@ -1,5 +1,7 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
+using ExpandedLib.Definitions;
 using Vintagestory.API.Common;
 using Vintagestory.API.MathTools;
 
@@ -40,6 +42,24 @@ internal static class SetupDig {
         }
     return cells;
   }
+
+  /// <summary>The setup-local cells below y 0 that <paramref name="layout"/> places a block or the
+  /// first entry of a run on, in entry order.</summary>
+  public static List<BlockPos> LayoutCells(SetupLayout layout) =>
+    [
+      .. layout
+        .Entries.SelectMany(e =>
+          e.Kind == LayoutEntryKind.Block
+            ? layout.Cells.Where(c => c.Symbol == e.Glyph)
+          : e.Kind == LayoutEntryKind.Run
+            ? layout
+              .Runs.Where(r => r.Entries[0] == e)
+              .SelectMany(r => r.Cells.Select(c => c.Cell))
+          : []
+        )
+        .Where(c => c.Y < 0)
+        .Select(c => new BlockPos(c.X, c.Y, c.Z)),
+    ];
 
   /// <summary>Sets every setup-local cell of <paramref name="cells"/> that is not air to air
   /// through <paramref name="world"/>'s block accessor.</summary>

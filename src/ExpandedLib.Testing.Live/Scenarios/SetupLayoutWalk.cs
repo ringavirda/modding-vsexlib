@@ -69,7 +69,7 @@ internal static class SetupLayoutWalk {
   ) {
     int placed = 0;
     IReadOnlyList<LayoutPlacing> plan = Plan(layout);
-    Dig(ctx, plan);
+    Dig(ctx, layout);
     foreach (LayoutPlacing p in plan) {
       string label = "L" + ++placed;
       ctx.Current = label;
@@ -104,13 +104,11 @@ internal static class SetupLayoutWalk {
     }
   }
 
-  private static void Dig(ScenarioContext ctx, IEnumerable<LayoutPlacing> plan) {
-    foreach (LayoutCell cell in plan.SelectMany(p => p.Cells))
-      if (cell.Y < 0) {
-        var local = new BlockPos(cell.X, cell.Y, cell.Z);
-        if (!ctx.IsAir(local))
-          ctx.SetBlock(ctx.World.GetBlock(0), local);
-      }
+  private static void Dig(ScenarioContext ctx, SetupLayout layout) {
+    List<BlockPos> cells = SetupDig.LayoutCells(layout);
+    SetupDig.Dig(ctx.Setup, cells);
+    foreach (BlockPos cell in cells)
+      ctx.Touched.Add(cell.Copy());
   }
 
   private static string Describe(LayoutEntry entry) =>

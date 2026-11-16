@@ -45,21 +45,7 @@ public sealed partial class SetupScene
   {
     if (Model.Drawn is not { } layout)
       return;
-    SetupDig.Dig(
-      View,
-      layout
-        .Entries.SelectMany(e =>
-          e.Kind == LayoutEntryKind.Block
-            ? layout.Cells.Where(c => c.Symbol == e.Glyph)
-          : e.Kind == LayoutEntryKind.Run
-            ? layout
-              .Runs.Where(r => r.Entries[0] == e)
-              .SelectMany(r => r.Cells.Select(c => c.Cell))
-          : []
-        )
-        .Where(c => c.Y < 0)
-        .Select(c => new BlockPos(c.X, c.Y, c.Z))
-    );
+    SetupDig.Dig(View, SetupDig.LayoutCells(layout));
     foreach (LayoutEntry entry in layout.Entries)
     {
       switch (entry.Kind)
