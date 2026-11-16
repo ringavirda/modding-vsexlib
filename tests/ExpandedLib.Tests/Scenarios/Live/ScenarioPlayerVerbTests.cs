@@ -64,6 +64,35 @@ public class ScenarioPlayerVerbTests {
     Assert.Equal(new Vec3d(0.5, 1.0, 0.375), selection.HitPosition);
   }
 
+  /// <summary>Fails when an interact step with a control and no face aims anywhere but the top of the box, as
+  /// the harness aims it, or one without a control anywhere but the middle of the body's south face.</summary>
+  [Fact]
+  public void An_interact_step_with_no_face_aims_at_a_control_top_and_the_body_south() {
+    var (world, at) = PanelWorld();
+
+    Assert.Null(InteractStep.FaceOf(JObject.Parse("{\"at\": [0, 0, 0]}")));
+    Assert.Equal(
+      BlockFacing.SOUTH,
+      InteractStep.FaceOf(JObject.Parse("{\"at\": [0, 0, 0], \"face\": \"s\"}"))
+    );
+    BlockSelection control = InteractStep.SelectionFor(
+      world.Accessor,
+      at,
+      "handle",
+      InteractStep.FaceOf(JObject.Parse("{\"at\": [0, 0, 0]}"))
+    );
+    Assert.Equal(BlockFacing.UP, control.Face);
+    Assert.Equal(new Vec3d(0.5, 1.0, 0.375), control.HitPosition);
+    BlockSelection body = InteractStep.SelectionFor(
+      world.Accessor,
+      at,
+      null,
+      null
+    );
+    Assert.Equal(BlockFacing.SOUTH, body.Face);
+    Assert.Equal(new Vec3d(0.5, 0.5, 1.0), body.HitPosition);
+  }
+
   /// <summary>Fails when the live selection ignores the hit and aims at the box's face centre, accepts a hit
   /// off the box, or lets a hit through with no control.</summary>
   [Fact]
