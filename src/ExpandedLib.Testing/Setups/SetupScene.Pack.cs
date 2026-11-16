@@ -72,16 +72,14 @@ public sealed partial class SetupScene
     string where,
     ExRightClickConstruction construction,
     string pin,
-    BlockPos cell
+    BlockPos cell,
+    int target,
+    IReadOnlyDictionary<string, string> materials
   )
   {
     if (_pack is not { DrawsBlocks: true } || _pack.TookStanding(cell))
       return;
-    for (
-      int i = construction.CurrentCompletedStage + 1;
-      i < construction.Stages.Length;
-      i++
-    )
+    for (int i = construction.CurrentCompletedStage + 1; i <= target; i++)
     {
       foreach (ExConstructionToolStep step in construction.Stages[i].ToolSteps)
         if (!_pack.HeldKeys.Any(k => WildcardUtil.Match(step.Tool, k)))
@@ -95,7 +93,7 @@ public sealed partial class SetupScene
       )
         Draw(
           where,
-          Regex.Replace(need.Code.ToString(), @"\{[^}]*\}", "*"),
+          SetupConstruction.DrawnCode(need.Code.ToString(), materials),
           need.Quantity,
           pin
         );
