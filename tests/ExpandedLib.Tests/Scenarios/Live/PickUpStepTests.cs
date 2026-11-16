@@ -99,7 +99,7 @@ public class PickUpStepTests
   }
 
   /// <summary>Fails when the choice is not the lowest entity id (the answer is 9 without the order), or
-  /// when a dead entity is a candidate (the answer is 1 without the filter), or when one two cells off is.</summary>
+  /// when a dead entity is a candidate (the answer is 1 without the filter).</summary>
   [Fact]
   public void The_lowest_live_entity_id_within_one_cell_is_chosen()
   {

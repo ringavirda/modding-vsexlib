@@ -189,6 +189,39 @@ public class SetupPickUpTests : IDisposable
     );
   }
 
+  // Fails when Pick widens its cell to two, so a spawn two cells off is taken.
+  [Fact]
+  public void A_spawn_two_cells_off_is_not_within_one_cell()
+  {
+    string message = Refused(
+      "",
+      "[" + Box + ", " + Spill(dx: 2) + ", " + PickUp() + "]"
+    );
+
+    Assert.Equal(
+      "t.json: steps[2]: no item entity lies within one cell of (0, 1, 0).",
+      message
+    );
+  }
+
+  // Fails when a break step's drops stay candidates, so the pickup takes the broken block's drop.
+  [Fact]
+  public void A_broken_blocks_drops_are_not_picked()
+  {
+    string message = Refused(
+      "",
+      "[{\"place\": {\"code\": \"setupbox:slab\", \"at\": [0, 1, 0]}}, "
+        + "{\"break\": {\"at\": [0, 1, 0], \"by\": \"world\"}}, "
+        + PickUp()
+        + "]"
+    );
+
+    Assert.Equal(
+      "t.json: steps[2]: no item entity lies within one cell of (0, 1, 0).",
+      message
+    );
+  }
+
   // Fails when the code filter is skipped, so a plate is taken for a box.
   [Fact]
   public void A_pickup_whose_code_matches_nothing_there_is_refused()
