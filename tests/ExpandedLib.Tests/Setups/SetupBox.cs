@@ -91,6 +91,47 @@ internal sealed class SetupBox : BlockEntityContainer, IDrawsShape
     );
   }
 
+  public void SpillMarked(
+    string code,
+    int count,
+    string key,
+    string value,
+    int dx,
+    int dy,
+    int dz
+  )
+  {
+    var at = new AssetLocation(code);
+    CollectibleObject item =
+      (CollectibleObject?)Api.World.GetItem(at) ?? Api.World.GetBlock(at);
+    var stack = new ItemStack(item, count);
+    stack.Attributes.SetString(key, value);
+    Api.World.SpawnItemEntity(
+      stack,
+      Pos.ToVec3d().Add(dx + 0.5, dy + 0.5, dz + 0.5)
+    );
+  }
+
+  public void SpillHot(
+    string code,
+    int count,
+    float temperature,
+    int dx,
+    int dy,
+    int dz
+  )
+  {
+    var at = new AssetLocation(code);
+    CollectibleObject item =
+      (CollectibleObject?)Api.World.GetItem(at) ?? Api.World.GetBlock(at);
+    var stack = new ItemStack(item, count);
+    item.SetTemperature(Api.World, stack, temperature);
+    Api.World.SpawnItemEntity(
+      stack,
+      Pos.ToVec3d().Add(dx + 0.5, dy + 0.5, dz + 0.5)
+    );
+  }
+
   public override void Initialize(ICoreAPI api)
   {
     base.Initialize(api);

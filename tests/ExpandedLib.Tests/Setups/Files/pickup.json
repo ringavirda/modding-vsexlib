@@ -1,0 +1,53 @@
+{
+  "setup": "pickup",
+  "description": "A box spills two marked plates; the pickup step takes the stack into the empty hand with its attributes, a kept click holds it, and the first hotbar slot reads the mark back.",
+  "mods": [
+    "setupbox",
+    "setupcraft"
+  ],
+  "seconds": 6,
+  "record": {},
+  "pack": {
+    "scope": "stacks",
+    "gathered": {},
+    "ends": {
+      "stacks": {}
+    }
+  },
+  "steps": [
+    {
+      "place": {
+        "id": "box",
+        "code": "setupbox:box",
+        "at": [0, 0, 0]
+      }
+    },
+    {
+      "call": {
+        "at": {"of": "box"},
+        "method": "SpillMarked",
+        "args": ["setupcraft:plate", 2, "stockForm", "flat", 0, 1, 0]
+      }
+    },
+    {
+      "pickup": {
+        "at": [0, 1, 0],
+        "code": "setupcraft:plate"
+      }
+    },
+    {
+      "interact": {
+        "at": {"of": "box"},
+        "keep": true
+      }
+    },
+    {
+      "expect": {
+        "slot": 0,
+        "code": "setupcraft:plate",
+        "count": 2,
+        "attribute": {"key": "stockForm", "equals": "flat"}
+      }
+    }
+  ]
+}

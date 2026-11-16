@@ -17,6 +17,12 @@ public sealed partial class SetupScene
 {
   private SetupPack? _pack;
   private int _spawnsSeen;
+  private readonly HashSet<ItemStack> _given = new(
+    ReferenceEqualityComparer.Instance
+  );
+  private readonly HashSet<ItemStack> _picked = new(
+    ReferenceEqualityComparer.Instance
+  );
 
   private void StartPack(System.Func<string, SetupFileModel?>? stages)
   {
@@ -128,7 +134,10 @@ public sealed partial class SetupScene
         && Math.Floor(at.Z) >= z0
         && Math.Floor(at.Z) <= z1
       )
+      {
         Give(stack);
+        _given.Add(stack);
+      }
     _spawnsSeen = spawns.Count;
   }
 

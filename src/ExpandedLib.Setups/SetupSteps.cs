@@ -187,6 +187,7 @@ internal static class SetupSteps {
     ],
     ["takeoff"] = ["at"],
     ["cap"] = ["at", "face", "fails"],
+    ["pickup"] = ["at", "code", "offHand"],
   };
 
   private static readonly Dictionary<string, string[]> Required = new() {
@@ -206,6 +207,7 @@ internal static class SetupSteps {
     ["assemble"] = ["code", "at"],
     ["takeoff"] = ["at"],
     ["cap"] = ["at", "face"],
+    ["pickup"] = ["at"],
     ["repeat"] = ["steps"],
     ["advance"] = ["hours"],
     ["fillInventory"] = ["code"],
@@ -315,6 +317,8 @@ internal static class SetupSteps {
           .Fail("aims at a control's box and needs \"control\".");
       ValidateAim(o["hit"]!, at.In("hit"));
     }
+    if (kind == "pickup" && o["code"] != null)
+      SetupJson.String(o["code"], at.In("code"));
     if (kind == "break" && o["sneak"] != null)
       SetupJson.Bool(o["sneak"], at.In("sneak"));
     if (kind == "expect" && SetupSlotExpect.Is(o))

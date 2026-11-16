@@ -99,6 +99,48 @@ public sealed partial class SetupScene
     Player.HoldOffHand(null);
   }
 
+  private void PickUpStep(SetupStep step)
+  {
+    GiveSpawns();
+    if (SetupPickUp.HandRefusal(Player.ActiveSlot.Itemstack) is { } held)
+      throw Fail(step.Path, held);
+    BlockPos at = At(step, "at");
+    ItemStack? offHand = step.Body["offHand"] is { } off
+      ? StackOf(off, step.Path)
+      : null;
+    if (offHand != null)
+      Draw(step.Path, offHand);
+    Player.HoldOffHand(offHand);
+    try
+    {
+      var live = World
+        .Spawns.Where(spawn => !_picked.Contains(spawn.Stack))
+        .ToList();
+      int? index = SetupPickUp.Pick(
+        live,
+        at,
+        (string?)step.Body["code"],
+        Describe(at),
+        out string? problem
+      );
+      if (index == null)
+        throw Fail(step.Path, problem!);
+      ItemStack original = live[index.Value].Stack;
+      if (SetupPickUp.HeatRefusal(World.World, original, offHand) is { } hot)
+        throw Fail(step.Path, hot);
+      _picked.Add(original);
+      ItemStack clone = SetupPickUp.Taken(original);
+      if (_given.Contains(original))
+        Draw(step.Path, clone);
+      Player.Hold(clone);
+    }
+    finally
+    {
+      Give(Player.OffHandSlot.Itemstack);
+      Player.HoldOffHand(null);
+    }
+  }
+
   private void UseStep(SetupStep step)
   {
     BlockPos at = At(step, "at");
