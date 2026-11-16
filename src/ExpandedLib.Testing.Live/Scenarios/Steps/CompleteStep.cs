@@ -60,6 +60,15 @@ internal sealed class CompleteStep : ScenarioStep {
         $"{FailureDetail.Cell(cell)} is neither a multiblock nor a construction, so it has nothing to complete.",
         Suspect.Scenario
       );
+    try {
+      SetupConstruction.RequireConstruction(
+        to,
+        construction != null,
+        FailureDetail.Cell(cell)
+      );
+    } catch (SetupFileException e) {
+      throw new StepFailure(e.Message, Suspect.Scenario, e);
+    }
     if (structure != null)
       foreach (bool wait in Raise(ctx, cell, structure, report))
         yield return wait;

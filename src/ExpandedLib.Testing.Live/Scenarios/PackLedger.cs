@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text.RegularExpressions;
 using ExpandedLib.Blocks;
 using ExpandedLib.Helpers;
 using ExpandedLib.Machines;
@@ -97,11 +96,7 @@ internal static class PackLedger {
       )
         Draw(
           ctx,
-          Regex.Replace(
-            need.Code.ToString(),
-            @"\{([^}]*)\}",
-            m => materials.GetValueOrDefault(m.Groups[1].Value, "*")
-          ),
+          SetupConstruction.DrawnCode(need.Code.ToString(), materials),
           need.Quantity,
           pin
         );

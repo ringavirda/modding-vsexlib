@@ -161,10 +161,10 @@ public sealed partial class SetupScene : IDisposable
   /// <exception cref="ArgumentException"><paramref name="modPaths"/> does not hold one folder for
   /// each of the file's mods.</exception>
   /// <exception cref="InvalidOperationException">The file uses a step kind the fake world cannot
-  /// run or a key the reader refuses (<c>tree</c>, <c>materials</c>, a <c>complete</c> to a
-  /// stage); or a step fails: a code the load did not register, a cell
-  /// that is not air, a layout or run that does not fit, a step at a cell without the block entity,
-  /// member, key, slot or method it names, a hold, <c>returns</c>, <c>wait</c> or <c>repeat</c> not
+  /// run or a key the reader refuses (<c>tree</c>, <c>materials</c> of a placement,
+  /// <c>complete</c> to a stage on a placement or legend entry); or a step
+  /// fails: a code the load did not register, a cell that is not air, a layout or run that does not
+  /// fit, a step at a cell without the block entity, member, key, slot or method it names, a hold, <c>returns</c>, <c>wait</c> or <c>repeat</c> not
   /// met, or an <c>expect</c> that does not hold. The message names the file and where.</exception>
   public static SetupScene Build(
     SetupFile file,
@@ -286,14 +286,6 @@ public sealed partial class SetupScene : IDisposable
               "\"expect player\" is refused: the fake world's player has no health."
             );
           break;
-        case "complete":
-          if (body["to"] != null && (string?)body["to"] != "all")
-            throw Fail(
-              step.Path,
-              "\"complete\" to a stage is refused: the fake world completes every stage or none."
-            );
-          RefuseKeys(step.Path, body, "materials");
-          break;
       }
     }
     if (Model.Drawn is { } layout)
@@ -320,7 +312,7 @@ public sealed partial class SetupScene : IDisposable
       throw Fail(
         where,
         key == "complete"
-          ? "\"complete\" to a stage is refused: the fake world completes every stage or none."
+          ? "\"complete\" to a stage on a place or legend entry is refused: the harness completes to a stage only in a complete step."
           : $"\"{key}\" is not built; the harness reader refuses it."
       );
     }
@@ -531,36 +523,128 @@ public sealed partial class SetupScene : IDisposable
     );
 
   /// <summary>Brings the <see cref="ExRightClickConstructable"/> of the entity at
-  /// <paramref name="pos"/> to its last stage, drawing the stages' requirements from the pack, and
-  /// plants a completed construction in the entity as <see cref="RccFake.Complete"/> does when the
-  /// entity caches its construction in an <c>_animator</c> or <c>_rcc</c> field.</summary>
+  /// <paramref name="pos"/> up to the stage <paramref name="to"/> names, drawing the stages'
+  /// requirements from the pack, and, when that is its last stage, plants a completed construction in
+  /// the entity as <see cref="RccFake.Complete"/> does when the entity caches its construction in an
+  /// <c>_animator</c> or <c>_rcc</c> field.</summary>
   /// <remarks>The entity is then marked dirty as a paid stage marks it, so an entity that joins its
-  /// run on a fitted stage re-walks the cells already placed around it.</remarks>
+  /// run on a fitted stage re-walks the cells already placed around it. A construction left short of
+  /// its last stage is not planted: the entity still reads as unbuilt.</remarks>
   /// <param name="be">The block entity at <paramref name="pos"/>.</param>
   /// <param name="pos">The entity's cell.</param>
   /// <param name="where">The step path a pack shortfall is reported under.</param>
+  /// <param name="to">The stage to stop at, or "all" or null for the last.</param>
+  /// <param name="materials">The variant each stored wildcard key is drawn in, or null.</param>
   /// <returns>Whether the entity carries a construction; false leaves it untouched.</returns>
-  /// <exception cref="InvalidOperationException">The pack lacks a stage's requirement.</exception>
-  internal bool CompleteConstruction(BlockEntity be, BlockPos pos, string where)
+  /// <exception cref="InvalidOperationException">The pack lacks a stage's requirement, <paramref name="to"/>
+  /// is not a stage of the construction, or <paramref name="materials"/> is not a map of variant names.</exception>
+  internal bool CompleteConstruction(
+    BlockEntity be,
+    BlockPos pos,
+    string where,
+    JToken? to = null,
+    JToken? materials = null
+  )
   {
     if (be.GetBehavior<ExRightClickConstructable>() is not { } construction)
       return false;
-    DrawStages(where, construction.Construction, Describe(pos), pos);
+    int target;
+    Dictionary<string, string> variants;
+    try
+    {
+      target = SetupConstruction.Target(
+        to,
+        construction.Construction.Stages.Length
+      );
+      variants = SetupConstruction.Materials(materials);
+    }
+    catch (SetupFileException e)
+    {
+      throw Fail(where, e.Message);
+    }
+    DrawStages(
+      where,
+      construction.Construction,
+      Describe(pos),
+      pos,
+      target,
+      variants
+    );
     if (
-      ReflectionHelpers.TryGetField(be, "_animator", out _)
-      || ReflectionHelpers.TryGetField(be, "_rcc", out _)
+      ReflectionHelpers.GetField(construction, "rcc")
+      is ExRightClickConstruction paid
+    )
+      StoreWildCards(paid, target, variants);
+    bool last = target == construction.Construction.Stages.Length - 1;
+    if (
+      last
+      && (
+        ReflectionHelpers.TryGetField(be, "_animator", out _)
+        || ReflectionHelpers.TryGetField(be, "_rcc", out _)
+      )
     )
       RccFake.Complete(be);
     if (
       ReflectionHelpers.GetField(construction, "rcc")
       is ExRightClickConstruction built
     )
-      built.CurrentCompletedStage = Math.Max(0, built.Stages.Length - 1);
+      built.CurrentCompletedStage = Math.Max(
+        Math.Max(0, target),
+        built.CurrentCompletedStage
+      );
     be.MarkDirty(true);
     return true;
   }
 
-  private void Complete(BlockPos pos, string where)
+  private void StoreWildCards(
+    ExRightClickConstruction construction,
+    int target,
+    IReadOnlyDictionary<string, string> variants
+  )
+  {
+    for (int i = construction.CurrentCompletedStage + 1; i <= target; i++)
+      foreach (
+        ExConstructionIngredient need in construction.Stages[i].RequireStacks
+          ?? []
+      )
+      {
+        if (need.StoreWildCard is not { } key)
+          continue;
+        string? variant =
+          variants.GetValueOrDefault(key) ?? FirstVariant(need, key);
+        if (variant != null)
+          construction.StoredWildCards[key] = variant;
+      }
+  }
+
+  private string? FirstVariant(ExConstructionIngredient need, string key)
+  {
+    ExConstructionIngredient ingredient = need.Clone();
+    ingredient.Resolve(World.World, "setup complete");
+    IEnumerable<CollectibleObject> registered =
+      ingredient.Type == EnumItemClass.Item
+        ? World.World.Items
+        : World.World.Blocks;
+    foreach (CollectibleObject c in registered)
+      if (
+        c?.Code != null
+        && c.Id != 0
+        && c.Variant.TryGetValue(key, out string? variant)
+        && ingredient.SatisfiesAsIngredient(
+          new ItemStack(c, ingredient.Quantity),
+          false
+        )
+      )
+        return variant;
+    return null;
+  }
+
+  private void Complete(
+    BlockPos pos,
+    string where,
+    JToken? to = null,
+    JToken? materials = null
+  )
   {
     Block block = World.GetBlock(pos);
     BlockEntity be =
@@ -569,6 +653,18 @@ public sealed partial class SetupScene : IDisposable
         where,
         $"cell {Describe(pos)} has no block entity to complete."
       );
+    try
+    {
+      SetupConstruction.RequireConstruction(
+        to,
+        be.GetBehavior<ExRightClickConstructable>() != null,
+        $"{block.Code} at {Describe(pos)}"
+      );
+    }
+    catch (SetupFileException e)
+    {
+      throw Fail(where, e.Message);
+    }
     bool completed = false;
     if (SetupStructureCheck.IsMultiblock(block, be))
     {
@@ -597,7 +693,7 @@ public sealed partial class SetupScene : IDisposable
         );
       completed = true;
     }
-    if (CompleteConstruction(be, pos, where))
+    if (CompleteConstruction(be, pos, where, to, materials))
       completed = true;
     if (!completed)
       throw Fail(
@@ -641,7 +737,12 @@ public sealed partial class SetupScene : IDisposable
           PlaceStep(step);
           break;
         case "complete":
-          Complete(PositionOf((string)step.Body["of"]!), step.Path);
+          Complete(
+            PositionOf((string)step.Body["of"]!),
+            step.Path,
+            step.Body["to"],
+            step.Body["materials"]
+          );
           break;
         case "fill":
           FillStep(step);

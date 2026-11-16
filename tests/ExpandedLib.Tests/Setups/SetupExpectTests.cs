@@ -747,15 +747,14 @@ public class SetupExpectTests : IDisposable
     Assert.Contains("no weather", message);
   }
 
-  // Fails when a numbered stage is rejected by the parser as a position instead of reaching the
-  // reader's refusal, or accepted as a build to completion.
+  // Fails when a numbered stage is rejected by the parser as a position.
   [Fact]
-  public void A_complete_to_a_stage_number_is_refused_by_the_reader()
+  public void A_complete_to_a_stage_number_of_a_block_with_no_construction_is_refused()
   {
     string message = BoxRefused("{\"complete\": {\"of\": \"box\", \"to\": 2}}");
 
     Assert.Contains("steps[1]", message);
-    Assert.Contains("\"complete\" to a stage is refused", message);
+    Assert.Contains("has nothing to complete", message);
   }
 
   // Fails when a complete to a word, a fraction or a bool loads, or escapes the parse as a raw cast

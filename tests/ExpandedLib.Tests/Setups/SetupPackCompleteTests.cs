@@ -69,7 +69,8 @@ public class SetupPackCompleteTests : IDisposable
     string mod,
     string pack,
     string steps,
-    System.Func<string, SetupFileModel?>? stages = null
+    System.Func<string, SetupFileModel?>? stages = null,
+    bool oakPlank = false
   ) =>
     SetupScene.Build(
       SetupFile.Parse(
@@ -87,6 +88,12 @@ public class SetupPackCompleteTests : IDisposable
       {
         w.RegisterItem("game:stick");
         w.RegisterItem("game:flint");
+        if (oakPlank)
+        {
+          Vintagestory.API.Common.Item plank = w.RegisterItem("game:plank-oak");
+          plank.VariantStrict = new() { ["wood"] = "oak" };
+          plank.Variant = new(plank.VariantStrict);
+        }
       },
       w =>
         w.RegisterClass(
@@ -415,6 +422,214 @@ public class SetupPackCompleteTests : IDisposable
     );
 
     Assert.Empty(scene.Run(Mods).Pack!.Draws);
+  }
+
+  private const string PlacedFrame =
+    "{\"place\": {\"id\": \"frame\", \"code\": \"setupbuild:frame\", \"at\": [0, 0, 0]}}";
+
+  private static string CompleteTo(string to) =>
+    PlacedFrame + ", {\"complete\": {\"of\": \"frame\", \"to\": " + to + "}}";
+
+  private static int StageOf(SetupScene scene) =>
+    scene
+      .World.GetBlockEntity(scene.PositionOf("frame"))!
+      .GetBehavior<ExpandedLib.Blocks.ExRightClickConstructable>()!
+      .Construction.CurrentCompletedStage;
+
+  // Fails when the walk to stage 1 draws a stage past it (DrawStages loops to the last stage, so
+  // the planks are drawn from a pack that holds none), or leaves the construction at its last stage.
+  [Fact]
+  public void A_complete_to_a_stage_draws_the_stages_up_to_it_and_stops_there()
+  {
+    using SetupScene scene = Build(
+      "setupbuild",
+      Gathered("all", "{\"setupbuild:frame\": 1, \"game:stick\": 2}"),
+      CompleteTo("1")
+    );
+
+    SetupPackRecord pack = scene.Run(Mods).Pack!;
+
+    Assert.Equal(
+      [("steps[0]", "setupbuild:frame", 1), ("steps[1]", "game:stick", 2)],
+      pack.Draws
+    );
+    Assert.Empty(pack.End);
+    Assert.Equal(1, StageOf(scene));
+  }
+
+  // Fails when the completed stage is set to the construction's last instead of the stage named, or
+  // the entity is planted with a finished construction though a stage is unpaid.
+  [Fact]
+  public void A_complete_to_stage_one_leaves_the_last_stage_unpaid()
+  {
+    using SetupScene scene = Build(
+      "setupbuild",
+      Gathered("stacks", "{}"),
+      CompleteTo("1")
+    );
+
+    scene.Run(Mods);
+
+    Assert.Equal(1, StageOf(scene));
+    Assert.Null(
+      ReflectionHelpers.GetField(
+        scene.World.GetBlockEntity(scene.PositionOf("frame"))!,
+        "_rcc"
+      )
+    );
+  }
+
+  // Fails when a complete to a stage draws under scope "stacks", where a construction is built free.
+  [Fact]
+  public void A_complete_to_a_stage_under_scope_stacks_draws_nothing()
+  {
+    using SetupScene scene = Build(
+      "setupbuild",
+      Gathered("stacks", "{}"),
+      CompleteTo("1")
+    );
+
+    Assert.Empty(scene.Run(Mods).Pack!.Draws);
+  }
+
+  // Fails when "all" is read as a stage short of the last, or an absent "to" stops early.
+  [Theory]
+  [InlineData("\"to\": \"all\"")]
+  [InlineData("\"to\": 2")]
+  [InlineData("\"of\": \"frame\"")]
+  public void A_complete_to_all_or_without_to_completes_every_stage(string key)
+  {
+    string step = key.StartsWith("\"of\"")
+      ? "{\"complete\": {\"of\": \"frame\"}}"
+      : "{\"complete\": {\"of\": \"frame\", " + key + "}}";
+    using SetupScene scene = Build(
+      "setupbuild",
+      Gathered("all", Paid),
+      PlacedFrame + ", " + step
+    );
+
+    SetupPackRecord pack = scene.Run(Mods).Pack!;
+
+    Assert.Equal(3, pack.Draws.Count);
+    Assert.Empty(pack.End);
+    Assert.Equal(2, StageOf(scene));
+  }
+
+  // Fails when a stage past the last is accepted, or the load names no line.
+  [Fact]
+  public void A_complete_to_a_stage_past_the_last_fails_the_load_naming_the_line()
+  {
+    string message = Refused(
+      "setupbuild",
+      Gathered("stacks", "{}"),
+      CompleteTo("3")
+    );
+
+    Assert.Equal(
+      "t.json: steps[1]: \"to\" 3 is not a stage of a construction of 3 stage(s), 0 to 2.",
+      message
+    );
+  }
+
+  // Fails when a complete to a stage of a block with no construction is read as a complete of its
+  // structure, which raises the stack.
+  [Fact]
+  public void A_complete_to_a_stage_of_a_block_with_no_construction_fails_the_load()
+  {
+    string message = Refused(
+      "smokestack",
+      Gathered("stacks", "{}"),
+      Stack.Replace(", \"complete\": \"all\"", "")
+        + ", {\"complete\": {\"of\": \"stack\", \"to\": 1}}"
+    );
+
+    Assert.StartsWith(
+      "t.json: steps[1]: \"to\" 1 needs a construction",
+      message
+    );
+  }
+
+  // Fails when materials is ignored by a complete to a stage, so the planks are drawn as any wood.
+  [Fact]
+  public void A_complete_to_a_stage_draws_the_variant_materials_names()
+  {
+    using SetupScene scene = Build(
+      "setupbuild",
+      Gathered(
+        "all",
+        "{\"setupbuild:frame\": 1, \"game:stick\": 2, \"game:plank-pine\": 3}"
+      ),
+      PlacedFrame
+        + ", {\"complete\": {\"of\": \"frame\", \"to\": 2, \"materials\": {\"wood\": \"pine\"}}}"
+    );
+
+    SetupPackRecord pack = scene.Run(Mods).Pack!;
+
+    Assert.Contains(("steps[1]", "game:plank-pine", 3), pack.Draws);
+  }
+
+  private static ExpandedLib.Blocks.ExRightClickConstruction KeyFrameRcc(
+    SetupScene scene
+  ) =>
+    (ExpandedLib.Blocks.ExRightClickConstruction)
+      ExpandedLib.Testing.ReflectionHelpers.GetField(
+        scene
+          .World.GetBlockEntity(scene.PositionOf("key"))!
+          .GetBehavior<ExpandedLib.Blocks.ExRightClickConstructable>()!,
+        "rcc"
+      )!;
+
+  private const string PlacedKey =
+    "{\"place\": {\"id\": \"key\", \"code\": \"setupbuild:keyframe\", \"at\": [0, 0, 0]}}";
+
+  // Fails when a paid stage's StoreWildCard variant is not stored under the key materials names, so
+  // the stage keyed on it reads no variant.
+  [Fact]
+  public void A_complete_stores_the_variant_materials_names_for_a_paid_stage()
+  {
+    using SetupScene scene = Build(
+      "setupbuild",
+      Gathered("all", "{\"setupbuild:keyframe\": 1, \"game:plank-pine\": 1}"),
+      PlacedKey
+        + ", {\"complete\": {\"of\": \"key\", \"to\": 1, \"materials\": {\"wood\": \"pine\"}}}"
+    );
+
+    scene.Run(Mods);
+
+    Assert.Equal("pine", KeyFrameRcc(scene).StoredWildCards["wood"]);
+  }
+
+  // Fails when no variant is stored without materials, or the stored one is not the first
+  // registered collectible's.
+  [Fact]
+  public void A_complete_without_materials_stores_the_first_registered_variant()
+  {
+    using SetupScene scene = Build(
+      "setupbuild",
+      Gathered("all", "{\"setupbuild:keyframe\": 1, \"game:plank-oak\": 1}"),
+      PlacedKey + ", {\"complete\": {\"of\": \"key\", \"to\": 1}}",
+      oakPlank: true
+    );
+
+    scene.Run(Mods);
+
+    Assert.Equal("oak", KeyFrameRcc(scene).StoredWildCards["wood"]);
+  }
+
+  // Fails when a stage left unpaid by to stores its variant.
+  [Fact]
+  public void A_complete_stores_no_variant_for_a_stage_it_does_not_pay()
+  {
+    using SetupScene scene = Build(
+      "setupbuild",
+      Gathered("stacks", "{}"),
+      PlacedKey
+        + ", {\"complete\": {\"of\": \"key\", \"to\": 0, \"materials\": {\"wood\": \"pine\"}}}"
+    );
+
+    scene.Run(Mods);
+
+    Assert.Empty(KeyFrameRcc(scene).StoredWildCards);
   }
 
   // Fails when complete raises a structure's cells without drawing them.

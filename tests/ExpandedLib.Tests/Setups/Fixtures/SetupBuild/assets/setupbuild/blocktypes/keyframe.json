@@ -1,0 +1,25 @@
+{
+  "code": "keyframe",
+  "entityClass": "SetupFrame",
+  "behaviors": [ { "name": "BlockEntityInteract" } ],
+  "entityBehaviors": [
+    {
+      "name": "ExRightClickConstructable",
+      "properties": {
+        "stages": [
+          {},
+          {
+            "requireStacks": [
+              { "type": "item", "code": "game:plank-*", "quantity": 1, "storeWildCard": "wood" }
+            ]
+          },
+          {
+            "requireStacks": [
+              { "type": "item", "code": "game:plank-{wood}", "quantity": 2 }
+            ]
+          }
+        ]
+      }
+    }
+  ]
+}
