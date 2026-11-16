@@ -812,7 +812,7 @@ public sealed partial class TestWorld : IDisposable {
   /// runs at 200, 400, 600, 800 and 1000 ms, among the listeners due at the same moment.</summary>
   /// <remarks>Listeners due at one moment fire in firing order; the network fire due with them runs just
   /// before the listener <paramref name="networkBefore"/>, even when that listener is in except or not due,
-  /// before the first of them when it is <see cref="NetworkFirst"/>, and after them when it is null or gone. At the second's end sim time advances 1000 ms and the delayed
+  /// and after them when it is null or gone. At the second's end sim time advances 1000 ms and the delayed
   /// callbacks that come due fire, after the listeners and before a network fire that runs after them. The
   /// accrued time of a listener in <paramref name="except"/> is left as it was. A listener registered during
   /// the second starts accruing at the next moment of it.</remarks>
@@ -824,10 +824,6 @@ public sealed partial class TestWorld : IDisposable {
     for (int i = 0; i < 1000 / SliceMs; i++)
       RunSlice(SliceMs, except, network, networkBefore);
   }
-
-  /// <summary>The <c>networkBefore</c> that runs a network fire before the first listener due with it, or at the
-  /// slice's end when none is due. No listener takes this id.</summary>
-  internal const long NetworkFirst = 0;
 
   /// <summary>The length of the slices <see cref="RunSecond"/> is cut into, in ms.</summary>
   internal const int SliceMs = 100;
@@ -845,8 +841,8 @@ public sealed partial class TestWorld : IDisposable {
   /// <param name="ms">Sim time to run, in ms, from 1 up to what is left of the second.</param>
   /// <param name="except">Ids of the listeners that do not fire in this slice.</param>
   /// <param name="network">One fire of the network listener.</param>
-  /// <param name="networkBefore">The listener a network fire due with it runs just before;
-  /// <see cref="NetworkFirst"/> for before the first listener due; null for after the listeners due.</param>
+  /// <param name="networkBefore">The listener a network fire due with it runs just before; null for after the
+  /// listeners due.</param>
   /// <exception cref="System.ArgumentOutOfRangeException"><paramref name="ms"/> is under 1 or runs past the
   /// second's end.</exception>
   internal void RunSlice(
@@ -882,7 +878,7 @@ public sealed partial class TestWorld : IDisposable {
         _msSinceFire = 0;
       // Snapshot: a listener may unregister (or a block entity may register a new one) while firing.
       foreach (long id in _tickListeners.Keys.ToList()) {
-        if (!ran && (networkBefore == NetworkFirst || id == networkBefore)) {
+        if (!ran && id == networkBefore) {
           network();
           ran = true;
         }

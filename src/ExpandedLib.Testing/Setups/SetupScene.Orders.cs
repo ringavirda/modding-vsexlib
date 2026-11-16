@@ -9,10 +9,10 @@ namespace ExpandedLib.Testing;
 
 public sealed partial class SetupScene
 {
-  private long? _networkBefore = TestWorld.NetworkFirst;
+  private long? _networkBefore;
 
   /// <summary>One 200 ms fire of the network listener followed by 200 ms of the mechanical lines;
-  /// a second runs it five times, at 200, 400, 600, 800 and 1000 ms, before the listeners due with
+  /// a second runs it five times, at 200, 400, 600, 800 and 1000 ms, after the listeners due with
   /// it or in the place a tick order gives it.</summary>
   internal Action NetworkTick { get; set; }
 

@@ -170,18 +170,6 @@ public class TestWorldRunSecondTests {
     Assert.Equal([1, 3, 5, 7, 9], seen);
   }
 
-  // Fails when RunSlice ignores NetworkFirst: the network then runs after the listener in the slice where both are due.
-  [Fact]
-  public void A_network_first_fire_runs_before_the_listener_due_with_it() {
-    var world = new TestWorld();
-    var log = new List<string>();
-    world.World.RegisterGameTickListener(_ => log.Add("a"), 200);
-
-    world.RunSlice(200, None, () => log.Add("network"), TestWorld.NetworkFirst);
-
-    Assert.Equal(["network", "a"], log);
-  }
-
   private static List<string> SecondLog(
     System.Action<TestWorld, System.Action> run
   ) {

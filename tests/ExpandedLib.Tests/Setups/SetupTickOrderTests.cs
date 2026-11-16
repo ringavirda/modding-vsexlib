@@ -65,7 +65,7 @@ public class SetupTickOrderTests
   private static string[][] Seconds(List<string> log, int perSecond) =>
     [.. log.Chunk(perSecond)];
 
-  // The network fires of a second at 200, 400, 600 and 800 ms; the fifth, at 1000 ms, runs ahead of the listeners.
+  // The network fires of a second at 200, 400, 600 and 800 ms, ahead of the 1000 ms listeners.
   private static readonly string[] Between =
   [
     "network",
@@ -146,10 +146,10 @@ public class SetupTickOrderTests
 
   #region Firing
 
-  // Fails when the listeners fire other than in placement order with the network tick ahead of the
-  // listeners due with it, or the network fires other than five times a second.
+  // Fails when the listeners fire other than in placement order with the network tick last, or the
+  // network fires other than five times a second.
   [Fact]
-  public void A_scene_with_no_order_fires_in_placement_order_and_the_network_first()
+  public void A_scene_with_no_order_fires_in_placement_order_and_the_network_last()
   {
     var log = new List<string>();
     using SetupScene scene = Four(log);
@@ -158,7 +158,7 @@ public class SetupTickOrderTests
 
     Assert.All(
       Seconds(log, 9),
-      s => Assert.Equal([.. Between, "network", "0", "1", "2", "3"], s)
+      s => Assert.Equal([.. Between, "0", "1", "2", "3", "network"], s)
     );
     Assert.Equal(6, Seconds(log, 9).Length);
   }
@@ -238,9 +238,9 @@ public class SetupTickOrderTests
     );
   }
 
-  // Fails when the drawn second fires a delayed callback before the listeners due with it.
+  // Fails when the drawn second fires a delayed callback after the network tick instead of before it.
   [Fact]
-  public void A_delayed_callback_fires_after_the_listeners_in_the_drawn_second()
+  public void A_delayed_callback_fires_before_the_network_tick_in_the_drawn_second()
   {
     var log = new List<string>();
     using SetupScene scene = Four(log);
@@ -252,7 +252,7 @@ public class SetupTickOrderTests
     scene.Run(Mods);
 
     Assert.Equal(
-      [.. Between, "network", "0", "1", "2", "3", "callback"],
+      [.. Between, "0", "1", "2", "3", "callback", "network"],
       Seconds(log, 10)[0]
     );
   }
