@@ -37,6 +37,7 @@ internal static class ScenarioSteps {
       new AssembleStep(),
       new TakeOffStep(),
       new CapStep(),
+      new PickUpStep(),
     }.ToDictionary(s => s.Kind);
 
   public static IEnumerable<string> Kinds => Table.Keys;

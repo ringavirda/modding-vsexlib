@@ -60,8 +60,13 @@ public sealed partial class SetupScene
       ? (float)value
       : throw Fail(step.Path, $"\"{key}\" is a number, 0 or more.");
 
-  private void BreakStep(SetupStep step) =>
+  private void BreakStep(SetupStep step)
+  {
+    int before = World.Spawns.Count;
     World.Accessor.BreakBlock(At(step, "at"), null);
+    foreach (var (stack, _) in World.Spawns.Skip(before))
+      _picked.Add(stack);
+  }
 
   private ItemStack StackOf(JToken body, string where)
   {

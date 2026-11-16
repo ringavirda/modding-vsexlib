@@ -656,6 +656,11 @@ internal sealed class SetupFileModel {
             references,
             "complete"
           );
+      foreach (SetupStep step in steps.SelectMany(s => s.All()))
+        if (step.Kind == "pickup")
+          throw new SetupJson.Where(where.File, step.Path).Fail(
+            "\"pickup\" is not a step in a \"during\": a live during gives its spawns only at settle, so the harness and the live runner would not agree on what lies there."
+          );
       if (node["at"] != null) {
         int second = SetupJson.Integer(node["at"], w.In("at"));
         if (second >= seconds)
