@@ -1,6 +1,8 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text;
+using ExpandedLib.Blocks;
 using ExpandedLib.Scenarios;
 using ExpandedLib.Structures;
 using Newtonsoft.Json;
@@ -13,7 +15,7 @@ using Vintagestory.GameContent;
 namespace ExpandedLib.Testing.Live;
 
 /// <summary><c>expect</c>: the readings the setup model parses (<c>block</c>, <c>member</c>,
-/// <c>tree</c>, <c>network</c>), a footprint, two cells in one network, a hotbar slot and the player's health.</summary>
+/// <c>tree</c>, <c>network</c>, <c>info</c>), a footprint, two cells in one network, a hotbar slot and the player's health.</summary>
 internal sealed class ExpectStep : ScenarioStep {
   public override string Kind => "expect";
 
@@ -24,8 +26,6 @@ internal sealed class ExpectStep : ScenarioStep {
 
   public override string? Refuse(SetupStep step) {
     var o = (JObject)step.Body;
-    if (o["info"] != null)
-      return "expect \"info\" needs the scenario player's language.";
     if (o["drops"] != null && o["attribute"] != null)
       return DropsAttributeRefusal(o["attribute"]);
     return null;
@@ -44,6 +44,8 @@ internal sealed class ExpectStep : ScenarioStep {
       report.Value = Drops(ctx, step, o);
     else if (o["footprint"] != null)
       report.Value = Footprint(ctx, o);
+    else if (o["info"] != null)
+      report.Value = Info(ctx, step, o);
     else if (o["same"] != null)
       report.Value = Same(ctx, step, o);
     else if (SetupSlotExpect.Is(o))
@@ -86,6 +88,48 @@ internal sealed class ExpectStep : ScenarioStep {
   /// <param name="slot">The index, from 0.</param>
   public static ItemStack? SlotStack(IInventory hotbar, int slot) =>
     hotbar[slot].Itemstack;
+
+  private static string Info(ScenarioContext ctx, SetupStep step, JObject o) {
+    ScenarioPlayer player =
+      ctx.Player
+      ?? throw new StepFailure(
+        "\"expect\" of info needs the scenario player.",
+        Suspect.Scenario
+      );
+    BlockPos local = ctx.Position(step, o["at"], "at");
+    BlockPos at = ctx.Setup.Absolute(local);
+    BlockEntity be =
+      ctx.Setup.BlockEntityAt(local)
+      ?? throw new StepFailure(
+        $"cell {FailureDetail.Cell(local)} holds {ctx.Setup.BlockAt(local).Code}, which has no block entity."
+      );
+    JToken info = o["info"]!;
+    var text = new StringBuilder();
+    if (o["control"] == null) {
+      player.Player.Entity.BlockSelection = null;
+      be.GetBlockInfo(player.Player, text);
+    } else {
+      try {
+        player.Player.Entity.BlockSelection = ControlAim.Selection(
+          ctx.World.BlockAccessor,
+          at,
+          (string)o["control"]!,
+          null
+        );
+      } catch (ArgumentException e) {
+        throw new StepFailure(e.Message, Suspect.Scenario);
+      }
+      text.Append(
+        ctx.World.BlockAccessor.GetBlock(at)
+          .GetPlacedBlockInfo(ctx.World, at, player.Player)
+      );
+    }
+    string[] lines = SetupInfoExpect.Lines(text.ToString());
+    return SetupInfoExpect.Match(lines, info)
+      ?? throw new StepFailure(
+        $"no info line of {be.GetType().Name} at {FailureDetail.Cell(local)} matches {SetupInfoExpect.Describe(info)}; it reads: {string.Join(" | ", lines)}."
+      );
+  }
 
   private static string Slot(ScenarioContext ctx, JObject o) {
     ScenarioPlayer player =

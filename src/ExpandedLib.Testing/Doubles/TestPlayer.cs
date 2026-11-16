@@ -462,7 +462,8 @@ public sealed class TestPlayer {
     bool sprint,
     float seconds,
     BlockFacing? face,
-    Action? eachSecond
+    Action? eachSecond,
+    Vec3d? hit = null
   ) =>
     Use(
       pos,
@@ -471,7 +472,7 @@ public sealed class TestPlayer {
       ctrl,
       sprint,
       seconds,
-      ControlAim.Selection(_world.Accessor, pos, control, face),
+      ControlAim.Selection(_world.Accessor, pos, control, face, hit),
       eachSecond
     );
 

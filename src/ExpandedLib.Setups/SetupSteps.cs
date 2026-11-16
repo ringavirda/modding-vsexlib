@@ -120,6 +120,7 @@ internal static class SetupSteps {
       "seconds",
       "returns",
       "control",
+      "hit",
       "keep",
     ],
     ["use"] =
@@ -227,6 +228,14 @@ internal static class SetupSteps {
         .Select((t, i) => Parse(t, where.At(i), references, refused)),
     ];
 
+  private static void ValidateAim(JToken hit, SetupJson.Where at) {
+    JArray cell = SetupJson.Array(hit, at);
+    if (cell.Count != 3)
+      throw at.Fail("is block units, x, y and z.");
+    for (int i = 0; i < 3; i++)
+      SetupJson.Number(cell[i], at.At(i));
+  }
+
   private static void ValidateHit(JToken hit, SetupJson.Where at) {
     JArray cell = SetupJson.Array(hit, at);
     if (cell.Count != 3)
@@ -300,12 +309,20 @@ internal static class SetupSteps {
       SetupJson.Bool(o["keep"], at.In("keep"));
     if (kind == "use" && o["hit"] != null)
       ValidateHit(o["hit"]!, at.In("hit"));
+    if (kind == "interact" && o["hit"] != null) {
+      if (o["control"] == null)
+        throw at.In("hit")
+          .Fail("aims at a control's box and needs \"control\".");
+      ValidateAim(o["hit"]!, at.In("hit"));
+    }
     if (kind == "break" && o["sneak"] != null)
       SetupJson.Bool(o["sneak"], at.In("sneak"));
     if (kind == "expect" && SetupSlotExpect.Is(o))
       SetupSlotExpect.Validate(o, at);
     if (kind == "expect" && SetupPlayerExpect.Is(o))
       SetupPlayerExpect.Validate(o, at);
+    if (kind == "expect" && o["info"] != null)
+      SetupInfoExpect.Validate(o["info"], at.In("info"));
     if (kind == "select")
       SetupSlotExpect.ValidateSelect(o, at);
     if (kind == "set" && (o["tree"] == null) == (o["member"] == null))

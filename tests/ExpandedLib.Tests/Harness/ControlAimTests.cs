@@ -1,5 +1,6 @@
 #if GAME_GE_1_22
 using System;
+using ExpandedLib.Blocks;
 using ExpandedLib.Testing;
 using Vintagestory.API.Common;
 using Vintagestory.API.MathTools;
@@ -118,6 +119,53 @@ public class ControlAimTests
     Assert.Equal(0.5, panel.Hit.X);
     Assert.Equal(0.75, panel.Hit.Y);
     Assert.Equal(0.5, panel.Hit.Z);
+  }
+
+  // Fails when a hit given for the click is ignored and the centre of the box's face is sent instead.
+  [Fact]
+  public void A_hit_is_the_point_the_block_reads()
+  {
+    var (world, panel, _) = Stand();
+
+    BlockSelection selection = ControlAim.Selection(
+      world.Accessor,
+      At,
+      "handle",
+      null,
+      new Vec3d(0.3, 0.6, 0.45)
+    );
+
+    Assert.Equal(new Vec3d(0.3, 0.6, 0.45), selection.HitPosition);
+    Assert.Equal(BlockFacing.UP, selection.Face);
+    Assert.Equal("handle", selection.SelectionBoxId);
+    Assert.Equal(0, selection.SelectionBoxIndex);
+    Assert.Null(panel.Seen);
+  }
+
+  // Fails when a hit outside the box is accepted, or the refusal omits the box's bounds.
+  [Fact]
+  public void A_hit_outside_the_box_is_refused_with_its_bounds()
+  {
+    var (world, _, _) = Stand();
+
+    ArgumentException e = Assert.Throws<ArgumentException>(() =>
+      ControlAim.Selection(
+        world.Accessor,
+        At,
+        "handle",
+        null,
+        new Vec3d(0.8, 0.6, 0.4)
+      )
+    );
+    Assert.Contains("x 0.25 to 0.75", e.Message);
+    Assert.Contains("z 0.25 to 0.5", e.Message);
+    ControlAim.Selection(
+      world.Accessor,
+      At,
+      "handle",
+      null,
+      new Vec3d(0.75 + 5e-5, 0.5, 0.25)
+    );
   }
 
   // Fails when LookAt sets the selection's box index without its id.

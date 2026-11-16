@@ -48,13 +48,23 @@ internal sealed class InteractStep : ScenarioStep {
   /// <param name="at">The absolute cell clicked.</param>
   /// <param name="control">The id of the control's box, or null for the body.</param>
   /// <param name="face">The face the click lands on.</param>
-  /// <exception cref="StepFailure"><paramref name="control"/> is no box's id of the cell.</exception>
+  /// <param name="hit">The point clicked on the control's box, in block units relative to <paramref name="at"/>
+  /// (0 to 1 across the cell); null for the centre of the <paramref name="face"/> side. Needs
+  /// <paramref name="control"/>.</param>
+  /// <exception cref="StepFailure"><paramref name="control"/> is no box's id of the cell, <paramref name="hit"/>
+  /// lies outside its box, or <paramref name="hit"/> is given without a control.</exception>
   public static BlockSelection SelectionFor(
     IBlockAccessor accessor,
     BlockPos at,
     string? control,
-    BlockFacing face
+    BlockFacing face,
+    Vec3d? hit = null
   ) {
+    if (control == null && hit != null)
+      throw new StepFailure(
+        "\"hit\" aims at a control's box and needs \"control\".",
+        Suspect.Scenario
+      );
     if (control == null)
       return new BlockSelection {
         Position = at.Copy(),
@@ -62,7 +72,7 @@ internal sealed class InteractStep : ScenarioStep {
         HitPosition = ScenarioPlayer.Hit(face),
       };
     try {
-      return ControlAim.Selection(accessor, at, control, face);
+      return ControlAim.Selection(accessor, at, control, face, hit);
     } catch (ArgumentException e) {
       throw new StepFailure(e.Message, Suspect.Scenario);
     }
@@ -125,7 +135,10 @@ internal sealed class InteractStep : ScenarioStep {
       ctx.World.BlockAccessor,
       at,
       ControlOf(o),
-      face
+      face,
+      o["hit"] is JArray point
+        ? new Vec3d((double)point[0], (double)point[1], (double)point[2])
+        : null
     );
     ItemStack? stack = o["with"] is JObject hand
       ? StepValues.Held(ctx, hand)

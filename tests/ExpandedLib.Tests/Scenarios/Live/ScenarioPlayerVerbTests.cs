@@ -64,6 +64,44 @@ public class ScenarioPlayerVerbTests {
     Assert.Equal(new Vec3d(0.5, 1.0, 0.375), selection.HitPosition);
   }
 
+  /// <summary>Fails when the live selection ignores the hit and aims at the box's face centre, accepts a hit
+  /// off the box, or lets a hit through with no control.</summary>
+  [Fact]
+  public void An_interact_step_with_a_hit_aims_at_that_point() {
+    var (world, at) = PanelWorld();
+
+    BlockSelection selection = InteractStep.SelectionFor(
+      world.Accessor,
+      at,
+      "handle",
+      BlockFacing.UP,
+      new Vec3d(0.3, 0.6, 0.45)
+    );
+    Assert.Equal(new Vec3d(0.3, 0.6, 0.45), selection.HitPosition);
+    Assert.Equal("handle", selection.SelectionBoxId);
+
+    var off = Assert.Throws<StepFailure>(() =>
+      InteractStep.SelectionFor(
+        world.Accessor,
+        at,
+        "handle",
+        BlockFacing.UP,
+        new Vec3d(0.9, 0.6, 0.4)
+      )
+    );
+    Assert.Contains("x 0.25 to 0.75", off.Message);
+    var bare = Assert.Throws<StepFailure>(() =>
+      InteractStep.SelectionFor(
+        world.Accessor,
+        at,
+        null,
+        BlockFacing.UP,
+        new Vec3d(0.5, 0.5, 0.5)
+      )
+    );
+    Assert.Contains("\"control\"", bare.Message);
+  }
+
   /// <summary>Fails when an interact step with no control key selects a box, or aims anywhere but the
   /// middle of the face.</summary>
   [Fact]

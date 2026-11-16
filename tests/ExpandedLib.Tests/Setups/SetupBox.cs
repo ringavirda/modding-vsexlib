@@ -2,6 +2,7 @@
 using System.Text;
 using ExpandedLib.Helpers;
 using Vintagestory.API.Common;
+using Vintagestory.API.Config;
 using Vintagestory.API.Datastructures;
 using Vintagestory.GameContent;
 
@@ -74,6 +75,7 @@ internal sealed class SetupBox : BlockEntityContainer, IDrawsShape
   {
     base.GetBlockInfo(forPlayer, dsc);
     dsc.AppendLine($"Level: {Level}");
+    dsc.AppendLine(Lang.Get("setupbox-level", Level));
   }
 
   public bool Spilling;

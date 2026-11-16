@@ -142,7 +142,7 @@ ExpandedLib.Industry.Casting.MoldSpec.Fill.get -> ExpandedLib.Industry.Casting.F
 ExpandedLib.Industry.Casting.MoldSpec.Fill.init -> void
 ExpandedLib.Industry.Casting.MoldSpec.MinPourTemp.get -> float
 ExpandedLib.Industry.Casting.MoldSpec.MinPourTemp.init -> void
-ExpandedLib.Industry.Casting.MoldSpec.MoldSpec(int Schema, string! Station, string! Shape, int Pieces, int Capacity, Vintagestory.API.MathTools.Cuboidf![]! Cavity, ExpandedLib.Industry.Casting.FillOrder Fill, Vintagestory.API.Common.JsonItemStack! Output, float MinPourTemp, ExpandedLib.Industry.Casting.MouldKind Mould = ExpandedLib.Industry.Casting.MouldKind.Open, int Share = 0, string? Core = null) -> void
+ExpandedLib.Industry.Casting.MoldSpec.MoldSpec(int Schema, string! Station, string! Shape, int Pieces, int Capacity, Vintagestory.API.MathTools.Cuboidf![]! Cavity, ExpandedLib.Industry.Casting.FillOrder Fill, Vintagestory.API.Common.JsonItemStack! Output, float MinPourTemp, ExpandedLib.Industry.Casting.MouldKind Mould = ExpandedLib.Industry.Casting.MouldKind.Open, int Share = 0, string? Core = null, Vintagestory.API.MathTools.Cuboidf![]![]? PieceBoxes = null) -> void
 ExpandedLib.Industry.Casting.MoldSpec.Mould.get -> ExpandedLib.Industry.Casting.MouldKind
 ExpandedLib.Industry.Casting.MoldSpec.Mould.init -> void
 ExpandedLib.Industry.Casting.MoldSpec.Output.get -> Vintagestory.API.Common.JsonItemStack!
@@ -997,3 +997,7 @@ ExpandedLib.Industry.Pipes.PipeNetwork.VentFor(ExpandedLib.Networks.BlockNetwork
 static ExpandedLib.Industry.Pipes.BlockPipe.Junction(string! domain, string? tier) -> ExpandedLib.Definitions.ExBlockDef!
 static ExpandedLib.Industry.Pipes.BlockPipe.Corner(string! domain, string? tier) -> ExpandedLib.Definitions.ExBlockDef!
 static ExpandedLib.Industry.Pipes.BlockPipe.SetSegments(string! domain, string? tier) -> System.Collections.Generic.IEnumerable<ExpandedLib.Definitions.ExBlockDef!>!
+ExpandedLib.Industry.Casting.MoldSpec.PieceBoxes.get -> Vintagestory.API.MathTools.Cuboidf![]![]?
+ExpandedLib.Industry.Casting.MoldSpec.PieceBoxes.init -> void
+ExpandedLib.Industry.Casting.MoldSpec.BoxesPerPiece.get -> Vintagestory.API.MathTools.Cuboidf![]![]!
+ExpandedLib.Industry.Casting.MoldSpec.PressedBoxes(int pressed) -> Vintagestory.API.MathTools.Cuboidf![]!
