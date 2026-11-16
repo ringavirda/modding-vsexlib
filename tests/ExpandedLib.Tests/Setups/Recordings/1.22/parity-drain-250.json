@@ -1,0 +1,7 @@
+{"schema":1,"setup":"parity-drain-250","game":"1.22","mods":{"exlib":"0.8.4","burdenmaker":"1.0.0"},"seconds":10,"steady":[7,10],
+"runs":{},
+"machines":{"bm":{"code":"burdenmaker:burdenmaker-red-n","units":{"BurdenUnits":"u"},
+"series":{"state":[[0,"open"]],
+"BurdenUnits":[[0,8.000],[1,16.000],[2,24.000],[3,32.000],[4,40.000],[5,48.000],[6,56.000],[7,64.000]]},
+"steady":{"state":"open","BurdenUnits":64.000},
+"constants":{}}}}
