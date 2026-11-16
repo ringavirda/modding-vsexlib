@@ -96,7 +96,7 @@ public sealed partial class SetupScene : IDisposable
     _borrowed = scene != null;
     Scene = scene ?? new();
     View = new SetupWorldView(World, _placed);
-    NetworkTick = () => World.Tick(1, _lineListeners);
+    NetworkTick = () => World.NetworkFire(_lineListeners);
   }
 
   /// <summary>The scene the file was built into.</summary>
