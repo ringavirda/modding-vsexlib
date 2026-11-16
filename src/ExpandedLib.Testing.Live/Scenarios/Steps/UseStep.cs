@@ -122,7 +122,10 @@ internal sealed class UseStep : ScenarioStep {
     }
   }
 
-  internal static Dictionary<BlockPos, int> Around(ScenarioContext ctx, BlockPos local) {
+  internal static Dictionary<BlockPos, int> Around(
+    ScenarioContext ctx,
+    BlockPos local
+  ) {
     var cells = new Dictionary<BlockPos, int>();
     for (int x = -Reach; x <= Reach; x++)
       for (int y = -Reach; y <= Reach; y++)
