@@ -222,6 +222,94 @@ public sealed class HoldableTests(ITestOutputHelper output) : IDisposable
     Assert.Equal("drop of walk:post-ns", other.Why);
   }
 
+  private const string HoopDrops =
+    "{ \"code\": \"hooped\", \"drops\": [ { \"type\": \"item\", \"code\": \"walk:brick\" }, { \"type\": \"item\", \"code\": \"walk:hoop\" } ] }";
+
+  // Fails when a produced block whose own drop yields it is not held.
+  [Fact]
+  public void A_produced_block_whose_drop_yields_itself_is_held()
+  {
+    Plant("blocktypes", "cast", "{ \"code\": \"cast\" }");
+    using TestWorld world = Planted();
+    ExlibChecks.Produces("walk", "walk:cast", "the pour");
+
+    Holdable.Entry entry = Of(Census(world), "walk:cast");
+
+    Assert.Equal(Holdable.State.Yes, entry.State);
+    Assert.Equal("produced by the pour", entry.Why);
+  }
+
+  // Fails when a produced block whose drops yield other codes is held, or its why leaves the
+  // codes out.
+  [Fact]
+  public void A_produced_block_whose_drop_yields_other_codes_is_not_held()
+  {
+    Plant("blocktypes", "hooped", HoopDrops);
+    Plant("itemtypes", "brick", Item("brick"));
+    Plant("itemtypes", "hoop", Item("hoop"));
+    using TestWorld world = Planted();
+    ExlibChecks.Produces("walk", "walk:hooped", "the hooping");
+
+    Holdable.Census census = Census(world);
+
+    Holdable.Entry entry = Of(census, "walk:hooped");
+    Assert.Equal(Holdable.State.No, entry.State);
+    Assert.Contains("walk:brick, walk:hoop", entry.Why);
+    Assert.Equal("not holdable", census.SkipOf("walk:hooped"));
+    Assert.Equal(Holdable.State.Yes, Of(census, "walk:brick").State);
+  }
+
+  // Fails when a machine product block whose drops yield other codes is held.
+  [Fact]
+  public void A_machine_product_block_whose_drop_yields_other_codes_is_not_held()
+  {
+    Plant("blocktypes", "hooped", HoopDrops);
+    Plant("itemtypes", "brick", Item("brick"));
+    Plant("itemtypes", "hoop", Item("hoop"));
+    using TestWorld world = Planted();
+    ExlibChecks.Produces(
+      "walk",
+      "walk:hooped",
+      "the hooping",
+      "walk:brick",
+      Stick
+    );
+
+    Holdable.Entry entry = Of(Census(world), "walk:hooped");
+
+    Assert.Equal(Holdable.State.No, entry.State);
+    Assert.Contains("the hooping", entry.Why);
+  }
+
+  // Fails when a produced block whose drops cannot be read is No instead of unsure.
+  [Fact]
+  public void A_produced_block_whose_drops_throw_is_unsure()
+  {
+    Plant(
+      "blocktypes",
+      "thrower",
+      "{ \"code\": \"thrower\", \"class\": \"HoldableThrowBlock\" }"
+    );
+    using TestWorld world = Planted();
+    ExlibChecks.Produces("walk", "walk:thrower", "the pour");
+
+    Holdable.Census census = Census(world);
+
+    Assert.Equal(Holdable.State.Unsure, Of(census, "walk:thrower").State);
+    Assert.Null(census.SkipOf("walk:thrower"));
+  }
+
+  // Fails when a produced item is judged by drops.
+  [Fact]
+  public void A_produced_item_is_held()
+  {
+    Plant("itemtypes", "made", Item("made"));
+    using TestWorld world = Planted();
+    ExlibChecks.Produces("walk", "walk:made", "the press");
+
+    Assert.Equal(Holdable.State.Yes, Of(Census(world), "walk:made").State);
+  }
+
   // Fails when SkipOf ignores the creative tab.
   [Fact]
   public void A_creative_listed_code_nothing_yields_is_skipped_as_creative_only()

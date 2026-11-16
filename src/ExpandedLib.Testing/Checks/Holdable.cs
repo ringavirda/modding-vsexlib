@@ -15,11 +15,17 @@ namespace ExpandedLib.Testing;
 /// <summary>Which codes of a domain a survival player can hold as a stack, and why.</summary>
 /// <remarks>A code is held when something yields it: the output of any recipe the craft walk reads
 /// (fired or not), a byproduct of a craft sequence or machining job, a smelted, crushed, ground,
-/// fired, harvested, squeezed or juiced stack, the product of a transition, a code a gathered or
-/// produced declaration or the kit names, or a drop of a block. A drop is read from
+/// fired, harvested, squeezed or juiced stack, the product of a transition, a code a gathered
+/// declaration, a produced declaration of an item or the kit names, or a drop of a block. A drop is read from
 /// <see cref="Block.Drops"/>, and from <see cref="Block.GetDrops"/> itself for a block whose class
 /// or behaviours override it. A drop of the block's own type counts only where the block can stand
-/// in the world: a code of its kind is held. Knapping, tool modes, traders and loot lists are not
+/// in the world: a code of its kind is held. A code made in place, by a produced declaration or a
+/// machine product, is held only when the drops of its own block (<see cref="Block.Drops"/>, or
+/// <see cref="Block.GetDrops"/> for an overriding class or behaviour) include that code: a hooped
+/// brick course that drops brick and hoop is not held, and one whose drops cannot be read is
+/// <see cref="State.Unsure"/>. A gathered code, a construction stage's block and a kit row are not
+/// made in place: gathered and kit codes are held as stacks, and construction edges credit
+/// nothing. Knapping, tool modes, traders and loot lists are not
 /// read. A code whose answer is not certain is <see cref="State.Unsure"/>, and a view gate keeps
 /// judging it.</remarks>
 public static class Holdable
@@ -84,6 +90,8 @@ public static class Holdable
   private const string NotProbed = "drops not probed: ";
   private const string AskedFor = "asked for by ";
   private const string OwnDrop = "only its own drop yields it: ";
+  private const string Placed = "stands where it is made, not held: ";
+  private const string ProducedBy = "produced by ";
 
   /// <summary>Builds the census of <paramref name="domain"/>.</summary>
   /// <param name="world">A world from <see cref="TestWorld.LoadAssets(IReadOnlyList{string}, string?, string[])"/>
@@ -105,16 +113,22 @@ public static class Holdable
     ];
     CollectibleObject[] mine = [.. all.Where(c => c.Code.Domain == domain)];
     var yes = new Dictionary<string, string>(StringComparer.Ordinal);
+    var placed = new Dictionary<string, string>(StringComparer.Ordinal);
+    HashSet<string> blocks =
+    [
+      .. all.OfType<Block>().Select(b => b.Code.ToString()),
+    ];
 
     List<WalkEdge> edges = CraftWalkEdges.Read(world, domain, all);
     foreach (WalkEdge edge in edges.Where(e => e.Kind != "construction"))
     {
-      yes.TryAdd(
-        edge.Output.StartsWith("core:", StringComparison.Ordinal)
-          ? edge.Output[5..]
-          : edge.Output,
-        edge.Name
-      );
+      string output = edge.Output.StartsWith("core:", StringComparison.Ordinal)
+        ? edge.Output[5..]
+        : edge.Output;
+      if (edge.Kind == "machine product" && blocks.Contains(output))
+        placed.TryAdd(output, edge.Name);
+      else
+        yes.TryAdd(output, edge.Name);
       foreach (CraftByproduct by in edge.Sequence?.Byproducts ?? [])
         yes.TryAdd(by.Code, $"{edge.Name} byproduct");
     }
@@ -128,10 +142,15 @@ public static class Holdable
 
     var made = new ObtainabilityCheck.Made(all, []);
     foreach (ExlibChecks.Declaration declared in ExlibChecks.Produced())
-      made.Declare(all, declared.Code, $"produced by {declared.Source}");
+      made.Declare(all, declared.Code, ProducedBy + declared.Source);
     foreach ((bool isBlock, string code, string source) in made.Held())
+    {
+      Dictionary<string, string> into =
+        isBlock && source.StartsWith(ProducedBy, StringComparison.Ordinal)
+          ? placed
+          : yes;
       if (code.IndexOfAny(['*', '@', '{']) < 0)
-        yes.TryAdd(code, source);
+        into.TryAdd(code, source);
       else
         foreach (
           CollectibleObject c in mine.Where(c =>
@@ -139,18 +158,30 @@ public static class Holdable
             && WildcardUtil.Match(new AssetLocation(code), c.Code)
           )
         )
-          yes.TryAdd(c.Code.ToString(), source);
+          into.TryAdd(c.Code.ToString(), source);
+    }
 
     var own = new List<(Block Block, string Dropped)>();
     var notProbed = new Dictionary<string, string>(StringComparer.Ordinal);
+    var droppedBy = new Dictionary<string, List<string>>(
+      StringComparer.Ordinal
+    );
     foreach (Block block in mine.OfType<Block>())
     {
       string type = ObtainabilityCheck.TypeOf(block);
+      List<string> read = [];
       foreach (BlockDropItemStack drop in block.Drops ?? [])
-        if (drop?.Code != null && IsOwn(drop.Code.ToString(), type))
-          own.Add((block, drop.Code.ToString()));
+        if (drop?.Code != null)
+        {
+          read.Add(drop.Code.ToString());
+          if (IsOwn(drop.Code.ToString(), type))
+            own.Add((block, drop.Code.ToString()));
+        }
       if (!Overrides(block))
+      {
+        droppedBy[block.Code.ToString()] = read;
         continue;
+      }
       try
       {
         ItemStack[]? drops = Probe(world, block);
@@ -159,19 +190,37 @@ public static class Holdable
           notProbed[block.Code.ToString()] = NotProbed + "null";
           continue;
         }
+        read = [];
         foreach (ItemStack stack in drops.Where(d => d?.Collectible != null))
         {
           string dropped = stack.Collectible.Code.ToString();
+          read.Add(dropped);
           if (IsOwn(dropped, type))
             own.Add((block, dropped));
           else
             yes.TryAdd(dropped, $"drop of {block.Code}");
         }
+        droppedBy[block.Code.ToString()] = read;
       }
       catch (Exception e)
       {
         notProbed[block.Code.ToString()] = NotProbed + e.GetType().Name;
       }
+    }
+
+    var notHeld = new Dictionary<string, string>(StringComparer.Ordinal);
+    foreach ((string code, string source) in placed)
+    {
+      if (yes.ContainsKey(code) || !droppedBy.TryGetValue(code, out var read))
+        continue;
+      if (read.Contains(code))
+        yes[code] = source.StartsWith(ProducedBy, StringComparison.Ordinal)
+          ? source
+          : ProducedBy + source;
+      else
+        notHeld[code] =
+          $"{Placed}{source}; its drop yields "
+          + (read.Count == 0 ? "nothing" : string.Join(", ", read.Distinct()));
     }
 
     bool grew = true;
@@ -225,6 +274,8 @@ public static class Holdable
       bool creative = c.CreativeInventoryTabs is { Length: > 0 };
       (State state, string why) =
         yes.TryGetValue(code, out string? source) ? (State.Yes, source)
+        : notHeld.TryGetValue(code, out string? placedWhy)
+          ? (State.No, placedWhy)
         : notProbed.TryGetValue(code, out string? failed)
           ? (State.Unsure, failed)
         : unsure.TryGetValue(code, out string? reason) ? (State.Unsure, reason)
