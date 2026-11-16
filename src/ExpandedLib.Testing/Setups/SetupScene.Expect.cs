@@ -4,7 +4,6 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
 using System.Text;
-using System.Text.RegularExpressions;
 using ExpandedLib.Scenarios;
 using ExpandedLib.Structures;
 using Newtonsoft.Json;
@@ -69,18 +68,7 @@ public sealed partial class SetupScene
   private void InfoExpect(SetupStep step)
   {
     BlockEntity be = EntityAt(step, out BlockPos at);
-    Regex pattern;
-    try
-    {
-      pattern = new Regex(
-        (string)step.Body["info"]!,
-        RegexOptions.CultureInvariant
-      );
-    }
-    catch (ArgumentException e)
-    {
-      throw Fail(step.Path, $"info is not a regex: {e.Message}");
-    }
+    JToken info = step.Body["info"]!;
     var text = new StringBuilder();
     if (step.Body["control"] == null)
     {
@@ -101,15 +89,11 @@ public sealed partial class SetupScene
         World.GetBlock(at).GetPlacedBlockInfo(World.World, at, Player.Player)
       );
     }
-    string[] lines = text.ToString()
-      .Split(
-        '\n',
-        StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries
-      );
-    if (!lines.Any(pattern.IsMatch))
+    string[] lines = SetupInfoExpect.Lines(text.ToString());
+    if (SetupInfoExpect.Match(lines, info) == null)
       throw Fail(
         step.Path,
-        $"no info line of {be.GetType().Name} at {Describe(at)} matches \"{pattern}\"; it reads: {string.Join(" | ", lines)}."
+        $"no info line of {be.GetType().Name} at {Describe(at)} matches {SetupInfoExpect.Describe(info)}; it reads: {string.Join(" | ", lines)}."
       );
   }
 

@@ -253,6 +253,44 @@ public class SetupExpectTests : IDisposable
     Assert.Contains("Level: 5", message);
   }
 
+  // Fails when the harness reads a lang info as a regex, or a key it never wrote passes.
+  [Fact]
+  public void An_expect_info_by_lang_key_reads_the_line_the_key_wrote()
+  {
+    using SetupScene scene = Box(
+      SetLevel
+        + ", {\"expect\": {\"at\": [0, 0, 0], \"info\": {\"lang\": \"setupbox-level\"}}}"
+    );
+
+    string message = BoxRefused(
+      SetLevel
+        + ", {\"expect\": {\"at\": [0, 0, 0], \"info\": {\"lang\": \"setupbox-count\"}}}"
+    );
+
+    Assert.NotNull(scene);
+    Assert.Contains("lang \"setupbox-count\"", message);
+  }
+
+  // Fails when an info object with a key besides lang, or a lang that is no string, reaches a runner.
+  [Fact]
+  public void An_expect_info_object_takes_one_string_lang()
+  {
+    Assert.Contains(
+      "info: unknown key \"args\"",
+      BoxRefused(
+        SetLevel
+          + ", {\"expect\": {\"at\": [0, 0, 0], \"info\": {\"lang\": \"setupbox-level\", \"args\": [5]}}}"
+      )
+    );
+    Assert.Contains(
+      "info.lang: expected a string",
+      BoxRefused(
+        SetLevel
+          + ", {\"expect\": {\"at\": [0, 0, 0], \"info\": {\"lang\": 5}}}"
+      )
+    );
+  }
+
   // Fails when the footprint of a placed megablock is not found filled, or an air check passes.
   [Fact]
   public void An_expect_footprint_holds_the_filled_cells_and_fails_air()

@@ -321,6 +321,8 @@ internal static class SetupSteps {
       SetupSlotExpect.Validate(o, at);
     if (kind == "expect" && SetupPlayerExpect.Is(o))
       SetupPlayerExpect.Validate(o, at);
+    if (kind == "expect" && o["info"] != null)
+      SetupInfoExpect.Validate(o["info"], at.In("info"));
     if (kind == "select")
       SetupSlotExpect.ValidateSelect(o, at);
     if (kind == "set" && (o["tree"] == null) == (o["member"] == null))

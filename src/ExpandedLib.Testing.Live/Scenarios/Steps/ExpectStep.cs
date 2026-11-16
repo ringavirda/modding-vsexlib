@@ -2,7 +2,6 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
-using System.Text.RegularExpressions;
 using ExpandedLib.Blocks;
 using ExpandedLib.Scenarios;
 using ExpandedLib.Structures;
@@ -90,21 +89,6 @@ internal sealed class ExpectStep : ScenarioStep {
   public static ItemStack? SlotStack(IInventory hotbar, int slot) =>
     hotbar[slot].Itemstack;
 
-  /// <summary>The lines of an info text: split on newlines, trimmed, empty ones dropped.</summary>
-  public static string[] InfoLines(string text) =>
-    text.Split(
-      '\n',
-      StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries
-    );
-
-  /// <summary>The first line of <paramref name="lines"/> the culture-invariant regex
-  /// <paramref name="pattern"/> matches, or null when none does.</summary>
-  /// <exception cref="ArgumentException"><paramref name="pattern"/> is not a regex.</exception>
-  public static string? InfoMatch(IEnumerable<string> lines, string pattern) {
-    var regex = new Regex(pattern, RegexOptions.CultureInvariant);
-    return lines.FirstOrDefault(regex.IsMatch);
-  }
-
   private static string Info(ScenarioContext ctx, SetupStep step, JObject o) {
     ScenarioPlayer player =
       ctx.Player
@@ -119,15 +103,7 @@ internal sealed class ExpectStep : ScenarioStep {
       ?? throw new StepFailure(
         $"cell {FailureDetail.Cell(local)} holds {ctx.Setup.BlockAt(local).Code}, which has no block entity."
       );
-    string pattern = (string)o["info"]!;
-    try {
-      _ = InfoMatch([], pattern);
-    } catch (ArgumentException e) {
-      throw new StepFailure(
-        $"info is not a regex: {e.Message}",
-        Suspect.Scenario
-      );
-    }
+    JToken info = o["info"]!;
     var text = new StringBuilder();
     if (o["control"] == null) {
       player.Player.Entity.BlockSelection = null;
@@ -148,13 +124,11 @@ internal sealed class ExpectStep : ScenarioStep {
           .GetPlacedBlockInfo(ctx.World, at, player.Player)
       );
     }
-    string[] lines = InfoLines(text.ToString());
-    string line =
-      InfoMatch(lines, pattern)
+    string[] lines = SetupInfoExpect.Lines(text.ToString());
+    return SetupInfoExpect.Match(lines, info)
       ?? throw new StepFailure(
-        $"no info line of {be.GetType().Name} at {FailureDetail.Cell(local)} matches \"{pattern}\"; it reads: {string.Join(" | ", lines)}."
+        $"no info line of {be.GetType().Name} at {FailureDetail.Cell(local)} matches {SetupInfoExpect.Describe(info)}; it reads: {string.Join(" | ", lines)}."
       );
-    return line;
   }
 
   private static string Slot(ScenarioContext ctx, JObject o) {
