@@ -43,7 +43,7 @@ public static class DefinitionJson {
     block.GetProperty("requiredMiningTier").GetInt32();
 
   /// <summary>The <c>ExRightClickConstructable</c> entity behavior's properties node, holding
-  /// <c>brokenDropsRatio</c> and <c>stages</c>.</summary>
+  /// <c>brokenDropsRatio</c>, <c>brokenDropsLost</c> and <c>stages</c>.</summary>
   /// <exception cref="InvalidOperationException">The block has no such behavior.</exception>
   [CheckHelper("reads a block's construction attributes")]
   public static JsonElement Constructable(JsonElement block) {
