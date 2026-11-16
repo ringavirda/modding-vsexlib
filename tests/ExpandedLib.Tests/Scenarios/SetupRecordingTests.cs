@@ -25,6 +25,8 @@ public class SetupRecordingTests : IDisposable {
 
   private string Received => Path.Combine(_folder, Name + ".received.json");
 
+  private string MovedFile => Path.Combine(_folder, Name + ".moved.txt");
+
   public void Dispose() {
     if (Directory.Exists(_folder))
       Directory.Delete(_folder, recursive: true);
@@ -469,11 +471,111 @@ public class SetupRecordingTests : IDisposable {
     string committed = Scripted(Repeat(1f)).Save(_folder, write: false);
 
     Assert.Throws<SetupRecordingMismatchException>(() =>
-      Scripted(Repeat(2f)).Save(_folder, write: false)
+      Scripted(Repeat(2f)).Save(_folder, write: false, gate: true)
     );
 
     Assert.Equal(committed, File.ReadAllText(Committed));
     Assert.Contains("2.000", File.ReadAllText(Received));
+  }
+
+  // Fails when a differing steady figure throws without the gate, or leaves either file out.
+  [Fact]
+  public void A_differing_steady_figure_passes_and_writes_both_files() {
+    Scripted(Repeat(1f)).Save(_folder, write: false);
+    SetupRecording moved = Scripted(Repeat(2f));
+
+    string text = moved.Save(_folder, write: false);
+
+    Assert.Equal("setup\t12\tmachines.m.v@0\t1.000\t2.000", moved.Moved);
+    Assert.Equal(text, File.ReadAllText(Received));
+    Assert.Equal(moved.Moved + "\n", File.ReadAllText(MovedFile));
+  }
+
+  // Fails when the samples count change points: one change covering three seconds counts 3.
+  [Fact]
+  public void The_samples_count_seconds_not_change_points() {
+    Scripted(Repeat(1f)).Save(_folder, write: false);
+    float[] values = Repeat(1f);
+    values[4] = values[5] = values[6] = 5f;
+    SetupRecording moved = Scripted(values);
+
+    moved.Save(_folder, write: false);
+
+    Assert.Equal("setup\t3\tmachines.m.v@4\t1.000\t5.000", moved.Moved);
+  }
+
+  // Fails when the figure is the first moved owner in walk order, not the earliest second.
+  [Fact]
+  public void The_figure_is_the_earliest_second_across_machines() {
+    TwoMachines(Repeat(1f), Repeat(1f)).Save(_folder, write: false);
+    float[] later = Repeat(1f);
+    float[] earlier = Repeat(1f);
+    for (int t = 8; t < Seconds; t++)
+      later[t] = 4f;
+    for (int t = 3; t < Seconds; t++)
+      earlier[t] = 6f;
+    SetupRecording moved = TwoMachines(later, earlier);
+
+    moved.Save(_folder, write: false);
+
+    Assert.Equal("setup\t13\tmachines.second.v@3\t1.000\t6.000", moved.Moved);
+  }
+
+  private static SetupRecording TwoMachines(float[] first, float[] second) {
+    SetupRecording recording = Empty();
+    recording
+      .Machine("first", "test:a")
+      .State(new Script([.. Enumerable.Repeat("on", Seconds)]))
+      .Value("v", "atm", new Script([.. first.Cast<object>()]));
+    recording
+      .Machine("second", "test:b")
+      .State(new Script([.. Enumerable.Repeat("on", Seconds)]))
+      .Value("v", "atm", new Script([.. second.Cast<object>()]));
+    return Finished(recording, new ReadingContext(null));
+  }
+
+  // Fails when a difference outside the series gives an empty figure instead of its path.
+  [Fact]
+  public void A_constant_only_difference_names_the_constant() {
+    ConstantRecording(5f).Save(_folder, write: false);
+    SetupRecording moved = ConstantRecording(6f);
+
+    moved.Save(_folder, write: false);
+
+    Assert.Equal(
+      "setup\t0\tmachines.k.constants.max.0\t5.000\t6.000",
+      moved.Moved
+    );
+  }
+
+  // Fails when an equal recording leaves the moved file of an earlier difference.
+  [Fact]
+  public void An_equal_recording_deletes_a_stale_moved_file() {
+    Scripted(Repeat(1f)).Save(_folder, write: false);
+    Scripted(Repeat(2f)).Save(_folder, write: false);
+    Assert.True(File.Exists(MovedFile));
+
+    SetupRecording equal = Scripted(Repeat(1f));
+    equal.Save(_folder, write: false);
+
+    Assert.False(File.Exists(MovedFile));
+    Assert.False(File.Exists(Received));
+    Assert.Null(equal.Moved);
+  }
+
+  // Fails when a write leaves the received or moved file of an earlier difference.
+  [Fact]
+  public void A_write_deletes_the_received_and_moved_files() {
+    Scripted(Repeat(1f)).Save(_folder, write: false);
+    Scripted(Repeat(2f)).Save(_folder, write: false);
+    Assert.True(File.Exists(MovedFile));
+
+    SetupRecording written = Scripted(Repeat(2f));
+    written.Save(_folder, write: true);
+
+    Assert.False(File.Exists(MovedFile));
+    Assert.False(File.Exists(Received));
+    Assert.Null(written.Moved);
   }
 
   // Fails when a differing recording named for writing does not replace the committed file.
@@ -492,7 +594,7 @@ public class SetupRecordingTests : IDisposable {
   public void A_matching_recording_deletes_a_stale_received_file() {
     Scripted(Repeat(1f)).Save(_folder, write: false);
     Assert.Throws<SetupRecordingMismatchException>(() =>
-      Scripted(Repeat(2f)).Save(_folder, write: false)
+      Scripted(Repeat(2f)).Save(_folder, write: false, gate: true)
     );
 
     Scripted(Repeat(1f)).Save(_folder, write: false);
@@ -509,7 +611,7 @@ public class SetupRecordingTests : IDisposable {
     values[2] = 7f;
 
     Assert.Throws<SetupRecordingMismatchException>(() =>
-      Scripted(values).Save(_folder, write: false)
+      Scripted(values).Save(_folder, write: false, gate: true)
     );
 
     Assert.Equal(committed, File.ReadAllText(Committed));
@@ -526,7 +628,7 @@ public class SetupRecordingTests : IDisposable {
     );
 
     Assert.Throws<SetupRecordingMismatchException>(() =>
-      Scripted(Repeat(1f)).Save(_folder, write: false)
+      Scripted(Repeat(1f)).Save(_folder, write: false, gate: true)
     );
 
     Assert.Equal(text, File.ReadAllText(Received));
@@ -538,7 +640,7 @@ public class SetupRecordingTests : IDisposable {
     ConstantRecording(5f).Save(_folder, write: false);
 
     Assert.Throws<SetupRecordingMismatchException>(() =>
-      ConstantRecording(6f).Save(_folder, write: false)
+      ConstantRecording(6f).Save(_folder, write: false, gate: true)
     );
   }
 

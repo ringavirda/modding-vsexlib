@@ -286,15 +286,31 @@ internal sealed class SetupRecording {
   public static bool Writes(string? value, string setup) =>
     value == "1" || (value ?? "").Split(',').Any(n => n.Trim() == setup);
 
+  /// <summary>The line of the last <see cref="Save"/>, five TAB-separated fields
+  /// <c>record, samples, figure, old, new</c>, when it found a difference from the committed
+  /// file; null otherwise. <c>samples</c> counts the (owner, series, second) triples whose held
+  /// value differs; <c>figure</c> is <c>{owner}.{series}@{second}</c> of the earliest, or the dotted
+  /// path of the first differing leaf when no series moved; <c>old</c> and <c>new</c> are compact
+  /// JSON or <c>absent</c>.</summary>
+  internal string? Moved { get; private set; }
+
   /// <summary>
   /// Writes <c>{setup}.json</c> into <paramref name="folder"/> when it is absent or
-  /// <paramref name="write"/> is set, else compares the whole text with it: an equal text
-  /// deletes <c>{setup}.received.json</c>, a differing one writes it. Returns the text.
+  /// <paramref name="write"/> is set, else compares the whole text with it. An equal text
+  /// deletes <c>{setup}.received.json</c> and <c>{setup}.moved.txt</c>; a differing one writes
+  /// both, the second holding <see cref="Moved"/> and a line feed. Returns the text.
   /// </summary>
   /// <exception cref="InvalidOperationException">The recording is incomplete and not
   /// <paramref name="partial"/>, has under 3 samples when it is, or is over <see cref="MaxBytes"/>.</exception>
-  /// <exception cref="SetupRecordingMismatchException">The text differs from the committed file.</exception>
-  public string Save(string folder, bool write, bool partial = false) {
+  /// <exception cref="SetupRecordingMismatchException">The text differs from the committed file
+  /// and <paramref name="gate"/> is set.</exception>
+  public string Save(
+    string folder,
+    bool write,
+    bool partial = false,
+    bool gate = false
+  ) {
+    Moved = null;
     string text = partial ? TextSoFar() : Text();
     if (Encoding.UTF8.GetByteCount(text) > MaxBytes)
       throw new InvalidOperationException(
@@ -302,18 +318,26 @@ internal sealed class SetupRecording {
       );
     string committed = Path.Combine(folder, _setup + ".json");
     string received = Path.Combine(folder, _setup + ".received.json");
+    string moved = Path.Combine(folder, _setup + ".moved.txt");
     Directory.CreateDirectory(folder);
     if (write || !File.Exists(committed)) {
       Replace(committed, text);
       File.Delete(received);
+      File.Delete(moved);
       return text;
     }
-    List<string> differences = Differences(File.ReadAllText(committed), text);
+    string was = File.ReadAllText(committed);
+    List<string> differences = Differences(was, text);
     if (differences.Count == 0) {
       File.Delete(received);
+      File.Delete(moved);
       return text;
     }
+    Moved = MovedLine(_setup, was, text);
     Replace(received, text);
+    Replace(moved, Moved + "\n");
+    if (!gate)
+      return text;
     throw new SetupRecordingMismatchException(
       $"{_setup} recording differs from {committed}; received {received}:\n"
         + string.Join('\n', differences)
@@ -350,6 +374,136 @@ internal sealed class SetupRecording {
       );
     }
     return differences;
+  }
+
+  private static string MovedLine(
+    string record,
+    string committed,
+    string received
+  ) {
+    using JsonDocument was = JsonDocument.Parse(committed);
+    using JsonDocument now = JsonDocument.Parse(received);
+    JsonElement a = was.RootElement;
+    JsonElement b = now.RootElement;
+    int seconds = Math.Max(
+      Member(a, "seconds")?.GetInt32() ?? 0,
+      Member(b, "seconds")?.GetInt32() ?? 0
+    );
+    int samples = 0;
+    int earliest = int.MaxValue;
+    string figure = "";
+    string old = "absent";
+    string recorded = "absent";
+    foreach (string section in new[] { "runs", "machines" })
+      foreach (string owner in Keys(Member(a, section), Member(b, section))) {
+        JsonElement? seriesA = Member(
+          Member(Member(a, section), owner),
+          "series"
+        );
+        JsonElement? seriesB = Member(
+          Member(Member(b, section), owner),
+          "series"
+        );
+        foreach (string name in Keys(seriesA, seriesB)) {
+          JsonElement? changesA = Member(seriesA, name);
+          JsonElement? changesB = Member(seriesB, name);
+          for (int second = 0; second < seconds; second++) {
+            string? x = Held(changesA, second);
+            string? y = Held(changesB, second);
+            if (x == y)
+              continue;
+            samples++;
+            if (second >= earliest)
+              continue;
+            earliest = second;
+            figure = $"{section}.{owner}.{name}@{second}";
+            old = x ?? "absent";
+            recorded = y ?? "absent";
+          }
+        }
+      }
+    if (samples == 0)
+      (figure, old, recorded) = FirstLeaf("", a, b) ?? ("text", old, recorded);
+    return string.Join(
+      '\t',
+      record,
+      samples.ToString(CultureInfo.InvariantCulture),
+      figure,
+      old,
+      recorded
+    );
+  }
+
+  private static JsonElement? Member(JsonElement? parent, string name) =>
+    parent is { ValueKind: JsonValueKind.Object } o
+    && o.TryGetProperty(name, out JsonElement value)
+      ? value
+      : null;
+
+  private static IEnumerable<string> Keys(JsonElement? a, JsonElement? b) {
+    var seen = new HashSet<string>();
+    foreach (JsonElement? e in new[] { a, b })
+      if (e is { ValueKind: JsonValueKind.Object } o)
+        foreach (JsonProperty p in o.EnumerateObject())
+          if (seen.Add(p.Name))
+            yield return p.Name;
+  }
+
+  private static string? Held(JsonElement? changes, int second) {
+    string? held = null;
+    if (changes is { ValueKind: JsonValueKind.Array } list)
+      foreach (JsonElement change in list.EnumerateArray()) {
+        if (change[0].GetInt32() > second)
+          break;
+        held = Compact(change[1]);
+      }
+    return held;
+  }
+
+  private static string Compact(JsonElement element) =>
+    JsonSerializer.Serialize(element);
+
+  private static (string Path, string Old, string New)? FirstLeaf(
+    string path,
+    JsonElement? a,
+    JsonElement? b
+  ) {
+    if (a == null && b == null)
+      return null;
+    if (a == null || b == null || a.Value.ValueKind != b.Value.ValueKind)
+      return (
+        path,
+        a == null ? "absent" : Compact(a.Value),
+        b == null ? "absent" : Compact(b.Value)
+      );
+    JsonElement x = a.Value;
+    JsonElement y = b.Value;
+    if (x.ValueKind == JsonValueKind.Object)
+      foreach (string key in Keys(x, y))
+        if (
+          FirstLeaf(
+            path == "" ? key : path + "." + key,
+            Member(x, key),
+            Member(y, key)
+          ) is { } found
+        )
+          return found;
+    if (x.ValueKind == JsonValueKind.Array)
+      for (int i = 0; i < Math.Max(x.GetArrayLength(), y.GetArrayLength()); i++)
+        if (
+          FirstLeaf(
+            path + "." + i.ToString(CultureInfo.InvariantCulture),
+            i < x.GetArrayLength() ? x[i] : null,
+            i < y.GetArrayLength() ? y[i] : null
+          ) is { } found
+        )
+          return found;
+    if (
+      x.ValueKind is not (JsonValueKind.Object or JsonValueKind.Array)
+      && Compact(x) != Compact(y)
+    )
+      return (path, Compact(x), Compact(y));
+    return null;
   }
 
   /// <summary>Up to 40 characters either side of <paramref name="at"/>, or "absent".</summary>
