@@ -318,6 +318,29 @@ public sealed class ObtainabilityCheckTests : IDisposable {
       )
     );
 
+  // Fails when a transitionable item's product stops counting as made.
+  [Fact]
+  [PlantedDefect(typeof(ObtainabilityCheck), nameof(ObtainabilityCheck.Run))]
+  public void The_product_of_a_transition_is_made() =>
+    Assert.Equal(
+      [Unmade("stub:undried", "item")],
+      Findings(
+        new LoadedStubGame(
+          Asking(("item", "stub:dried"), ("item", "stub:undried"))
+        ).Item(
+          "stub:wet",
+          wet =>
+            wet.TransitionableProps = [
+              new TransitionableProperties
+              {
+                Type = EnumTransitionType.Dry,
+                TransitionedStack = Stack(EnumItemClass.Item, "stub:dried"),
+              },
+            ]
+        )
+      )
+    );
+
   private static BlockDropItemStack Drop(string code) =>
     new() { Type = EnumItemClass.Block, Code = new AssetLocation(code) };
 

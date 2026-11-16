@@ -136,16 +136,9 @@ public static class CraftWalk
     );
     var found = new List<(string Key, string Line)>();
 
-    IReadOnlyList<GatheredSources.Source> gathered = GatheredSources.All;
-    IReadOnlyList<ExlibChecks.Gather> declared = ExlibChecks.GatheredDeclared();
     var reached = new Dictionary<string, int>(StringComparer.Ordinal);
-    foreach (CollectibleObject c in all)
-      if (
-        gathered.Any(s => s.Type == c.ItemClass && Matches(s.Pattern, c))
-        || declared.Any(g => Matches(g.Pattern, c))
-        || kit.Keys.Any(k => Matches(k, c))
-      )
-        reached[c.Code.ToString()] = 0;
+    foreach (string code in Seeded(all, kit).Keys)
+      reached[code] = 0;
     foreach (string row in kit.Keys.Where(k => !all.Any(c => Matches(k, c))))
       found.Add((row, $"{row} | kit row matches no loaded block or item"));
 
@@ -370,6 +363,31 @@ public static class CraftWalk
     foreach (char c in text)
       hash = (hash ^ c) * 16777619;
     return (int)(hash & 0x7fffffff);
+  }
+
+  /// <summary>The codes among <paramref name="all"/> that need no recipe: those a
+  /// <see cref="GatheredSources"/> entry, an <see cref="ExlibChecks.Gathered"/> declaration or a
+  /// kit row matches.</summary>
+  /// <param name="all">The collectibles the walk covers.</param>
+  /// <param name="kit">The kit rows, as <see cref="CraftWalkFiles.Kit"/> reads them.</param>
+  /// <returns>Each such code with how it is had: <c>gathered</c> or <c>kit</c>.</returns>
+  internal static Dictionary<string, string> Seeded(
+    IReadOnlyList<CollectibleObject> all,
+    IReadOnlyDictionary<string, string> kit
+  )
+  {
+    IReadOnlyList<GatheredSources.Source> gathered = GatheredSources.All;
+    IReadOnlyList<ExlibChecks.Gather> declared = ExlibChecks.GatheredDeclared();
+    var seeded = new Dictionary<string, string>(StringComparer.Ordinal);
+    foreach (CollectibleObject c in all)
+      if (
+        gathered.Any(s => s.Type == c.ItemClass && Matches(s.Pattern, c))
+        || declared.Any(g => Matches(g.Pattern, c))
+      )
+        seeded[c.Code.ToString()] = "gathered";
+      else if (kit.Keys.Any(k => Matches(k, c)))
+        seeded[c.Code.ToString()] = "kit";
+    return seeded;
   }
 
   private static bool Matches(string pattern, CollectibleObject c) =>
