@@ -1,0 +1,87 @@
+{
+  "setup": "parity-drain-250",
+  "description": "A burdenmaker loaded with 48 ore and 16 flux units, its gate opened by a click: the drain tick moves 8 units a second in 250 ms steps, and the basin's units are recorded for ten seconds.",
+  "mods": [
+    "burdenmaker"
+  ],
+  "layout": {
+    "legend": {
+      "B": {
+        "id": "bm",
+        "code": "burdenmaker:burdenmaker-red-n",
+        "complete": "all"
+      },
+      "c": {
+        "cells": "bm"
+      }
+    },
+    "layers": {
+      "2": [
+        "ccc",
+        "..."
+      ],
+      "1": [
+        "ccc",
+        "cBc"
+      ]
+    },
+    "origin": [
+      0,
+      -1
+    ]
+  },
+  "steps": [
+    {
+      "insert": {
+        "at": {
+          "of": "bm"
+        },
+        "slot": 0,
+        "stack": "game:crushed-iron",
+        "count": 48
+      }
+    },
+    {
+      "insert": {
+        "at": {
+          "of": "bm"
+        },
+        "slot": 8,
+        "stack": "game:lime",
+        "count": 16
+      }
+    },
+    {
+      "interact": {
+        "at": {
+          "of": "bm"
+        }
+      }
+    }
+  ],
+  "seconds": 10,
+  "record": {
+    "machines": {
+      "bm": {
+        "series": {
+          "state": {
+            "words": [
+              {
+                "when": {
+                  "member": "GateOpen",
+                  "equals": true
+                },
+                "word": "open"
+              },
+              "shut"
+            ]
+          },
+          "BurdenUnits": {
+            "member": "BurdenUnits",
+            "unit": "u"
+          }
+        }
+      }
+    }
+  }
+}
