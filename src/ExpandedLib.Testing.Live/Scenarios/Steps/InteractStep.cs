@@ -42,12 +42,24 @@ internal sealed class InteractStep : ScenarioStep {
   /// <summary>The control an interact step clicks, its <c>control</c> key, or null for the block's body.</summary>
   public static string? ControlOf(JObject o) => (string?)o["control"];
 
+  /// <summary>The face an interact step names, its <c>face</c> key, or null when it names none.</summary>
+  /// <exception cref="StepFailure">The key is no face's letter.</exception>
+  public static BlockFacing? FaceOf(JObject o) =>
+    o["face"] is JToken token
+      ? ExOrientation.FacingFromSide((string)token)
+        ?? throw new StepFailure(
+          $"\"{(string)token}\" is not a face.",
+          Suspect.Scenario
+        )
+      : null;
+
   /// <summary>The selection an interact step clicks: the cell's body at the middle of <paramref name="face"/>,
   /// or the box of control <paramref name="control"/> when one is named.</summary>
   /// <param name="accessor">The accessor the cell's selection boxes are read through.</param>
   /// <param name="at">The absolute cell clicked.</param>
   /// <param name="control">The id of the control's box, or null for the body.</param>
-  /// <param name="face">The face the click lands on.</param>
+  /// <param name="face">The face the click lands on; null for the south face of the body, or the top of a
+  /// control's box, as the harness aims a control click.</param>
   /// <param name="hit">The point clicked on the control's box, in block units relative to <paramref name="at"/>
   /// (0 to 1 across the cell); null for the centre of the <paramref name="face"/> side. Needs
   /// <paramref name="control"/>.</param>
@@ -57,7 +69,7 @@ internal sealed class InteractStep : ScenarioStep {
     IBlockAccessor accessor,
     BlockPos at,
     string? control,
-    BlockFacing face,
+    BlockFacing? face,
     Vec3d? hit = null
   ) {
     if (control == null && hit != null)
@@ -68,8 +80,8 @@ internal sealed class InteractStep : ScenarioStep {
     if (control == null)
       return new BlockSelection {
         Position = at.Copy(),
-        Face = face,
-        HitPosition = ScenarioPlayer.Hit(face),
+        Face = face ?? BlockFacing.SOUTH,
+        HitPosition = ScenarioPlayer.Hit(face ?? BlockFacing.SOUTH),
       };
     try {
       return ControlAim.Selection(accessor, at, control, face, hit);
@@ -124,18 +136,11 @@ internal sealed class InteractStep : ScenarioStep {
       );
     BlockPos local = ctx.Position(step, o["at"], "at");
     BlockPos at = ctx.Setup.Absolute(local);
-    BlockFacing face = o["face"] is JToken token
-      ? ExOrientation.FacingFromSide((string)token)
-        ?? throw new StepFailure(
-          $"\"{(string)token}\" is not a face.",
-          Suspect.Scenario
-        )
-      : BlockFacing.SOUTH;
     BlockSelection selection = SelectionFor(
       ctx.World.BlockAccessor,
       at,
       ControlOf(o),
-      face,
+      FaceOf(o),
       o["hit"] is JArray point
         ? new Vec3d((double)point[0], (double)point[1], (double)point[2])
         : null
