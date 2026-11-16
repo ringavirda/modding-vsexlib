@@ -9,8 +9,8 @@ using Vintagestory.API.MathTools;
 namespace ExpandedLib.Testing.Live;
 
 /// <summary><c>fill</c>: every cell of the inclusive box set to the block by the world. A cell
-/// above the ground that is not air fails the step before anything is set, unless it already
-/// holds that block.</summary>
+/// at or above y 0 or in the file's stated ground that is not air fails the step before anything
+/// is set, unless it already holds that block.</summary>
 internal sealed class FillStep : ScenarioStep {
   public override string Kind => "fill";
 
@@ -32,7 +32,7 @@ internal sealed class FillStep : ScenarioStep {
       for (int y = Math.Min(from.Y, to.Y); y <= Math.Max(from.Y, to.Y); y++)
         for (int z = Math.Min(from.Z, to.Z); z <= Math.Max(from.Z, to.Z); z++) {
           var cell = new BlockPos(x, y, z);
-          if (y >= 0 && !ctx.IsAir(cell) && ctx.Setup.BlockAt(cell).Id != block.Id)
+          if (ctx.Holds(cell) && ctx.Setup.BlockAt(cell).Id != block.Id)
             throw new StepFailure(
               $"{FailureDetail.Cell(cell)} holds {ctx.Setup.BlockAt(cell).Code}, not air.",
               Suspect.Scenario

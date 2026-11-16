@@ -86,6 +86,7 @@ internal sealed class SetupSampler(
     ) {
       Player = ctx.Player,
       Pack = ctx.Pack,
+      Model = ctx.Model,
     };
     Guard(() => {
       _run = new SetupRun(

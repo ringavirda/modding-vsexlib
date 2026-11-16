@@ -67,7 +67,7 @@ internal sealed class PlotAllocator {
 internal sealed class ScenarioPlot(PlotBox box, int[] size) {
   public PlotBox Box => box;
 
-  /// <summary>The plot's size in blocks: x, y, z.</summary>
+  /// <summary>The plot's half-extents in blocks, x, y and z (<c>plot</c>).</summary>
   public int[] Size => size;
 
   /// <summary>The first air cell above the ground at the plot's centre, absolute; set once the
@@ -136,13 +136,14 @@ internal sealed class ScenarioPlot(PlotBox box, int[] size) {
   /// <see cref="Loaded"/>. The origin is one above the terrain top at the plot's centre, or
   /// higher when <paramref name="lowestY"/>, the lowest plot-local y the file uses, would
   /// otherwise sit below absolute y 1; the terrain's top block is then laid over the footprint
-  /// from the terrain top up to plot y -1.</summary>
-  public void Locate(IWorldAccessor world, int lowestY = 0) {
+  /// from the terrain top up to plot y -1. A <paramref name="depth"/> of stated ground counts as
+  /// a lowest y of -<paramref name="depth"/>.</summary>
+  public void Locate(IWorldAccessor world, int lowestY = 0, int depth = 0) {
     IBlockAccessor blocks = world.BlockAccessor;
     int ground = blocks.GetTerrainMapheightAt(
       new BlockPos(box.CenterX, 0, box.CenterZ)
     );
-    int originY = Math.Max(ground + 1, 1 - lowestY);
+    int originY = Math.Max(ground + 1, 1 - Math.Min(lowestY, -depth));
     Origin = new BlockPos(box.CenterX, originY, box.CenterZ);
     if (originY == ground + 1)
       return;

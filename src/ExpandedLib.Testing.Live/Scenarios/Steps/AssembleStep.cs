@@ -38,7 +38,7 @@ internal sealed class AssembleStep : ScenarioStep {
   /// <param name="pick">Which candidate to fix.</param>
   /// <param name="code">The refusal's code, or null when the part was fixed.</param>
   /// <returns>Null when the part was fixed; otherwise the refusal's line.</returns>
-  /// <exception cref="StepFailure">The cell holds a block other than air at or above y 0, or lies outside the world.</exception>
+  /// <exception cref="StepFailure">The cell holds a block other than air at or above y 0 or in the file's stated ground, or lies outside the world.</exception>
   public static string? Fix(
     ScenarioContext ctx,
     ScenarioPlayer player,
@@ -49,7 +49,7 @@ internal sealed class AssembleStep : ScenarioStep {
     AssemblyPick pick,
     out string? code
   ) {
-    if (local.Y >= 0 && !ctx.IsAir(local))
+    if (ctx.Holds(local))
       throw new StepFailure(
         $"{FailureDetail.Cell(local)} holds {ctx.Setup.BlockAt(local).Code}, not air.",
         Suspect.Scenario

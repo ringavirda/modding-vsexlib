@@ -1,0 +1,17 @@
+{
+  "setup": "live-dig",
+  "description": "A plot standing on three blocks of ground: a 2x2x3 pit dug out of it, a plank laid on the pit's floor, a dug cell air and the undug cell beside the pit still solid, the same in the harness and live.",
+  "mods": [],
+  "plot": [4, 4, 4],
+  "ground": 3,
+  "steps": [
+    { "dig": { "id": "pit", "from": [-1, -3, -1], "to": [0, -1, 0] } },
+    { "place": { "code": "game:planks-aged-we", "at": [0, -3, 0] } },
+    { "expect": { "at": [0, -3, 0], "block": "game:planks-aged-we" } },
+    { "expect": { "at": [-1, -3, -1], "block": "game:air" } },
+    { "expect": { "at": [0, -1, 0], "block": "game:air" } },
+    { "expect": { "at": [1, -3, 0], "block": "game:soil-medium-none" } }
+  ],
+  "seconds": 6,
+  "record": {}
+}

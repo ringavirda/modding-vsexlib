@@ -9,11 +9,10 @@ using Vintagestory.API.Config;
 namespace ExpandedLib.Testing.Live;
 
 /// <summary>A scenario file as the live runner runs it: the setup file model, plus the keys the
-/// model leaves raw (<c>plot</c>, <c>settle</c>, <c>allowErrors</c>).</summary>
+/// model leaves raw (<c>settle</c>, <c>allowErrors</c>).</summary>
 internal sealed class ScenarioCase(
   string name,
   SetupFileModel model,
-  int[] plot,
   double settle,
   IReadOnlyList<Regex> allowErrors
 ) {
@@ -26,8 +25,8 @@ internal sealed class ScenarioCase(
 
   public SetupFileModel Model => model;
 
-  /// <summary>The plot size in blocks: x, y, z.</summary>
-  public int[] Plot => plot;
+  /// <summary>The plot's half-extents in blocks, x, y and z (<c>plot</c>).</summary>
+  public IReadOnlyList<int> Plot => model.Plot;
 
   /// <summary>Seconds the runner waits after the last step.</summary>
   public double Settle => settle;
@@ -91,18 +90,6 @@ internal sealed class ScenarioCase(
       if (!loadedMods.Contains(mod, StringComparer.OrdinalIgnoreCase))
         throw top.In("mods").Fail($"\"{mod}\" is not loaded.");
 
-    int[] plot = [16, 16, 16];
-    if (root["plot"] != null) {
-      JArray a = SetupJson.Array(root["plot"], top.In("plot"));
-      if (a.Count != 3)
-        throw top.In("plot").Fail("expected [x, y, z].");
-      plot =
-      [
-        .. a.Select((t, i) => SetupJson.Integer(t, top.In("plot").At(i))),
-      ];
-      if (plot.Any(n => n < 1))
-        throw top.In("plot").Fail("takes sizes of at least 1.");
-    }
     double settle =
       root["settle"] == null
         ? DefaultSettle
@@ -118,6 +105,6 @@ internal sealed class ScenarioCase(
             .Strings(root["allowErrors"], top.In("allowErrors"))
             .Select(p => new Regex(p)),
         ];
-    return new ScenarioCase(name, model, plot, settle, allow);
+    return new ScenarioCase(name, model, settle, allow);
   }
 }

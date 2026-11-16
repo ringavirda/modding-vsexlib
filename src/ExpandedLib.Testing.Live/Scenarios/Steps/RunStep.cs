@@ -167,7 +167,7 @@ internal sealed class RunStep : ScenarioStep {
   /// <summary>Lays a straight path by the player: <paramref name="blocks"/> in the order of
   /// <paramref name="cells"/>, each placed on the click that its neighbour in the path gives it.</summary>
   /// <exception cref="StepFailure">The path turns, a cell holds a block other than air at or above
-  /// y 0, or the player cannot place a block.</exception>
+  /// y 0 or in the file's stated ground, or the player cannot place a block.</exception>
   public static void Lay(
     ScenarioContext ctx,
     PlayerPlace place,
@@ -185,12 +185,11 @@ internal sealed class RunStep : ScenarioStep {
   /// <summary>Lays <paramref name="blocks"/> in the order of <paramref name="cells"/> with no check on the
   /// path's shape, each placed on the click that its entry of <paramref name="faces"/> gives it. The
   /// block that goes down is the one the block's own placement picks, which need not be the one
-  /// given. A cell below y 0 is not checked: it is ground, which the caller has dug when it must be
-  /// clear.</summary>
+  /// given. A cell below y 0 and below the file's stated ground is not checked.</summary>
   /// <param name="placed">Called with the index of each cell right after its block went down, before the
   /// next is placed; null for none.</param>
-  /// <exception cref="StepFailure">A cell holds a block other than air at or above y 0, a cell
-  /// lies outside the world, the player cannot place a block, or <paramref name="placed"/> throws.</exception>
+  /// <exception cref="StepFailure">A cell holds a block other than air at or above y 0 or in the
+  /// file's stated ground, a cell lies outside the world, the player cannot place a block, or <paramref name="placed"/> throws.</exception>
   public static void LayCells(
     ScenarioContext ctx,
     PlayerPlace place,
@@ -200,7 +199,7 @@ internal sealed class RunStep : ScenarioStep {
     Action<int>? placed = null
   ) {
     foreach (BlockPos cell in cells)
-      if (cell.Y >= 0 && !ctx.IsAir(cell))
+      if (ctx.Holds(cell))
         throw new StepFailure(
           $"{FailureDetail.Cell(cell)} holds {ctx.Setup.BlockAt(cell).Code}, not air.",
           Suspect.Scenario
