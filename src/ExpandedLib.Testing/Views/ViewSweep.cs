@@ -42,14 +42,25 @@ internal static class ViewSweep {
   /// <summary>The line of every collectible of <paramref name="domain"/>.</summary>
   /// <param name="world">A world from <see cref="TestWorld.LoadAsGame"/>.</param>
   /// <param name="domain">The domain of the collectible codes.</param>
+  /// <param name="skipOf">The reason a code is not judged as a stack, or null when it is; null judges every code.</param>
   /// <returns>One row per collectible, in code order: boxed with a kind, or skipped with the reason. A collectible
-  /// whose measurement throws is skipped with the exception's message.</returns>
+  /// whose measurement throws is skipped with the exception's message. A code of a group whose every code has a reason
+  /// is skipped with it and not measured; a code with a reason in a group that has a judged code is measured with it, and
+  /// its note is the reason followed by <c>; judged with its group</c>.</returns>
   /// <exception cref="DirectoryNotFoundException">The repository's configured docs root does not exist.</exception>
-  internal static IReadOnlyList<SweepRow> Rows(TestWorld world, string domain) {
+  internal static IReadOnlyList<SweepRow> Rows(
+    TestWorld world,
+    string domain,
+    System.Func<string, string?>? skipOf = null
+  ) {
     Dictionary<string, ViewGroup> groups = [];
-    foreach (ViewGroup group in ViewGates.Groups(world, domain))
+    HashSet<ViewGroup> skipped = [];
+    foreach (ViewGroup group in ViewGates.Groups(world, domain)) {
+      if (ViewGates.IsSkipped(group, skipOf))
+        skipped.Add(group);
       foreach (string code in group.Codes)
         groups[Key(group.IsBlock, code)] = group;
+    }
     ViewBandData bands = ViewBands.Embedded;
     ViewCatalogue? catalogue = ViewCatalogue.Load(RepoPaths.DocsRoot, domain);
     ConcurrentDictionary<
@@ -57,7 +68,7 @@ internal static class ViewSweep {
       (string[] Failed, string Note, string? Error)
     > measured = [];
     Parallel.ForEach(
-      groups.Values.Distinct(),
+      groups.Values.Distinct().Where(g => !skipped.Contains(g)),
       group => measured[group] = Measure(world, bands, catalogue, group)
     );
     Dictionary<string, List<TypeFile>> sources = Sources();
@@ -84,15 +95,26 @@ internal static class ViewSweep {
       if (c is Block { BlockId: 0 })
         skip = "air";
       else if (groups.TryGetValue(Key(c is Block, code), out ViewGroup? group)) {
-        var m = measured[group];
-        if (m.Error != null)
-          skip = m.Error;
+        if (skipped.Contains(group))
+          skip = skipOf!(code);
         else {
-          kind = Name(group.Kind);
-          failed = m.Failed;
-          note = m.Note;
+          var m = measured[group];
+          if (m.Error != null)
+            skip = m.Error;
+          else {
+            kind = Name(group.Kind);
+            failed = m.Failed;
+            note = m.Note;
+            if (skipOf?.Invoke(code) is { } reason)
+              note =
+                note == ""
+                  ? $"{reason}; judged with its group"
+                  : $"{note}; {reason}; judged with its group";
+          }
         }
-      } else if (c is Item item && TextureBox.IsTextureOnly(item))
+      } else if (skipOf?.Invoke(code) is { } textureReason)
+        skip = textureReason;
+      else if (c is Item item && TextureBox.IsTextureOnly(item))
         try {
           CollectibleViews.ViewBox? box = TextureBox.Of(world.Api, item);
           if (box == null)
@@ -203,12 +225,25 @@ internal static class ViewSweep {
   internal static string? Write(
     TestWorld world,
     string variable = DefaultVariable
+  ) => Write(world, "game", variable, null);
+
+  /// <summary>Writes <see cref="Rows"/> of <paramref name="domain"/> as <see cref="Write(TestWorld, string)"/> does.</summary>
+  /// <param name="world">A world from <see cref="TestWorld.LoadAsGame"/>.</param>
+  /// <param name="domain">The domain of the collectible codes.</param>
+  /// <param name="variable">The environment variable that names the file; unset or empty writes nothing.</param>
+  /// <param name="skipOf">The reason a code is not judged as a stack, or null when it is; null judges every code.</param>
+  /// <returns>The path written; null when <paramref name="variable"/> is not set.</returns>
+  internal static string? Write(
+    TestWorld world,
+    string domain,
+    string variable,
+    System.Func<string, string?>? skipOf
   ) {
     if (
       Environment.GetEnvironmentVariable(variable) is not { Length: > 0 } path
     )
       return null;
-    IReadOnlyList<SweepRow> rows = Rows(world, "game");
+    IReadOnlyList<SweepRow> rows = Rows(world, domain, skipOf);
     var lines = new List<string>
     {
       "code\ttype\tsource\tfirst\tkind\tskip\tnote\tfailed",

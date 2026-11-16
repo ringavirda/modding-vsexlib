@@ -1251,16 +1251,24 @@ internal static class ViewGates {
   /// <param name="world">A world from <see cref="TestWorld.LoadAsGame"/>.</param>
   /// <param name="domain">The domain of the collectible codes.</param>
   /// <param name="catalogue">The design pages' sizes; null leaves G12 out.</param>
+  /// <param name="skipOf">The reason a code is not judged as a stack, or null when it is; null judges every code. A group
+  /// is skipped when every one of its codes has a reason: only G12, which reads the design page's size, is then kept.</param>
   /// <returns>The findings in group order, then one G12 finding per unregistered row of <paramref name="domain"/> in page
   /// and line order, whose message names the row's page and line.</returns>
   internal static IReadOnlyList<ViewFinding> Findings(
     TestWorld world,
     string domain,
-    ViewCatalogue? catalogue = null
+    ViewCatalogue? catalogue = null,
+    System.Func<string, string?>? skipOf = null
   ) {
     ViewBandData bands = ViewBands.Embedded;
     var findings = new List<ViewFinding>();
     foreach (ViewGroup group in Groups(world, domain)) {
+      if (IsSkipped(group, skipOf)) {
+        if (catalogue?.Reading(group) is { } sized)
+          findings.AddRange(Failures(group, [sized]));
+        continue;
+      }
       findings.AddRange(Judge(bands, group, Measure(world, group)));
       findings.AddRange(Failures(group, Rules(world, group, catalogue)));
     }
@@ -1268,6 +1276,14 @@ internal static class ViewGates {
       findings.AddRange(catalogue.Unregistered(world, domain));
     return findings;
   }
+
+  /// <summary>Whether <paramref name="skipOf"/> gives a reason for every code of <paramref name="group"/>.</summary>
+  /// <param name="group">The group.</param>
+  /// <param name="skipOf">The reason a code is not judged as a stack, or null when it is; null skips nothing.</param>
+  internal static bool IsSkipped(
+    ViewGroup group,
+    System.Func<string, string?>? skipOf
+  ) => skipOf != null && group.Codes.All(c => skipOf(c) != null);
 
   private static IReadOnlyList<ViewFinding> Failures(
     ViewGroup group,
