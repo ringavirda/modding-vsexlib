@@ -240,6 +240,29 @@ public class PipeCornerTests {
     );
   }
 
+  // Fails when every segment blocktype lists all six segment selectors instead of its own.
+  [Theory]
+  [InlineData("cast")]
+  [InlineData(null)]
+  public void SetSegments_HandbookGroupsOnlyOwnSegment(string? tier) {
+    foreach (ExBlockDef def in BlockPipe.SetSegments("test", tier)) {
+      string type = def
+        .VariantGroups.Single(g => g.Name == "type")
+        .States.Single();
+      string[] groups =
+      [
+        .. def.ToJson()["attributes"]!["handbook"]!["groupBy"]!.Select(t =>
+          (string)t!
+        ),
+      ];
+
+      Assert.Equal(
+        [tier == null ? $"pipe-{type}-*" : $"pipe-{tier}-{type}-*"],
+        groups
+      );
+    }
+  }
+
   // Fails when Definitions stays at the four segments and the box: the corner's tokens are then never allowed.
   [Fact]
   public void Definitions_AllowsCornerAndBox() {

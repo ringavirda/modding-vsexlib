@@ -102,12 +102,39 @@ public class SetupSamplerTests : IDisposable {
   public void An_action_due_at_a_second_shows_in_that_seconds_sample() {
     var rig = new Rig($"[{{ \"at\": 2, \"step\": {Place} }}]", _folder);
     rig.Begin();
-    Assert.Equal(1000, rig.Period);
+    Assert.Equal(1, rig.Period);
     rig.Fires(6);
     Assert.True(rig.Sampler.Done);
     Assert.Equal("unset", rig.Sampler.Recording!.ValueAt("a", "state", 1));
     Assert.Equal("set", rig.Sampler.Recording.ValueAt("a", "state", 2));
   }
+
+  /// <summary>Fails when each second is measured from the last firing instead of from the start,
+  /// which lets the overshoot of every firing accumulate.</summary>
+  [Fact]
+  public void Seconds_end_on_a_running_target_under_uneven_server_ticks() {
+    var rig = new Rig("[]", _folder, Seconds(30));
+    rig.Begin();
+    var random = new Random(7);
+    double clock = 0;
+    int ticks = 0;
+    var ends = new List<double>();
+    while (!rig.Sampler.Done) {
+      int ms = random.Next(20, 71);
+      clock += ms;
+      int before = rig.Sampler.Recording!.Samples;
+      rig.Fire!(ms / 1000f);
+      if (rig.Sampler.Recording.Samples > before)
+        ends.Add(clock);
+      Assert.True(++ticks < 10000);
+    }
+    Assert.Equal(30, ends.Count);
+    for (int k = 1; k <= 30; k++)
+      Assert.InRange(ends[k - 1], k * 1000, k * 1000 + 70);
+  }
+
+  private static string Seconds(int seconds) =>
+    $$"""{ "seconds": {{seconds}}, "record": {{Record}} }""";
 
   /// <summary>Fails when a block a <c>during</c> action places is not handed to the case's context,
   /// so the end-of-run checks never see it.</summary>

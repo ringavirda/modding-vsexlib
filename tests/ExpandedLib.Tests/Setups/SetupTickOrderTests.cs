@@ -65,6 +65,15 @@ public class SetupTickOrderTests
   private static string[][] Seconds(List<string> log, int perSecond) =>
     [.. log.Chunk(perSecond)];
 
+  // The network fires of a second at 200, 400, 600 and 800 ms, ahead of the 1000 ms listeners.
+  private static readonly string[] Between =
+  [
+    "network",
+    "network",
+    "network",
+    "network",
+  ];
+
   private static SetupScene Four(List<string> log)
   {
     SetupScene scene = Build(
@@ -137,7 +146,8 @@ public class SetupTickOrderTests
 
   #region Firing
 
-  // Fails when the listeners fire other than in placement order with the network tick last.
+  // Fails when the listeners fire other than in placement order with the network tick last, or the
+  // network fires other than five times a second.
   [Fact]
   public void A_scene_with_no_order_fires_in_placement_order_and_the_network_last()
   {
@@ -147,10 +157,10 @@ public class SetupTickOrderTests
     scene.Run(Mods);
 
     Assert.All(
-      Seconds(log, 5),
-      s => Assert.Equal(["0", "1", "2", "3", "network"], s)
+      Seconds(log, 9),
+      s => Assert.Equal([.. Between, "0", "1", "2", "3", "network"], s)
     );
-    Assert.Equal(6, Seconds(log, 5).Length);
+    Assert.Equal(6, Seconds(log, 9).Length);
   }
 
   // Fails when the named machines' listeners stay in place, move in placement order instead of the
@@ -165,8 +175,8 @@ public class SetupTickOrderTests
     scene.Run(Mods);
 
     Assert.All(
-      Seconds(log, 5),
-      s => Assert.Equal(["1", "3", "2", "0", "network"], s)
+      Seconds(log, 9),
+      s => Assert.Equal([.. Between, "1", "3", "2", "0", "network"], s)
     );
   }
 
@@ -190,7 +200,7 @@ public class SetupTickOrderTests
 
     scene.Run(Mods);
 
-    int seconds = log.Count / 5;
+    int seconds = log.Count / 9;
     Assert.True(seconds > 0);
     Assert.Equal(50 * seconds, LineTicks(scene) - before);
   }
@@ -207,8 +217,8 @@ public class SetupTickOrderTests
     scene.Run(Mods);
 
     Assert.All(
-      Seconds(log, 5),
-      s => Assert.Equal(["1", "3", "2", "network", "0"], s)
+      Seconds(log, 9),
+      s => Assert.Equal([.. Between, "1", "3", "2", "network", "0"], s)
     );
   }
 
@@ -223,8 +233,8 @@ public class SetupTickOrderTests
     scene.Run(Mods);
 
     Assert.All(
-      Seconds(log, 5),
-      s => Assert.Equal(["1", "3", "network", "2", "0"], s)
+      Seconds(log, 9),
+      s => Assert.Equal([.. Between, "1", "3", "network", "2", "0"], s)
     );
   }
 
@@ -242,8 +252,8 @@ public class SetupTickOrderTests
     scene.Run(Mods);
 
     Assert.Equal(
-      ["0", "1", "2", "3", "callback", "network"],
-      Seconds(log, 6)[0]
+      [.. Between, "0", "1", "2", "3", "callback", "network"],
+      Seconds(log, 10)[0]
     );
   }
 
@@ -262,8 +272,8 @@ public class SetupTickOrderTests
     scene.Run(Mods);
 
     Assert.Equal(
-      ["1", "3", "2", "0", "callback", "network"],
-      Seconds(log, 6)[0]
+      [.. Between, "1", "3", "2", "0", "callback", "network"],
+      Seconds(log, 10)[0]
     );
   }
 

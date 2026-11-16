@@ -349,21 +349,49 @@ public sealed partial class SetupScene
 
   private void TickSecond(double hours) => TickSecond(hours, _lineListeners);
 
-  /// <summary>Advances the calendar by <paramref name="hours"/> and runs one second of the world:
-  /// every block entity listener not in <paramref name="except"/> fires once, in tick order when the
-  /// setup names one, and the network tick steps the line listeners between its fires.</summary>
-  /// <param name="hours">Game hours the calendar moves.</param>
-  /// <param name="except">Ids of the listeners that do not fire this second; the line listeners
-  /// belong in it.</param>
-  private void TickSecond(double hours, IReadOnlySet<long> except)
+  /// <summary>Runs 1000 ms of the world from where the running second has got, in
+  /// <see cref="TestWorld.SliceMs"/> slices through <see cref="RunSlices"/>.</summary>
+  /// <param name="hours">Game hours the calendar moves when a second opens.</param>
+  /// <param name="except">Ids of the listeners that do not fire; the line listeners belong in it.</param>
+  private void TickSecond(double hours, IReadOnlySet<long> except) =>
+    RunSlices(1000 / TestWorld.SliceMs, hours, except);
+
+  // Set when a wait's last slice closed the second and nothing has run since.
+  private bool _waitClosedSecond;
+
+  /// <summary>Runs what is left of the running second, a whole second when none is running, and nothing when
+  /// a wait has just run the second to its end.</summary>
+  private void FinishSecond()
   {
-    World.AdvanceHours(hours);
-    if (_ordered)
-      World.FireBlockEntityTicks(1f, except, NetworkTick, _networkBefore);
-    else
+    if (_waitClosedSecond)
     {
-      World.FireBlockEntityTicks(1f, except);
-      NetworkTick();
+      _waitClosedSecond = false;
+      return;
+    }
+    RunSlices(
+      (1000 - World.MsIntoSecond) / TestWorld.SliceMs,
+      TestWorld.GameHoursPerSecond,
+      _lineListeners
+    );
+  }
+
+  /// <summary>Runs <paramref name="count"/> slices of <see cref="TestWorld.SliceMs"/> of the world. A slice
+  /// that opens a second first advances the calendar by <paramref name="hours"/>. Every block entity listener
+  /// not in <paramref name="except"/> fires at its own registered interval with that interval as dt, and the
+  /// network tick fires every 200 ms among them, each fire followed by 200 ms of the line listeners.</summary>
+  /// <remarks>Listeners due together fire in tick order when the setup names one; the network fire comes
+  /// after the listeners due with it, or in the place the tick order gives it.</remarks>
+  /// <param name="count">Slices to run.</param>
+  /// <param name="hours">Game hours the calendar moves when a second opens.</param>
+  /// <param name="except">Ids of the listeners that do not fire; the line listeners belong in it.</param>
+  private void RunSlices(int count, double hours, IReadOnlySet<long> except)
+  {
+    _waitClosedSecond = false;
+    for (int i = 0; i < count; i++)
+    {
+      if (World.MsIntoSecond == 0)
+        World.AdvanceHours(hours);
+      World.RunSlice(TestWorld.SliceMs, except, NetworkTick, _networkBefore);
     }
   }
 

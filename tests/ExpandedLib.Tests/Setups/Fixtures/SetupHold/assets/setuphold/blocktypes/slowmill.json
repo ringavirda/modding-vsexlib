@@ -1,0 +1,1 @@
+{ "code": "slowmill", "entityClass": "Generic", "entityBehaviors": [{ "name": "SetupMill", "properties": { "tickMs": 500 } }] }

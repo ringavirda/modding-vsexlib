@@ -94,7 +94,7 @@ public partial class BlockPipe
       .CreativeTab("general", creativeSelector)
       .CreativeTab(domain, creativeSelector)
       // Grouped per tier: a groupBy selector with no domain is qualified with the block's own domain.
-      .Handbook(HandbookGroups(tier))
+      .Handbook(HandbookGroup(tier, assetName))
       .Behavior("Lockable")
       // No blanket texture override: each tier's shape declares its own texture map.
       .RenderPass("OpaqueNoCull")
@@ -108,18 +108,10 @@ public partial class BlockPipe
     return tier == null ? def : def.VariantGroup("tier", tier);
   }
 
-  // The handbook groups one blocktype's variants into one entry per segment shape, within a tier.
-  private static string[] HandbookGroups(string? tier) {
-    string prefix = tier == null ? "pipe-" : $"pipe-{tier}-";
-    return
-    [
-      $"{prefix}straight-*",
-      $"{prefix}bend-*",
-      $"{prefix}tjunction-*",
-      $"{prefix}corner-*",
-      $"{prefix}xjunction-*",
-      $"{prefix}junction-*",
-    ];
+  // A blocktype carries one segment's variants, so its handbook groups only that segment, within a tier.
+  private static string HandbookGroup(string? tier, string assetName) {
+    string leaf = assetName[(assetName.LastIndexOf('/') + 1)..];
+    return tier == null ? $"pipe-{leaf}-*" : $"pipe-{tier}-{leaf}-*";
   }
 
   private static ExBlockDef Straight(string domain, string? tier) {
