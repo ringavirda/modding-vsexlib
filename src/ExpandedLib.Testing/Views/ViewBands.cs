@@ -76,6 +76,14 @@ internal static class ViewBands {
   /// <summary>The share of an end's magnitude a band or a twin's value widens by.</summary>
   internal const double Share = 0.1;
 
+  /// <summary>The most a near-cube box's longest side may be over its shortest, as a ratio.</summary>
+  internal const double NearCubeRatio = 1.25;
+
+  /// <summary>Whether a box with <paramref name="extents"/>, longest first, is a near cube: its longest side at most
+  /// <see cref="NearCubeRatio"/> times its shortest. A near-cube multicell block is judged on G3 up to the cube's upper end.</summary>
+  internal static bool IsNearCube(double[] extents) =>
+    extents[0] <= NearCubeRatio * extents[^1];
+
   /// <summary>A kind's reference set: codes by exact match, or by prefix when an entry ends in a dash.</summary>
   /// <param name="Kind">The kind the set calibrates.</param>
   /// <param name="Entries">The codes, without domain, of the vanilla collectibles in the set.</param>
