@@ -285,7 +285,9 @@ internal sealed class CraftStep : ScenarioStep {
 
   /// <summary>Lays the bill at the station, holds each step of <paramref name="sequence"/> on its block
   /// with the step's tool in the active hand and its off-hand tool, the block stepped on each runner
-  /// tick for the step's seconds, then collects the outputs into <paramref name="taken"/>.</summary>
+  /// tick for the step's seconds, then collects the outputs into <paramref name="taken"/>. A product the
+  /// station hands into the working hand stays there for <see cref="Collect"/>; only the step's own tool
+  /// goes back to the pack.</summary>
   private static IEnumerable<bool> WorkSequence(
     ScenarioContext ctx,
     ScenarioPlayer player,
@@ -334,8 +336,13 @@ internal sealed class CraftStep : ScenarioStep {
           player.UseStop(selection, ctx.Now - started);
         }
       } finally {
-        PackLedger.GiveTools(ctx, hand.Itemstack, player.Offhand);
-        hand.Itemstack = null;
+        ItemStack? wielded =
+          hand.Itemstack?.Collectible.Code.Equals(tool?.Collectible.Code) == true
+            ? hand.Itemstack
+            : null;
+        PackLedger.GiveTools(ctx, wielded, player.Offhand);
+        if (wielded != null)
+          hand.Itemstack = null;
         player.HoldOffhand(null);
       }
     }
