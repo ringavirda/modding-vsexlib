@@ -33,7 +33,7 @@ internal sealed class PlaceStep : ScenarioStep {
   /// cells it fills: <paramref name="local"/> first, then a megablock's footprint.</summary>
   /// <param name="code">The code the draw ledger names <paramref name="block"/> by.</param>
   /// <exception cref="StepFailure">A cell the block fills holds a block other than air at or above
-  /// y 0.</exception>
+  /// y 0 or in the file's stated ground.</exception>
   public static List<BlockPos> Put(
     ScenarioContext ctx,
     Block block,
@@ -50,7 +50,7 @@ internal sealed class PlaceStep : ScenarioStep {
     ];
     List<BlockPos> cells = [local, .. footprint.Where(c => !c.Equals(local))];
     foreach (BlockPos cell in cells)
-      if (cell.Y >= 0 && !ctx.IsAir(cell))
+      if (ctx.Holds(cell))
         throw new StepFailure(
           $"{FailureDetail.Cell(cell)} holds {ctx.Setup.BlockAt(cell).Code}, not air.",
           Suspect.Scenario

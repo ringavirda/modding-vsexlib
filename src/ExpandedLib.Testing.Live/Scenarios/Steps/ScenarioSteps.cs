@@ -14,6 +14,7 @@ internal static class ScenarioSteps {
       new RunStep(),
       new CompleteStep(),
       new FillStep(),
+      new DigStep(),
       new SetStep(),
       new CallStep(),
       new InsertStep(),

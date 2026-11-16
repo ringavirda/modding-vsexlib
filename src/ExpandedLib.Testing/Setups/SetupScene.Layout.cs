@@ -27,10 +27,39 @@ public sealed partial class SetupScene
     HashSet<BlockFacing> Faces
   );
 
+  /// <summary>Lays <see cref="GroundCode"/> under the plot's footprint from y -1 down to y
+  /// -<see cref="SetupFileModel.Ground"/>; nothing when the file states no ground.</summary>
+  private void LayGround()
+  {
+    if (Model.Ground == 0)
+      return;
+    int id = Resolve(GroundCode, "ground").BlockId;
+    IReadOnlyList<int> plot = Model.Plot;
+    for (int x = -plot[0]; x <= plot[0]; x++)
+    for (int z = -plot[2]; z <= plot[2]; z++)
+    for (int y = -1; y >= -Model.Ground; y--)
+      World.Accessor.SetBlock(id, new BlockPos(x, y, z));
+  }
+
   private void PlaceLayout()
   {
     if (Model.Drawn is not { } layout)
       return;
+    SetupDig.Dig(
+      View,
+      layout
+        .Entries.SelectMany(e =>
+          e.Kind == LayoutEntryKind.Block
+            ? layout.Cells.Where(c => c.Symbol == e.Glyph)
+          : e.Kind == LayoutEntryKind.Run
+            ? layout
+              .Runs.Where(r => r.Entries[0] == e)
+              .SelectMany(r => r.Cells.Select(c => c.Cell))
+          : []
+        )
+        .Where(c => c.Y < 0)
+        .Select(c => new BlockPos(c.X, c.Y, c.Z))
+    );
     foreach (LayoutEntry entry in layout.Entries)
     {
       switch (entry.Kind)

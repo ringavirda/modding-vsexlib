@@ -42,6 +42,9 @@ public sealed partial class SetupScene : IDisposable
 
   private const string NoBreaker = "the fake world has no player to break with";
 
+  /// <summary>The block the harness lays a file's <c>ground</c> of.</summary>
+  internal const string GroundCode = "game:soil-medium-none";
+
   /// <summary>Why the fake world cannot run <paramref name="step"/>: a <c>power</c> that names no
   /// <c>mpshaft</c> network, a <c>break</c> that is not <c>by: "world"</c> or carries <c>with</c>,
   /// <c>sneak</c> or <c>take</c>, or a verb of the <c>Lacking</c> table.</summary>
@@ -197,6 +200,7 @@ public sealed partial class SetupScene : IDisposable
       scene._config.Apply(scene.Model.Config);
       scene.StartPack(stages);
       scene.Preflight(stages);
+      scene.LayGround();
       scene.PlaceLayout();
       scene.RunSteps();
       scene.JoinLines();
@@ -410,6 +414,7 @@ public sealed partial class SetupScene : IDisposable
         .OfType<string>()
         .Where(v => v.StartsWith("game:"))
         .Concat(Model.Load)
+        .Concat(Model.Ground > 0 ? [GroundCode] : [])
         .Distinct(),
     ];
   }
@@ -747,6 +752,9 @@ public sealed partial class SetupScene : IDisposable
         case "fill":
           FillStep(step);
           break;
+        case "dig":
+          DigStep(step);
+          break;
         case "run":
           RunStep(step);
           break;
@@ -877,6 +885,24 @@ public sealed partial class SetupScene : IDisposable
       }
     }
     DrawMetal(step.Path, put);
+    if (step.Id != null)
+      _placed[step.Id] = new SetupPlacement(cells[0], cells);
+  }
+
+  private void DigStep(SetupStep step)
+  {
+    bool one = step.Body["at"] != null;
+    BlockPos from = At(step, one ? "at" : "from");
+    BlockPos to = one ? from : At(step, "to");
+    List<BlockPos> cells = SetupDig.Cells(
+      Model,
+      from,
+      to,
+      new SetupJson.Where(_file.Name, $"{step.Path} (dig)")
+    );
+    SetupDig.Dig(View, cells);
+    foreach (BlockPos cell in cells)
+      _laid.Remove((cell.X, cell.Y, cell.Z));
     if (step.Id != null)
       _placed[step.Id] = new SetupPlacement(cells[0], cells);
   }

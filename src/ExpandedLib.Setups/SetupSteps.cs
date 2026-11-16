@@ -170,6 +170,7 @@ internal static class SetupSteps {
       "asm",
     ],
     ["fill"] = ["id", "code", "from", "to"],
+    ["dig"] = ["id", "at", "from", "to"],
     ["window"] = ["at", "open", "put", "take", "press", "close"],
     ["ignite"] = ["at", "seconds"],
     ["craft"] = ["at", "output", "recipe", "times", "with"],
@@ -308,6 +309,15 @@ internal static class SetupSteps {
       SetupPlayerExpect.Validate(o, at);
     if (kind == "select")
       SetupSlotExpect.ValidateSelect(o, at);
+    if (
+      kind == "dig"
+      && !(
+        o["at"] != null
+          ? o["from"] == null && o["to"] == null
+          : o["from"] != null && o["to"] != null
+      )
+    )
+      throw at.Fail("takes \"at\", or \"from\" and \"to\".");
     if (kind == "set" && (o["tree"] == null) == (o["member"] == null))
       throw at.Fail("takes one of \"tree\" and \"member\".");
     if (kind == "complete")

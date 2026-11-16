@@ -231,6 +231,28 @@ public class PlotTests {
     Assert.All(set, p => Assert.InRange(p.Y, 3, 5));
   }
 
+  /// <summary>Fails when Locate ignores the stated ground: a plot with no cell below 0 but two
+  /// blocks of ground stands two higher, on the terrain's top block laid over its footprint.</summary>
+  [Fact]
+  public void A_plot_with_stated_ground_is_raised_to_stand_on_that_depth() {
+    var blocks = Substitute.For<IBlockAccessor>();
+    var world = Substitute.For<IWorldAccessor>();
+    world.BlockAccessor.Returns(blocks);
+    blocks.GetTerrainMapheightAt(Arg.Any<BlockPos>()).Returns(0);
+    blocks.GetBlock(Arg.Any<BlockPos>()).Returns(new Block { BlockId = 7 });
+    var set = new System.Collections.Generic.List<int>();
+    blocks
+      .When(b => b.SetBlock(7, Arg.Any<BlockPos>()))
+      .Do(c => set.Add(c.ArgAt<BlockPos>(1).Y));
+    var plot = new ScenarioPlot(new PlotBox(0, 0, 1, 1, 32, 32), [1, 1, 1]);
+
+    plot.Locate(world, 0, 2);
+
+    Assert.Equal(3, plot.Origin.Y);
+    Assert.Equal(3 * 3 * 2, set.Count);
+    Assert.All(set, y => Assert.InRange(y, 1, 2));
+  }
+
   /// <summary>Fails when the origin of a plot with no cell below 0 is lifted (originY from ground + 2).</summary>
   [Fact]
   public void A_plot_with_no_cell_below_zero_sits_one_above_the_terrain() {

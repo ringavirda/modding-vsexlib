@@ -110,6 +110,7 @@ internal sealed class SetupFileModel {
     "tickOrders",
     "figure",
     "plot",
+    "ground",
     "climate",
     "timeout",
     "settle",
@@ -189,6 +190,18 @@ internal sealed class SetupFileModel {
 
   /// <summary>Whether the file holds a <c>climate</c>.</summary>
   public bool HasClimate { get; private set; }
+
+  /// <summary>The deepest <c>ground</c> a file may state, in blocks.</summary>
+  public const int MaxGround = 16;
+
+  /// <summary>The plot's half-extents in blocks, x, y and z (<c>plot</c>): the footprint runs
+  /// from -x to x and -z to z, the height to 2y. [16, 16, 16] by default.</summary>
+  public IReadOnlyList<int> Plot { get; private set; } = [16, 16, 16];
+
+  /// <summary>The depth in blocks of solid ground under the plot's footprint (<c>ground</c>),
+  /// from y -1 down to y -<see cref="Ground"/>, 1 to <see cref="MaxGround"/>; 0 when the file
+  /// states none, and then no <c>dig</c> step runs.</summary>
+  public int Ground { get; private set; }
 
   public IReadOnlyList<SetupDuring> During { get; private set; } = [];
 
@@ -315,6 +328,25 @@ internal sealed class SetupFileModel {
         } catch (ArgumentException e) {
           throw top.In("allowErrors").At(i).Fail(e.Message);
         }
+    int[] plot = [16, 16, 16];
+    if (root["plot"] != null) {
+      JArray a = SetupJson.Array(root["plot"], top.In("plot"));
+      if (a.Count != 3)
+        throw top.In("plot").Fail("expected [x, y, z].");
+      plot =
+      [
+        .. a.Select((t, i) => SetupJson.Integer(t, top.In("plot").At(i))),
+      ];
+      if (plot.Any(n => n < 1))
+        throw top.In("plot").Fail("takes sizes of at least 1.");
+    }
+    int ground = 0;
+    if (root["ground"] != null) {
+      ground = SetupJson.Integer(root["ground"], top.In("ground"));
+      if (ground is < 1 or > MaxGround)
+        throw top.In("ground")
+          .Fail($"takes a whole number of blocks from 1 to {MaxGround}.");
+    }
     JObject? layout =
       root["layout"] == null
         ? null
@@ -534,6 +566,8 @@ internal sealed class SetupFileModel {
       SteppedClock = stepped,
       Timeout = timeout,
       HasClimate = root["climate"] != null,
+      Plot = plot,
+      Ground = ground,
       During = during,
       Record = record,
       Pack = pack,

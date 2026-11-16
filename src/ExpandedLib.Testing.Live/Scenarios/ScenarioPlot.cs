@@ -136,13 +136,14 @@ internal sealed class ScenarioPlot(PlotBox box, int[] size) {
   /// <see cref="Loaded"/>. The origin is one above the terrain top at the plot's centre, or
   /// higher when <paramref name="lowestY"/>, the lowest plot-local y the file uses, would
   /// otherwise sit below absolute y 1; the terrain's top block is then laid over the footprint
-  /// from the terrain top up to plot y -1.</summary>
-  public void Locate(IWorldAccessor world, int lowestY = 0) {
+  /// from the terrain top up to plot y -1. A <paramref name="depth"/> of stated ground counts as
+  /// a lowest y of -<paramref name="depth"/>, so the plot stands on that much solid terrain.</summary>
+  public void Locate(IWorldAccessor world, int lowestY = 0, int depth = 0) {
     IBlockAccessor blocks = world.BlockAccessor;
     int ground = blocks.GetTerrainMapheightAt(
       new BlockPos(box.CenterX, 0, box.CenterZ)
     );
-    int originY = Math.Max(ground + 1, 1 - lowestY);
+    int originY = Math.Max(ground + 1, 1 - Math.Min(lowestY, -depth));
     Origin = new BlockPos(box.CenterX, originY, box.CenterZ);
     if (originY == ground + 1)
       return;

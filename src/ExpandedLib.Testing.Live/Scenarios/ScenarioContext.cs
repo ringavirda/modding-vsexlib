@@ -78,6 +78,15 @@ internal sealed class ScenarioContext(
 
   public bool IsAir(BlockPos local) => setup.BlockAt(local).Id == 0;
 
+  /// <summary>The file the case runs; null for a context built without one, which states no
+  /// ground.</summary>
+  public SetupFileModel? Model { get; set; }
+
+  /// <summary>Whether the plot-local cell holds a block a step may not set over: anything but
+  /// air at or above y 0, or within the file's stated ground below it.</summary>
+  public bool Holds(BlockPos local) =>
+    local.Y >= -(Model?.Ground ?? 0) && !IsAir(local);
+
   /// <summary>The plot-local cell the step's <paramref name="key"/> names.</summary>
   /// <exception cref="StepFailure">The position names an id that placed nothing or a form the
   /// block does not have.</exception>

@@ -188,7 +188,7 @@ internal sealed class ScenarioRunner {
     _plots ??= PlotsAtSpawn();
     PlotBox box = _plots.Next(scenario!.Plot[0], scenario.Plot[2]);
     _climate.Hold(box);
-    _plot = new ScenarioPlot(box, scenario.Plot);
+    _plot = new ScenarioPlot(box, [.. scenario.Plot]);
     _loadStarted = Seconds();
     _plot.Load(_api);
   }
@@ -196,7 +196,7 @@ internal sealed class ScenarioRunner {
   private void StartCase() {
     ScenarioPlot plot = _plot!;
     ScenarioCase scenario = _case!;
-    plot.Locate(_api.World, scenario.LowestY);
+    plot.Locate(_api.World, scenario.LowestY, scenario.Model.Ground);
     _held.Add(plot);
     _errors = new ScenarioErrors(scenario.AllowErrors);
     var world = new ScenarioWorld(
@@ -213,6 +213,7 @@ internal sealed class ScenarioRunner {
       Path.GetFileName(File(_name))
     ) {
       Player = _player,
+      Model = scenario.Model,
       PlotBounds = plot.Bounds(),
       Columns = new ServerPlotColumns(_api, plot),
       Pack =
