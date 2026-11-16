@@ -48,5 +48,29 @@ public class CraftTakeAsideTests
     Assert.Same(diagram, got);
     Assert.Null(hand.Itemstack);
   }
+
+  /// <summary>Fails when a product the station handed into a bare working hand is taken back as the
+  /// step's tool, so the hold collects nothing.</summary>
+  [Fact]
+  public void A_product_in_a_bare_hand_is_not_the_wielded_tool()
+  {
+    var world = new TestWorld();
+    var product = new ItemStack(world.RegisterItem("test:counter"));
+    var hammer = new ItemStack(world.RegisterItem("test:hammer"));
+
+    Assert.Null(CraftStep.Wielded(new DummySlot(product), null));
+    Assert.Null(CraftStep.Wielded(new DummySlot(product), hammer));
+  }
+
+  /// <summary>Fails when the step's own tool is left in the hand instead of going back to the pack.</summary>
+  [Fact]
+  public void The_steps_tool_in_the_hand_is_the_wielded_tool()
+  {
+    var world = new TestWorld();
+    var hammer = new ItemStack(world.RegisterItem("test:hammer"));
+    var hand = new DummySlot(hammer.Clone());
+
+    Assert.Same(hand.Itemstack, CraftStep.Wielded(hand, hammer));
+  }
 }
 #endif

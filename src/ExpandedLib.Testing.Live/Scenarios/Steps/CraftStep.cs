@@ -243,6 +243,15 @@ internal sealed class CraftStep : ScenarioStep {
     return got;
   }
 
+  /// <summary>The stack in <paramref name="hand"/> when it is the step's own <paramref name="tool"/>; a
+  /// product the station handed into the hand is not the tool.</summary>
+  /// <returns>The hand's stack, or null when the hand is empty, the step holds no tool or the hand holds
+  /// something else.</returns>
+  internal static ItemStack? Wielded(ItemSlot hand, ItemStack? tool) =>
+    hand.Itemstack?.Collectible.Code.Equals(tool?.Collectible.Code) == true
+      ? hand.Itemstack
+      : null;
+
   private static List<ItemStack> Collect(
     ServerPlayer who,
     BlockEntity entity,
@@ -336,10 +345,7 @@ internal sealed class CraftStep : ScenarioStep {
           player.UseStop(selection, ctx.Now - started);
         }
       } finally {
-        ItemStack? wielded =
-          hand.Itemstack?.Collectible.Code.Equals(tool?.Collectible.Code) == true
-            ? hand.Itemstack
-            : null;
+        ItemStack? wielded = Wielded(hand, tool);
         PackLedger.GiveTools(ctx, wielded, player.Offhand);
         if (wielded != null)
           hand.Itemstack = null;
