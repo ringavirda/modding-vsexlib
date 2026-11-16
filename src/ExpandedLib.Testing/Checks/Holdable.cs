@@ -31,6 +31,7 @@ namespace ExpandedLib.Testing;
 public static class Holdable
 {
   /// <summary>Variable naming the file <see cref="Write"/> writes the census to.</summary>
+  [CheckHelper("names the variable Write reads for the census file")]
   public const string DefaultVariable = "EX_HOLDABLE";
 
   /// <summary>Whether a stack of a code can be held.</summary>
