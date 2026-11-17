@@ -162,21 +162,24 @@ internal static class HandbookSections
         StoredPlaceholder.Replace(ing.Code.ToString(), "*")
       );
     ing.Resolve(world, "handbook built in place");
-    string key = $"{ing.Type}|{ing.Code}|{ing.Name}";
     if (ing.MatchesByPattern)
+    {
+      string patternName = ExRightClickConstruction.IngredientName(world, ing);
       return (
-        key,
+        $"{ing.Type}|{ing.Code}|{patternName}",
         [
           .. ConstructionHints
             .Matching(world, ing)
             .Select(c => new ItemStack(c, ing.Quantity)),
         ],
-        ExRightClickConstruction.IngredientName(world, ing)
+        patternName
       );
+    }
+    string name = ExRightClickConstruction.ExactName(world, ing);
     return (
-      key,
+      $"{ing.Type}|{ing.Code}|{name}",
       ing.ResolvedItemStack == null ? [] : [ing.ResolvedItemStack.Clone()],
-      ExRightClickConstruction.ExactName(world, ing)
+      name
     );
   }
 
@@ -206,7 +209,8 @@ internal static class HandbookSections
 
   /// <summary>One line per interaction of the block's <see cref="IHandbookOperatingHelp"/>, as
   /// the hotkeys joined to the mouse button, then the action text. Null when the block has no
-  /// implementation or it returns no interaction.</summary>
+  /// implementation or it returns no interaction. A line whose text equals an earlier one is
+  /// dropped.</summary>
   internal static HandbookSection? Operating(ICoreClientAPI capi, Block block)
   {
     WorldInteraction[]? help = block
@@ -218,17 +222,14 @@ internal static class HandbookSections
       ExlibLang.HandbookOperating,
       [
         .. help.Select(i =>
-          (HandbookPart[])
-            [
-              new TextPart(
-                Lang.Get(
-                  ExlibLang.HandbookOperatingLine,
-                  InputName(capi, i),
-                  Lang.Get(i.ActionLangCode)
-                )
-              ),
-            ]
-        ),
+            Lang.Get(
+              ExlibLang.HandbookOperatingLine,
+              InputName(capi, i),
+              Lang.Get(i.ActionLangCode)
+            )
+          )
+          .Distinct()
+          .Select(text => (HandbookPart[])[new TextPart(text)]),
       ]
     );
   }

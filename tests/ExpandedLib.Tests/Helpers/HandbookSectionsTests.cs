@@ -126,6 +126,24 @@ public class HandbookSectionsTests : IDisposable
     );
   }
 
+  // Fails when the Total key carries the ingredient name: the same rod under two names totals twice.
+  [Fact]
+  public void The_total_row_merges_one_item_shown_under_different_ingredient_names()
+  {
+    string[] page = Page(
+      Machine(s =>
+        s.Stage(_ => { })
+          .Stage(x => x.Require("game:rod-iron", 1, "stub:first"))
+          .Stage(x => x.Require("game:rod-iron", 2, "stub:second"))
+      )
+    );
+
+    Assert.Equal(
+      $"exlib:handbook-builtinplace-total: {Stack}[3,game:item-rod-iron]",
+      page[^1]
+    );
+  }
+
   // Fails when a stage that takes nothing loses its row: stage 3 would be numbered 2.
   [Fact]
   public void A_stage_that_takes_nothing_keeps_its_row_and_reads_none()
@@ -272,6 +290,51 @@ public class HandbookSectionsTests : IDisposable
         "Ctrl + unmapped + Right-click: stub:blockhelp-pinch",
       ],
       page
+    );
+  }
+
+  private sealed class RepeatedHelpBlock : Block, IHandbookOperatingHelp
+  {
+    public WorldInteraction[] GetHandbookOperatingHelp(ICoreClientAPI capi) =>
+      [
+        new WorldInteraction
+        {
+          ActionLangCode = "stub:blockhelp-load",
+          MouseButton = EnumMouseButton.Right,
+          HotKeyCode = "sneak",
+        },
+        new WorldInteraction
+        {
+          ActionLangCode = "stub:blockhelp-load",
+          MouseButton = EnumMouseButton.Right,
+          HotKeyCode = "sneak",
+        },
+        new WorldInteraction
+        {
+          ActionLangCode = "stub:blockhelp-load",
+          MouseButton = EnumMouseButton.Right,
+          HotKeyCode = "ctrl",
+        },
+      ];
+  }
+
+  // Fails when the de-duplication is removed: the repeated line is listed twice.
+  [Fact]
+  public void Operating_drops_a_repeated_line_and_keeps_one_that_differs_in_hotkey()
+  {
+    var block = TestBlocks.Configure(
+      new RepeatedHelpBlock(),
+      "stub:repeated",
+      5201
+    );
+
+    Assert.Equal(
+      [
+        "exlib:handbook-operating",
+        "Shift + Right-click: stub:blockhelp-load",
+        "Ctrl + Right-click: stub:blockhelp-load",
+      ],
+      Page(block)
     );
   }
 
