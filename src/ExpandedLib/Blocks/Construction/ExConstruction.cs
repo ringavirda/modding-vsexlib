@@ -351,9 +351,15 @@ public class ExRightClickConstruction {
     hand.Itemstack is { } held
     && WildcardUtil.Match(step.Tool, held.Collectible.Code.ToString());
 
-  private List<CollectibleObject> ToolCollectibles(string pattern) {
+  private List<CollectibleObject> ToolCollectibles(string pattern) =>
+    ToolCollectibles(api.World, pattern);
+
+  private static List<CollectibleObject> ToolCollectibles(
+    IWorldAccessor world,
+    string pattern
+  ) {
     var tools = new List<CollectibleObject>();
-    foreach (CollectibleObject collectible in api.World.Collectibles)
+    foreach (CollectibleObject collectible in world.Collectibles)
       if (
         collectible?.Code != null
         && WildcardUtil.Match(pattern, collectible.Code.ToString())
@@ -382,7 +388,10 @@ public class ExRightClickConstruction {
   /// <summary>Names a tool pattern by its kind: the first dash-separated word of the code path,
   /// looked up as construction-toolkind-{kind} in the pattern's domain (exlib for game). Falls back
   /// to the name of the first matching tool, then to the pattern itself.</summary>
-  private string ToolKindName(string pattern) {
+  private string ToolKindName(string pattern) =>
+    ToolKindName(api.World, pattern);
+
+  internal static string ToolKindName(IWorldAccessor world, string pattern) {
     int colon = pattern.IndexOf(':');
     string domain = colon < 0 ? "game" : pattern[..colon];
     string path = pattern[(colon + 1)..];
@@ -392,11 +401,11 @@ public class ExRightClickConstruction {
       $"{(domain == "game" ? "exlib" : domain)}:construction-toolkind-{kind}";
     if (Lang.HasTranslation(key))
       return Lang.Get(key);
-    List<CollectibleObject> tools = ToolCollectibles(pattern);
+    List<CollectibleObject> tools = ToolCollectibles(world, pattern);
     return tools.Count == 0 ? pattern : new ItemStack(tools[0]).GetName();
   }
 
-  private static string IngredientName(
+  internal static string IngredientName(
     IWorldAccessor world,
     ExConstructionIngredient ing
   ) {
@@ -410,7 +419,7 @@ public class ExRightClickConstruction {
       : ing.Code.ToString();
   }
 
-  private static string ExactName(
+  internal static string ExactName(
     IWorldAccessor world,
     ExConstructionIngredient ing
   ) {

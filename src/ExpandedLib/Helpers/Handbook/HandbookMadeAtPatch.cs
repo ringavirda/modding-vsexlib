@@ -11,7 +11,8 @@ using Vintagestory.GameContent;
 namespace ExpandedLib.Helpers;
 
 /// <summary>Adds a Made at section to a product's handbook page, and a Makes section to a diagram's, from the
-/// recipes keyed with <see cref="RecipeDiagram"/>.</summary>
+/// recipes keyed with <see cref="RecipeDiagram"/>, then the generated sections of
+/// <see cref="HandbookSections"/>.</summary>
 [HarmonyPatch(
   typeof(CollectibleBehaviorHandbookTextAndExtraInfo),
   nameof(CollectibleBehaviorHandbookTextAndExtraInfo.GetHandbookInfo)
@@ -36,6 +37,12 @@ internal static class HandbookMadeAtPatch
       AddMakes(capi, collectible, openDetailPageFor, extra);
     else
       AddMadeAt(capi, collectible, openDetailPageFor, extra);
+    HandbookSectionsRender.Add(
+      capi,
+      HandbookSections.For(capi, collectible),
+      openDetailPageFor,
+      extra
+    );
     if (extra.Count > 0)
       __result = [.. __result, .. extra];
   }
@@ -133,7 +140,7 @@ internal static class HandbookMadeAtPatch
   private static string PageCode(CollectibleObject collectible) =>
     PageCode(new ItemStack(collectible));
 
-  private static string PageCode(ItemStack stack) =>
+  internal static string PageCode(ItemStack stack) =>
     GuiHandbookItemStackPage.PageCodeForStack(stack);
 }
 #endif
