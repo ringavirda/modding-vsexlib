@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Text;
 using ExpandedLib.Blocks;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
@@ -49,6 +50,12 @@ public abstract class BlockEntityMachineStation : BlockEntityContainer {
   /// this station's <see cref="BlockEntity.Pos"/> and call base <c>OnGuiClosed</c>.</summary>
   protected virtual GuiDialogBlockEntity? CreateDialog(ICoreClientAPI capi) =>
     null;
+
+  /// <summary>Shows the behaviours' lines and no stored-food perish line.</summary>
+  public override void GetBlockInfo(IPlayer forPlayer, StringBuilder dsc) {
+    foreach (BlockEntityBehavior behavior in Behaviors)
+      behavior.GetBlockInfo(forPlayer, dsc);
+  }
 
   public override void Initialize(ICoreAPI api) {
     base.Initialize(api);
