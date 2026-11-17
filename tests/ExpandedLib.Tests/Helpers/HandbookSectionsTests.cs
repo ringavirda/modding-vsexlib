@@ -306,10 +306,7 @@ public class HandbookSectionsTests : IDisposable
     public float LoadTorque(float speed) => 1f;
   }
 
-  private sealed class BothEntity
-    : BlockEntity,
-      IMpEnergyProducer,
-      IMpEnergyConsumer
+  class BothEntity : BlockEntity, IMpEnergyProducer, IMpEnergyConsumer
   {
     public float DriveTorque(float speed) => 1f;
 
