@@ -207,6 +207,39 @@ public class ConstructionInfoTests {
     }
   }
 
+  // Fails when the stage info resolves the ingredient through the vanilla Resolve, which warns
+  // that an exact code the world lacks failed to resolve.
+  [Fact]
+  public void An_exact_ingredient_absent_from_the_world_shows_its_code_and_logs_nothing() {
+    TestWorld world = MetalWorld();
+    ExRightClickConstruction rcc = Rcc(Construction(world));
+    rcc.Stages = new[]
+    {
+      new ExConstructionStage(),
+      new ExConstructionStage
+      {
+        RequireStacks = new[]
+        {
+          new ExConstructionIngredient
+          {
+            Code = new AssetLocation("game:mortar"),
+            Type = EnumItemClass.Block,
+            Quantity = 2,
+          },
+        },
+      },
+      new ExConstructionStage(),
+    };
+    Load(rcc, 0);
+
+    Info(rcc, world);
+
+    object[] line = Assert.Single(Calls(ExlibLang.ConstructionInfoStack));
+    Assert.Equal(2, line[0]);
+    Assert.Equal("game:mortar", line[1]);
+    Assert.Empty(world.Log.Warnings);
+  }
+
   // Fails when the creative-and-debug gate is restored on ExRightClickConstructable.GetBlockInfo.
   [Fact]
   public void A_survival_player_without_debug_mode_sees_the_lines() {

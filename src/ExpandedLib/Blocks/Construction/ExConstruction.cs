@@ -410,6 +410,17 @@ public class ExRightClickConstruction {
       : ing.Code.ToString();
   }
 
+  private static string ExactName(
+    IWorldAccessor world,
+    ExConstructionIngredient ing
+  ) {
+    CollectibleObject? found =
+      ing.Type == EnumItemClass.Block
+        ? world.GetBlock(ing.Code)
+        : world.GetItem(ing.Code);
+    return found == null ? ing.Code.ToString() : new ItemStack(found).GetName();
+  }
+
   /// <summary>Appends what the construction has reached and what its next stage wants: the stage
   /// reached of the payable stages, then each remaining ingredient with its count (stored
   /// wildcards filled) and one tool line per tool step not yet paid. Appends nothing when the
@@ -438,9 +449,9 @@ public class ExRightClickConstruction {
       ExConstructionIngredient ing = required.Clone();
       foreach (var wc in StoredWildCards)
         ing.FillPlaceHolder(wc.Key, wc.Value);
-      string name = ing.Resolve(world, $"Stage info on {codeForErrorLogging}")
+      string name = ing.MatchesByPattern
         ? IngredientName(world, ing)
-        : ing.Code.ToString();
+        : ExactName(world, ing);
       dsc.AppendLine(
         Lang.Get(ExlibLang.ConstructionInfoStack, ing.Quantity, name)
       );
