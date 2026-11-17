@@ -201,8 +201,7 @@ public sealed partial class TestWorld {
 #endif
       if (constructionCodes)
         MirrorVanillaTypes(
-          (location, asset) =>
-          {
+          (location, asset) => {
             if (!mgr.AllAssets.ContainsKey(location))
               mgr.Add(location, asset);
           },

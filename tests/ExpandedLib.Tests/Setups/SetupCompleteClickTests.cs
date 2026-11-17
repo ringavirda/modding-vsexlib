@@ -28,7 +28,8 @@ internal sealed class SetupFitBlock : Block
       return false;
     bool handled = base.OnBlockInteractStart(world, byPlayer, blockSel);
     if (
-      world.BlockAccessor.GetBlockEntity(blockSel.Position) is SetupFitFrame frame
+      world.BlockAccessor.GetBlockEntity(blockSel.Position)
+        is SetupFitFrame frame
       && frame.GetBehavior<ExRightClickConstructable>()?.IsComplete == true
     )
       frame.Fitted = true;

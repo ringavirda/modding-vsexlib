@@ -59,8 +59,10 @@ internal static class ConstructionWalk {
   }
 
   /// <summary>As <see cref="SetupConstruction.HoldSeconds"/>.</summary>
-  public static double HoldSeconds(ExConstructionToolStep step, ItemStack? tool) =>
-    SetupConstruction.HoldSeconds(step, tool);
+  public static double HoldSeconds(
+    ExConstructionToolStep step,
+    ItemStack? tool
+  ) => SetupConstruction.HoldSeconds(step, tool);
 
   private static string HandText(ItemStack? tool) =>
     tool == null
