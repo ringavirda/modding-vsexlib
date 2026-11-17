@@ -806,25 +806,13 @@ internal sealed class ScenarioPlayer : IHandRelease {
     out string left
   ) => Construct(at, face, supply, null, 0, out left, out _);
 
-  /// <summary>The stack each hotbar slot holds for a construction click.</summary>
-  /// <param name="slots">The hotbar's slot count.</param>
-  /// <param name="hand">The active slot's index, 0 to <paramref name="slots"/> - 1.</param>
-  /// <param name="supply">The stage's materials, in order.</param>
-  /// <param name="tool">The stack for the active slot; null puts the first supply stack there instead.</param>
+  /// <summary>As <see cref="SetupConstruction.Lay"/>.</summary>
   internal static ItemStack?[] Lay(
     int slots,
     int hand,
     IReadOnlyList<ItemStack> supply,
     ItemStack? tool
-  ) {
-    var laid = new ItemStack?[slots];
-    int next = 0;
-    laid[hand] = tool ?? (supply.Count > 0 ? supply[next++] : null);
-    for (int i = 0; i < slots; i++)
-      if (i != hand)
-        laid[i] = next < supply.Count ? supply[next++] : null;
-    return laid;
-  }
+  ) => SetupConstruction.Lay(slots, hand, supply, tool);
 
   /// <summary>As the plain <see cref="Construct(BlockPos, BlockFacing, IReadOnlyList{ItemStack}, out string)"/>,
   /// with <paramref name="tool"/> in the active slot and the supply in the other slots, or the first

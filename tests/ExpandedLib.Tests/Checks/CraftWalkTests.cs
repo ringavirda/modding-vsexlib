@@ -334,6 +334,10 @@ public sealed class CraftWalkTests(ITestOutputHelper output) : IDisposable
       .RegisterClass(
         "ExRightClickConstructable",
         typeof(ExRightClickConstructable)
+      )
+      .RegisterClass(
+        "BlockEntityInteract",
+        typeof(Vintagestory.GameContent.BlockBehaviorBlockEntityInteract)
       );
     world.LoadAssets([_files.Root], null, vanilla);
     world.LoadRecipes();
@@ -1106,6 +1110,7 @@ public sealed class CraftWalkTests(ITestOutputHelper output) : IDisposable
       {
         "code": "gated",
         "entityClass": "WalkFixtureBench",
+        "behaviors": [{ "name": "BlockEntityInteract" }],
         "entityBehaviors": [
           {
             "name": "ExRightClickConstructable",
@@ -1127,7 +1132,7 @@ public sealed class CraftWalkTests(ITestOutputHelper output) : IDisposable
     Assert.Contains("(2 executed, 0 followed)", result.Summary);
   }
 
-  // Fails when Place completes a construction by RccFake without checking the entity keeps an _rcc or _animator field.
+  // Fails when Place cannot complete a station whose entity keeps no _rcc or _animator field.
   [Fact]
   public void A_gated_station_that_caches_no_construction_field_is_walked()
   {
@@ -1137,6 +1142,7 @@ public sealed class CraftWalkTests(ITestOutputHelper output) : IDisposable
       {
         "code": "uncached",
         "entityClass": "WalkFixtureUncachedBench",
+        "behaviors": [{ "name": "BlockEntityInteract" }],
         "entityBehaviors": [
           {
             "name": "ExRightClickConstructable",

@@ -15,7 +15,7 @@
           },
           {
             "requireStacks": [
-              { "type": "item", "code": "game:plank-{wood}", "quantity": 3 }
+              { "type": "item", "code": "game:plank-*", "quantity": 3, "storeWildCard": "wood" }
             ]
           }
         ]

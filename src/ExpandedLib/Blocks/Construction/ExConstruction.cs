@@ -3,6 +3,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Runtime.CompilerServices;
+using System.Text;
 using ExpandedLib.Catalogues;
 using ExpandedLib.Machines;
 using Vintagestory.API.Client;
@@ -368,18 +369,97 @@ public class ExRightClickConstruction {
     )
       return;
     List<CollectibleObject> tools = ToolCollectibles(step.Tool!);
-    string names =
-      tools.Count == 0
-        ? step.Tool!
-        : string.Join(
-          ", ",
-          tools.Take(3).Select(t => new ItemStack(t).GetName())
-        ) + (tools.Count > 3 ? ", ..." : "");
     capi.TriggerIngameError(
       this,
       "missingtool",
-      Lang.Get("exlib:ingameerror-construction-missingtool", names)
+      Lang.Get(
+        "exlib:ingameerror-construction-missingtool",
+        ToolKindName(step.Tool!)
+      )
     );
+  }
+
+  /// <summary>Names a tool pattern by its kind: the first dash-separated word of the code path,
+  /// looked up as construction-toolkind-{kind} in the pattern's domain (exlib for game). Falls back
+  /// to the name of the first matching tool, then to the pattern itself.</summary>
+  private string ToolKindName(string pattern) {
+    int colon = pattern.IndexOf(':');
+    string domain = colon < 0 ? "game" : pattern[..colon];
+    string path = pattern[(colon + 1)..];
+    int dash = path.IndexOf('-');
+    string kind = dash < 0 ? path : path[..dash];
+    string key =
+      $"{(domain == "game" ? "exlib" : domain)}:construction-toolkind-{kind}";
+    if (Lang.HasTranslation(key))
+      return Lang.Get(key);
+    List<CollectibleObject> tools = ToolCollectibles(pattern);
+    return tools.Count == 0 ? pattern : new ItemStack(tools[0]).GetName();
+  }
+
+  private static string IngredientName(
+    IWorldAccessor world,
+    ExConstructionIngredient ing
+  ) {
+    if (!ing.MatchesByPattern)
+      return ing.ResolvedItemStack.GetName();
+    if (ing.Name != null)
+      return Lang.Get(ing.Name);
+    CollectibleObject[] matching = ConstructionHints.Matching(world, ing);
+    return matching.Length > 0
+      ? new ItemStack(matching[0]).GetName()
+      : ing.Code.ToString();
+  }
+
+  private static string ExactName(
+    IWorldAccessor world,
+    ExConstructionIngredient ing
+  ) {
+    CollectibleObject? found =
+      ing.Type == EnumItemClass.Block
+        ? world.GetBlock(ing.Code)
+        : world.GetItem(ing.Code);
+    return found == null ? ing.Code.ToString() : new ItemStack(found).GetName();
+  }
+
+  /// <summary>Appends what the construction has reached and what its next stage wants: the stage
+  /// reached of the payable stages, then each remaining ingredient with its count (stored
+  /// wildcards filled) and one tool line per tool step not yet paid. Appends nothing when the
+  /// construction is complete or has no payable stage. A stage that wants nothing adds only the
+  /// first line. The stage definitions are not changed.</summary>
+  /// <param name="world">The world that resolves the ingredients and lists the tools.</param>
+  /// <param name="dsc">The block info text to append lines to.</param>
+  public void AppendStageInfo(IWorldAccessor world, StringBuilder dsc) {
+    int payable = Stages.Length - 1;
+    if (payable < 1 || CurrentCompletedStage >= payable)
+      return;
+    dsc.AppendLine(
+      Lang.Get(
+        ExlibLang.ConstructionInfoUnfinished,
+        CurrentCompletedStage,
+        payable
+      )
+    );
+    ExConstructionStage next = Stages[CurrentCompletedStage + 1];
+    ExConstructionIngredient[] stacks = next.RequireStacks ?? [];
+    ExConstructionToolStep[] steps = next.ToolSteps;
+    if (stacks.Length == 0 && steps.Length == 0)
+      return;
+    dsc.AppendLine(Lang.Get(ExlibLang.ConstructionInfoNext));
+    foreach (ExConstructionIngredient required in stacks) {
+      ExConstructionIngredient ing = required.Clone();
+      foreach (var wc in StoredWildCards)
+        ing.FillPlaceHolder(wc.Key, wc.Value);
+      string name = ing.MatchesByPattern
+        ? IngredientName(world, ing)
+        : ExactName(world, ing);
+      dsc.AppendLine(
+        Lang.Get(ExlibLang.ConstructionInfoStack, ing.Quantity, name)
+      );
+    }
+    for (int i = StepsPaid; i < steps.Length; i++)
+      dsc.AppendLine(
+        Lang.Get(ExlibLang.ConstructionInfoTool, ToolKindName(steps[i].Tool!))
+      );
   }
 
   private sealed class AnimationOnly(ICraftEffects inner) : ICraftEffects {
@@ -542,9 +622,7 @@ public class ExRightClickConstruction {
           Lang.Get(
             "ingameerror-missingstack",
             ing.Quantity,
-            ing.MatchesByPattern
-              ? Lang.Get(ing.Name ?? "")
-              : ing.ResolvedItemStack.GetName()
+            IngredientName(api.World, ing)
           )
         );
       return false;

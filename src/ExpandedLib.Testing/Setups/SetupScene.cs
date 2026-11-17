@@ -339,7 +339,13 @@ public sealed partial class SetupScene : IDisposable
           )
           || (s.Kind == "use" && s.Body["offHand"] != null)
         );
-    World.LoadAssets(modPaths, null, VanillaCodes(), crafts);
+    World.LoadAssets(
+      modPaths,
+      null,
+      VanillaCodes(),
+      crafts,
+      constructionCodes: true
+    );
     MetalCatalogueLoader.Load(World.Api);
     if (World.Mods.GetModSystem<SurvivalCoreSystem>() == null)
     {
@@ -528,21 +534,20 @@ public sealed partial class SetupScene : IDisposable
     );
 
   /// <summary>Brings the <see cref="ExRightClickConstructable"/> of the entity at
-  /// <paramref name="pos"/> up to the stage <paramref name="to"/> names, drawing the stages'
-  /// requirements from the pack, and, when that is its last stage, plants a completed construction in
-  /// the entity as <see cref="RccFake.Complete"/> does when the entity caches its construction in an
-  /// <c>_animator</c> or <c>_rcc</c> field.</summary>
-  /// <remarks>The entity is then marked dirty as a paid stage marks it, so an entity that joins its
-  /// run on a fitted stage re-walks the cells already placed around it. A construction left short of
-  /// its last stage is not planted: the entity still reads as unbuilt.</remarks>
+  /// <paramref name="pos"/> up to the stage <paramref name="to"/> names as the live walk does: the
+  /// stages' requirements are drawn from the pack, then the scene's player right-clicks the cell's
+  /// south face once per stage and tool step, the supply in the hotbar and the tool in the main hand.</summary>
+  /// <remarks>Whatever the block does on a paid stage happens here as in game. Each click replaces the
+  /// whole hotbar and empties it after; no world tick runs during a hold.</remarks>
   /// <param name="be">The block entity at <paramref name="pos"/>.</param>
   /// <param name="pos">The entity's cell.</param>
-  /// <param name="where">The step path a pack shortfall is reported under.</param>
+  /// <param name="where">The step path a failure is reported under.</param>
   /// <param name="to">The stage to stop at, or "all" or null for the last.</param>
-  /// <param name="materials">The variant each stored wildcard key is drawn in, or null.</param>
+  /// <param name="materials">The variant each stored wildcard key is supplied in, or null.</param>
   /// <returns>Whether the entity carries a construction; false leaves it untouched.</returns>
-  /// <exception cref="InvalidOperationException">The pack lacks a stage's requirement, <paramref name="to"/>
-  /// is not a stage of the construction, or <paramref name="materials"/> is not a map of variant names.</exception>
+  /// <exception cref="InvalidOperationException">The pack lacks a requirement or tool, <paramref name="to"/>
+  /// or <paramref name="materials"/> is malformed, nothing registered supplies an ingredient, or a click
+  /// does not build its stage.</exception>
   internal bool CompleteConstruction(
     BlockEntity be,
     BlockPos pos,
@@ -553,95 +558,133 @@ public sealed partial class SetupScene : IDisposable
   {
     if (be.GetBehavior<ExRightClickConstructable>() is not { } construction)
       return false;
+    ExRightClickConstruction rcc = construction.Construction;
     int target;
     Dictionary<string, string> variants;
     try
     {
-      target = SetupConstruction.Target(
-        to,
-        construction.Construction.Stages.Length
-      );
+      target = SetupConstruction.Target(to, rcc.Stages.Length);
       variants = SetupConstruction.Materials(materials);
     }
     catch (SetupFileException e)
     {
       throw Fail(where, e.Message);
     }
-    DrawStages(
-      where,
-      construction.Construction,
-      Describe(pos),
-      pos,
-      target,
-      variants
-    );
-    if (
-      ReflectionHelpers.GetField(construction, "rcc")
-      is ExRightClickConstruction paid
-    )
-      StoreWildCards(paid, target, variants);
-    bool last = target == construction.Construction.Stages.Length - 1;
-    if (
-      last
-      && (
-        ReflectionHelpers.TryGetField(be, "_animator", out _)
-        || ReflectionHelpers.TryGetField(be, "_rcc", out _)
-      )
-    )
-      RccFake.Complete(be);
-    if (
-      ReflectionHelpers.GetField(construction, "rcc")
-      is ExRightClickConstruction built
-    )
-      built.CurrentCompletedStage = Math.Max(
-        Math.Max(0, target),
-        built.CurrentCompletedStage
-      );
-    be.MarkDirty(true);
+    DrawStages(where, rcc, Describe(pos), pos, target, variants);
+    while (rcc.CurrentCompletedStage < target)
+    {
+      int stage = rcc.CurrentCompletedStage + 1;
+      List<ItemStack> supply;
+      try
+      {
+        supply = SetupConstruction.Supply(World.World, rcc, stage, variants);
+      }
+      catch (SetupFileException e)
+      {
+        throw Fail(where, $"{Describe(pos)}: {e.Message}");
+      }
+      PayStage(where, rcc, pos, stage, supply);
+    }
     return true;
   }
 
-  private void StoreWildCards(
-    ExRightClickConstruction construction,
-    int target,
-    IReadOnlyDictionary<string, string> variants
+  private void PayStage(
+    string where,
+    ExRightClickConstruction rcc,
+    BlockPos pos,
+    int stage,
+    List<ItemStack> supply
   )
   {
-    for (int i = construction.CurrentCompletedStage + 1; i <= target; i++)
-      foreach (
-        ExConstructionIngredient need in construction.Stages[i].RequireStacks
-          ?? []
-      )
-      {
-        if (need.StoreWildCard is not { } key)
-          continue;
-        string? variant =
-          variants.GetValueOrDefault(key) ?? FirstVariant(need, key);
-        if (variant != null)
-          construction.StoredWildCards[key] = variant;
-      }
+    ExConstructionToolStep[] steps = rcc.Stages[stage].ToolSteps;
+    bool answered = false;
+    ItemStack? tool = null;
+    for (int step = 0; step < Math.Max(1, steps.Length); step++)
+    {
+      tool = null;
+      string? drawn = null;
+      if (steps.Length > 0 && steps[step].Tool is { } pattern)
+        try
+        {
+          tool = SetupTools.Held(World.World, pattern, _pack, out drawn);
+        }
+        catch (InvalidOperationException e)
+        {
+          throw Fail(where, $"stage {stage} of {Describe(pos)}: {e.Message}");
+        }
+      if (drawn != null)
+        Draw(where, drawn, 1);
+      answered = ClickStage(
+        where,
+        pos,
+        supply,
+        tool,
+        steps.Length == 0
+          ? 0
+          : SetupConstruction.HoldSeconds(steps[step], tool),
+        out ItemStack? toolLeft
+      );
+      Give(toolLeft);
+      if (rcc.CurrentCompletedStage == stage)
+        return;
+    }
+    string given = string.Join(
+      ", ",
+      supply.Select(s => $"{s.Collectible.Code} x {s.StackSize}")
+    );
+    throw Fail(
+      where,
+      $"stage {stage} of {Describe(pos)} was not built: OnBlockInteractStart answered {answered} with {(given.Length == 0 ? "nothing" : given)} in the hotbar"
+        + (
+          tool == null ? "." : $" and {tool.Collectible.Code} in the main hand."
+        )
+    );
   }
 
-  private string? FirstVariant(ExConstructionIngredient need, string key)
+  private bool ClickStage(
+    string where,
+    BlockPos pos,
+    List<ItemStack> supply,
+    ItemStack? tool,
+    double seconds,
+    out ItemStack? toolLeft
+  )
   {
-    ExConstructionIngredient ingredient = need.Clone();
-    ingredient.Resolve(World.World, "setup complete");
-    IEnumerable<CollectibleObject> registered =
-      ingredient.Type == EnumItemClass.Item
-        ? World.World.Items
-        : World.World.Blocks;
-    foreach (CollectibleObject c in registered)
-      if (
-        c?.Code != null
-        && c.Id != 0
-        && c.Variant.TryGetValue(key, out string? variant)
-        && ingredient.SatisfiesAsIngredient(
-          new ItemStack(c, ingredient.Quantity),
-          false
-        )
-      )
-        return variant;
-    return null;
+    toolLeft = null;
+    InventoryGeneric hotbar = Player.Hotbar;
+    if (supply.Count > hotbar.Count - (tool == null ? 0 : 1))
+      throw Fail(
+        where,
+        $"a stage of {Describe(pos)} asks for {supply.Count} stacks and the hotbar has {hotbar.Count} slots."
+      );
+    ItemStack?[] laid = SetupConstruction.Lay(
+      hotbar.Count,
+      Player.ActiveNumber,
+      supply,
+      tool
+    );
+    for (int i = 0; i < hotbar.Count; i++)
+      hotbar[i].Itemstack = laid[i];
+    try
+    {
+      return Player.Interact(
+        pos,
+        null,
+        false,
+        false,
+        false,
+        (float)seconds,
+        BlockFacing.SOUTH,
+        null
+      );
+    }
+    finally
+    {
+      if (tool != null)
+        toolLeft = hotbar[Player.ActiveNumber].Itemstack;
+      foreach (ItemSlot slot in hotbar)
+        slot.Itemstack = null;
+    }
   }
 
   private void Complete(

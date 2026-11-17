@@ -2,7 +2,6 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using ExpandedLib.Blocks;
-using ExpandedLib.Catalogues;
 using ExpandedLib.Machines;
 using ExpandedLib.Scenarios;
 using Newtonsoft.Json.Linq;
@@ -37,22 +36,14 @@ internal static class ConstructionWalk {
     }
   }
 
-  /// <summary>Whether a collectible whose variant under <paramref name="key"/> is
-  /// <paramref name="variant"/> can supply an ingredient that stores <paramref name="key"/>.</summary>
-  /// <param name="key">The key the ingredient stores, or null for an ingredient that stores none.</param>
-  /// <param name="wanted">The variant each key must be supplied in; a key it lacks takes any.</param>
+  /// <summary>As <see cref="SetupConstruction.Allows"/>.</summary>
   public static bool Allows(
     string? key,
     string? variant,
     IReadOnlyDictionary<string, string> wanted
-  ) =>
-    key == null
-    || !wanted.TryGetValue(key, out string? only)
-    || only == variant;
+  ) => SetupConstruction.Allows(key, variant, wanted);
 
-  /// <summary>The stacks that pay <paramref name="stage"/>: for each ingredient the first registered
-  /// collectible that satisfies it, in the variant <paramref name="materials"/> names for a stored key
-  /// and the one an earlier ingredient of the stage took for the same key.</summary>
+  /// <summary>As <see cref="SetupConstruction.Supply"/>.</summary>
   /// <exception cref="StepFailure">An ingredient is satisfied by no registered collectible.</exception>
   public static List<ItemStack> Supply(
     IWorldAccessor world,
@@ -60,74 +51,18 @@ internal static class ConstructionWalk {
     int stage,
     IReadOnlyDictionary<string, string> materials
   ) {
-    var wanted = new Dictionary<string, string>(materials);
-    var stacks = new List<ItemStack>();
-    foreach (
-      ExConstructionIngredient each in rcc.Stages[stage].RequireStacks ?? []
-    ) {
-      ExConstructionIngredient ingredient = each.Clone();
-      foreach ((string stored, string value) in rcc.StoredWildCards)
-        ingredient.FillPlaceHolder(stored, value);
-      ingredient.Resolve(world, "construction walk");
-      ItemStack stack =
-        Pick(world, ingredient, wanted)
-        ?? throw new StepFailure(
-          $"stage {stage} asks for {ingredient.Code}, which no registered {ingredient.Type.ToString().ToLowerInvariant()} supplies"
-            + (
-              materials.Count == 0
-                ? "."
-                : $" in {string.Join(", ", materials.Select(m => $"{m.Key} {m.Value}"))}."
-            ),
-          Suspect.Scenario
-        );
-      if (
-        ingredient.StoreWildCard is { } key
-        && stack.Collectible.Variant.TryGetValue(key, out string? variant)
-      )
-        wanted[key] = variant;
-      stacks.Add(stack);
+    try {
+      return SetupConstruction.Supply(world, rcc, stage, materials);
+    } catch (SetupFileException e) {
+      throw new StepFailure(e.Message, Suspect.Scenario, e);
     }
-    return stacks;
   }
 
-  private static ItemStack? Pick(
-    IWorldAccessor world,
-    ExConstructionIngredient ingredient,
-    IReadOnlyDictionary<string, string> wanted
-  ) {
-    IEnumerable<CollectibleObject> registered =
-      ingredient.Type == EnumItemClass.Item ? world.Items : world.Blocks;
-    foreach (CollectibleObject c in registered) {
-      if (c?.Code == null || c.Id == 0)
-        continue;
-      string? variant =
-        ingredient.StoreWildCard is { } k
-        && c.Variant.TryGetValue(k, out string? v)
-          ? v
-          : null;
-      if (!Allows(ingredient.StoreWildCard, variant, wanted))
-        continue;
-      var stack = new ItemStack(c, ingredient.Quantity);
-      if (ingredient.SatisfiesAsIngredient(stack, false))
-        return stack;
-    }
-    return null;
-  }
-
-  /// <summary>The seconds a hold takes to finish every hit of <paramref name="step"/> with
-  /// <paramref name="tool"/>.</summary>
-  /// <param name="step">The tool step being paid.</param>
-  /// <param name="tool">The stack in the main hand; null when the step's tool is not held.</param>
-  public static double HoldSeconds(ExConstructionToolStep step, ItemStack? tool) {
-    float stroke =
-      CraftSequenceRegistry
-        .Shared.ToolDefault(
-          tool?.Collectible.Code.ToString() ?? step.Tool ?? ""
-        )
-        ?.Stroke
-      ?? CraftToolDefault.DefaultStroke;
-    return (Math.Max(1, step.Hits) * (double)stroke) + 0.1;
-  }
+  /// <summary>As <see cref="SetupConstruction.HoldSeconds"/>.</summary>
+  public static double HoldSeconds(
+    ExConstructionToolStep step,
+    ItemStack? tool
+  ) => SetupConstruction.HoldSeconds(step, tool);
 
   private static string HandText(ItemStack? tool) =>
     tool == null
