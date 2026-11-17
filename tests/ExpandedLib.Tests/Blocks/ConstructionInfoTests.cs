@@ -147,7 +147,64 @@ public class ConstructionInfoTests {
     Info(rcc, world);
 
     object[] line = Assert.Single(Calls(ExlibLang.ConstructionInfoTool));
-    Assert.Contains("saw-iron", (string)line[0]);
+    Assert.Equal("exlib:construction-toolkind-saw", line[0]);
+  }
+
+  private static string ToolLineArgument(string pattern) {
+    TestWorld world = MetalWorld();
+    world.RegisterItem("iiex:trowel-iron");
+    ExRightClickConstruction rcc = Rcc(Construction(world));
+    rcc.Stages = new[]
+    {
+      new ExConstructionStage(),
+      new ExConstructionStage
+      {
+        Steps = new[] { new ExConstructionToolStep { Tool = pattern } },
+      },
+      new ExConstructionStage(),
+    };
+    Load(rcc, 0);
+
+    Info(rcc, world);
+
+    return (string)Assert.Single(Calls(ExlibLang.ConstructionInfoTool))[0];
+  }
+
+  // Fails when the tool line is asked for the tool pattern instead of the kind name.
+  [Fact]
+  public void The_tool_line_asks_for_the_kind_key_of_the_pattern() {
+    Assert.Equal(
+      "exlib:construction-toolkind-hammer",
+      ToolLineArgument("game:hammer-*")
+    );
+  }
+
+  // Fails when a kind of a non-game domain is looked up in exlib instead of its own domain.
+  [Fact]
+  public void A_non_game_domain_asks_for_its_own_kind_key() {
+    Assert.Equal(
+      "iiex:construction-toolkind-trowel",
+      ToolLineArgument("iiex:trowel-*")
+    );
+  }
+
+  // Fails when the HasTranslation check is dropped: an unnamed kind shows its key, not a tool name.
+  [Fact]
+  public void A_kind_without_a_translation_falls_back_to_the_first_tool_name() {
+    TestLang.Init();
+    string key = "exlib:construction-toolkind-saw";
+    TestLang.Service.HasTranslation(key, Arg.Any<bool>()).Returns(false);
+    TestLang
+      .Service.HasTranslation(key, Arg.Any<bool>(), Arg.Any<bool>())
+      .Returns(false);
+    try {
+      Assert.Contains("saw-iron", ToolLineArgument("game:saw-*"));
+    } finally {
+      TestLang.Service.HasTranslation(key, Arg.Any<bool>()).Returns(true);
+      TestLang
+        .Service.HasTranslation(key, Arg.Any<bool>(), Arg.Any<bool>())
+        .Returns(true);
+    }
   }
 
   // Fails when the creative-and-debug gate is restored on ExRightClickConstructable.GetBlockInfo.

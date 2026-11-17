@@ -374,17 +374,26 @@ public class ExRightClickConstruction {
       "missingtool",
       Lang.Get(
         "exlib:ingameerror-construction-missingtool",
-        ToolNames(step.Tool!)
+        ToolKindName(step.Tool!)
       )
     );
   }
 
-  private string ToolNames(string pattern) {
+  /// <summary>Names a tool pattern by its kind: the first dash-separated word of the code path,
+  /// looked up as construction-toolkind-{kind} in the pattern's domain (exlib for game). Falls back
+  /// to the name of the first matching tool, then to the pattern itself.</summary>
+  private string ToolKindName(string pattern) {
+    int colon = pattern.IndexOf(':');
+    string domain = colon < 0 ? "game" : pattern[..colon];
+    string path = pattern[(colon + 1)..];
+    int dash = path.IndexOf('-');
+    string kind = dash < 0 ? path : path[..dash];
+    string key =
+      $"{(domain == "game" ? "exlib" : domain)}:construction-toolkind-{kind}";
+    if (Lang.HasTranslation(key))
+      return Lang.Get(key);
     List<CollectibleObject> tools = ToolCollectibles(pattern);
-    return tools.Count == 0
-      ? pattern
-      : string.Join(", ", tools.Take(3).Select(t => new ItemStack(t).GetName()))
-        + (tools.Count > 3 ? ", ..." : "");
+    return tools.Count == 0 ? pattern : new ItemStack(tools[0]).GetName();
   }
 
   private static string IngredientName(
@@ -438,7 +447,7 @@ public class ExRightClickConstruction {
     }
     for (int i = StepsPaid; i < steps.Length; i++)
       dsc.AppendLine(
-        Lang.Get(ExlibLang.ConstructionInfoTool, ToolNames(steps[i].Tool!))
+        Lang.Get(ExlibLang.ConstructionInfoTool, ToolKindName(steps[i].Tool!))
       );
   }
 

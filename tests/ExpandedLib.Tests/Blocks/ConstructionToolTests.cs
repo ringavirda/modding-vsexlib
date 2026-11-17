@@ -515,9 +515,9 @@ public class ConstructionToolTests {
     Assert.Equal(1, site.Stage);
   }
 
-  // Fails when the refusal for the wrong tool is not shown to a client player with the tool's name.
+  // Fails when the refusal names the first matching tool instead of the tool's kind.
   [Fact]
-  public void A_client_holding_the_wrong_tool_is_told_the_tool_by_name() {
+  public void A_client_holding_the_wrong_tool_is_told_the_tool_kind() {
     var site = new Site(client: true);
     var clientPlayer = Substitute.For<IClientPlayer>();
     clientPlayer.PlayerUID.Returns("test");
@@ -533,7 +533,8 @@ public class ConstructionToolTests {
       .Get(
         "exlib:ingameerror-construction-missingtool",
         Arg.Is<object[]>(args =>
-          args.Length == 1 && args[0].ToString()!.Contains("hammer")
+          args.Length == 1
+          && (string)args[0] == "exlib:construction-toolkind-hammer"
         )
       );
   }
