@@ -285,13 +285,7 @@ public class ExRightClickConstructable
     System.Text.StringBuilder dsc
   ) {
     base.GetBlockInfo(forPlayer, dsc);
-    if (
-      Api.World.EntityDebugMode
-      && forPlayer?.WorldData?.CurrentGameMode == EnumGameMode.Creative
-    )
-      dsc.AppendLine(
-        $"<font color='#ccc'>construction stage= {rcc.CurrentCompletedStage} of {rcc.Stages.Length}</font>"
-      );
+    rcc.AppendStageInfo(Api.World, dsc);
   }
 
   // The salvage fraction, from the owning mod's config when it registered one, else JSON/default.
