@@ -952,11 +952,12 @@ public sealed partial class TestWorld {
 
   /// <summary>Reflectively runs the <c>AssetsLoaded</c> of the VSEssentials mod system named
   /// <paramref name="typeName"/>, found by name each call to avoid a version-fragile static
-  /// reference.</summary>
+  /// reference. Installs <see cref="WildcardRegexTimeout"/> first.</summary>
   /// <exception cref="InvalidOperationException">VSEssentials holds no such type, or it cannot be
   /// constructed.</exception>
   private static void RunVanillaLoader(ICoreServerAPI api, string typeName) {
     TyronThreadPool.Inst.Logger ??= new ThreadPoolLogger();
+    WildcardRegexTimeout.Install();
     Type loaderType =
       Assembly.Load("VSEssentials").GetType(typeName)
       ?? throw new InvalidOperationException(
