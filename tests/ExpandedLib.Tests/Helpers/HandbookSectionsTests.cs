@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using ExpandedLib.Definitions;
 using ExpandedLib.Helpers;
@@ -52,7 +53,14 @@ public class HandbookSectionsTests : IDisposable
         metal;
   }
 
-  public void Dispose() => Lang.AvailableLanguages["en"] = TestLang.Service;
+  private readonly List<string> _pageRoots = [];
+
+  public void Dispose()
+  {
+    Lang.AvailableLanguages["en"] = TestLang.Service;
+    foreach (string root in _pageRoots)
+      Directory.Delete(root, true);
+  }
 
   private static readonly Dictionary<string, string> Templates = new()
   {
@@ -282,6 +290,49 @@ public class HandbookSectionsTests : IDisposable
     public float Inertia => 1f;
   }
 
+  private sealed class ProducerBehavior : BlockEntityBehavior, IMpEnergyProducer
+  {
+    public ProducerBehavior(BlockEntity blockentity)
+      : base(blockentity) { }
+
+    public float DriveTorque(float speed) => 1f;
+  }
+
+  private sealed class ConsumerBehavior : BlockEntityBehavior, IMpEnergyConsumer
+  {
+    public ConsumerBehavior(BlockEntity blockentity)
+      : base(blockentity) { }
+
+    public float LoadTorque(float speed) => 1f;
+  }
+
+  private sealed class BothEntity
+    : BlockEntity,
+      IMpEnergyProducer,
+      IMpEnergyConsumer
+  {
+    public float DriveTorque(float speed) => 1f;
+
+    public float LoadTorque(float speed) => 1f;
+  }
+
+  // A block whose only roles come from the entity behaviour classes.
+  private Block MpBehaviors(int id, string code, params Type[] behaviors)
+  {
+    Block block = TestBlocks.Configure(new Block(), code, id);
+    block.BlockEntityBehaviors =
+    [
+      .. behaviors.Select(b =>
+      {
+        _world.RegisterClass(b.Name, b);
+        return new BlockEntityBehaviorType { Name = b.Name };
+      }),
+    ];
+    block.CreativeInventoryTabs = ["general"];
+    _world.Register(block);
+    return block;
+  }
+
   // A block of the entity class, with a handbook page unless noPage.
   private Block Mp(int id, string code, Type entity, bool noPage = false)
   {
@@ -318,20 +369,45 @@ public class HandbookSectionsTests : IDisposable
     Assert.DoesNotContain(Page(engine), l => l.Contains("flywheel"));
   }
 
-  private void LoadTextPage(string code) =>
-    _world
-      .ClientApi.Assets.GetMany<GuiHandbookTextPage>(
-        Arg.Any<Vintagestory.API.Common.ILogger>(),
-        Arg.Any<string>(),
-        Arg.Any<string>()
-      )
-      .Returns(
-        new Dictionary<AssetLocation, GuiHandbookTextPage>
-        {
-          [new AssetLocation("iiex:config/handbook/lathe.json")] =
-            new GuiHandbookTextPage { pageCode = code, Title = "iiex:title" },
-        }
-      );
+  // Fails when the entity behaviour loop is dropped: both blocks read as having no role.
+  [Fact]
+  public void Roles_come_from_entity_behaviours()
+  {
+    Block engine = MpBehaviors(5310, "stub:beengine", typeof(ProducerBehavior));
+    Block press = MpBehaviors(5311, "stub:bepress", typeof(ConsumerBehavior));
+
+    Assert.Equal(["exlib:handbook-drives", "stub:block-bepress"], Page(engine));
+    Assert.Equal(
+      ["exlib:handbook-drivenby", "stub:block-beengine"],
+      Page(press)
+    );
+  }
+
+  // Fails when a block that produces and consumes counts as a consumer: the engine lists the
+  // transmission under Drives.
+  [Fact]
+  public void A_block_that_both_produces_and_consumes_is_not_listed_as_driven()
+  {
+    Block engine = Mp(5300, "stub:engine", typeof(ProducerEntity));
+    Mp(5312, "stub:gearbox", typeof(BothEntity));
+
+    Assert.Empty(Page(engine).Where(l => l.Contains("gearbox")));
+  }
+
+  private void LoadTextPage(string code)
+  {
+    string root = Path.Combine(
+      Path.GetTempPath(),
+      "handbook-pages-" + Guid.NewGuid().ToString("N")
+    );
+    Directory.CreateDirectory(Path.Combine(root, "config", "handbook"));
+    File.WriteAllText(
+      Path.Combine(root, "config", "handbook", "lathe.json"),
+      new JObject { ["pageCode"] = code, ["title"] = "iiex:title" }.ToString()
+    );
+    _pageRoots.Add(root);
+    _world.ClientAssets("iiex", root);
+  }
 
   // Fails when the loaded-page check is dropped: the unknown code still renders a link.
   [Fact]
