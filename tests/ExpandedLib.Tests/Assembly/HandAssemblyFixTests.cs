@@ -115,6 +115,19 @@ public class HandAssemblyFixTests {
     scene.AssertNothingTaken(10);
   }
 
+  // Fails when any item in the off hand passes for the tool.
+  [Fact]
+  public void A_fix_with_a_wrong_tool_in_the_off_hand_is_refused_and_nothing_is_taken() {
+    var scene = Scene.Standing(["ns"]);
+    scene.Bolts(10);
+    scene.Player.HoldOffHand(new ItemStack(scene.Hammer));
+
+    AssemblyResult? result = scene.Fix("ns", Ground, BlockFacing.UP);
+
+    Assert.Equal(HandAssemblyServer.NeedsTool, result!.Code);
+    scene.AssertNothingTaken(10);
+  }
+
   // Fails when fasteners are not counted before the part and the fasteners are taken.
   [Fact]
   public void A_fix_short_of_fasteners_takes_nothing_and_names_the_count() {
@@ -560,6 +573,7 @@ public class HandAssemblyFixTests {
       _held = held;
       Wrench = world.RegisterItem("test:wrench-iron");
       Wrench.Durability = 100;
+      Hammer = world.RegisterItem("test:hammer-iron");
       Bolt = world.RegisterItem("test:bolt");
       player.HoldOffHand(new ItemStack(Wrench));
       player.Hold(new ItemStack(held));
@@ -570,6 +584,7 @@ public class HandAssemblyFixTests {
     public TestWorld World => _world;
     public TestPlayer Player { get; }
     public Item Wrench { get; }
+    public Item Hammer { get; }
     public Item Bolt { get; }
     public Block PlainPart { get; private set; } = null!;
     public Block ChairPart { get; private set; } = null!;
