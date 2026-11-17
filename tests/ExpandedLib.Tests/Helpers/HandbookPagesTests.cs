@@ -96,8 +96,8 @@ public class HandbookPagesTests
     return [.. all];
   }
 
-  // Fails when candidates are limited to the blocks that differ from the pick in orientation
-  // alone: the pick is brick b and the page is brick a.
+  // Fails when candidates are limited to the pick's own brick: the pick is brick b and the page
+  // is brick a.
   [Fact]
   public void A_megastructure_pick_of_another_brick_opens_the_page_it_has()
   {
@@ -111,7 +111,23 @@ public class HandbookPagesTests
     );
   }
 
-  // Fails under the same orientation-only limit: the filler's pick forwards to the principal.
+  // Fails when a link's page code is the stack's own instead of its provider's: the stack is
+  // brick b and the provider answers the page of brick a.
+  [Fact]
+  public void A_link_to_a_megastructure_stack_goes_to_the_page_its_provider_gives()
+  {
+    Block[] mega = Megastructure();
+
+    Assert.Equal(
+      PageOf(mega.Single(b => b.Code.Path == "mega-a-n")),
+      HandbookMadeAtPatch.PageCode(
+        _world.ClientApi,
+        new ItemStack(mega.Single(b => b.Code.Path == "mega-b-e"))
+      )
+    );
+  }
+
+  // Fails under the same brick limit: the filler's pick forwards to the principal.
   [Fact]
   public void A_filler_of_that_megastructure_opens_the_same_page()
   {
