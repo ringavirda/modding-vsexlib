@@ -88,7 +88,7 @@ internal static class HandbookMadeAtPatch
           capi,
           new ItemStack(use.Diagram).GetName(),
           CairoFont.WhiteSmallText(),
-          _ => openDetailPageFor(PageCode(use.Diagram))
+          _ => openDetailPageFor(PageCode(capi, use.Diagram))
         )
       );
       into.Add(
@@ -132,15 +132,17 @@ internal static class HandbookMadeAtPatch
           [product],
           40,
           EnumFloat.Inline,
-          cs => openDetailPageFor(PageCode(cs.Collectible))
+          cs => openDetailPageFor(PageCode(capi, cs.Collectible))
         )
       );
   }
 
-  private static string PageCode(CollectibleObject collectible) =>
-    PageCode(new ItemStack(collectible));
+  private static string PageCode(
+    ICoreClientAPI capi,
+    CollectibleObject collectible
+  ) => PageCode(capi, new ItemStack(collectible));
 
-  internal static string PageCode(ItemStack stack) =>
-    GuiHandbookItemStackPage.PageCodeForStack(stack);
+  internal static string PageCode(ICoreClientAPI capi, ItemStack stack) =>
+    HandbookPages.PageCode(capi, stack);
 }
 #endif

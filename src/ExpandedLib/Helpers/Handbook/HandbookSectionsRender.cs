@@ -62,7 +62,7 @@ internal static class HandbookSectionsRender
               stack.Stacks,
               StackSize,
               EnumFloat.Inline,
-              cs => openDetailPageFor(HandbookMadeAtPatch.PageCode(cs))
+              cs => openDetailPageFor(HandbookMadeAtPatch.PageCode(capi, cs))
             )
           );
         into.Add(

@@ -41,7 +41,7 @@ internal static class HandbookStructures
         continue;
       foreach (ItemStack stack in owner.GetHandBookStacks(capi) ?? [])
       {
-        if (!pages.Add(HandbookMadeAtPatch.PageCode(stack)))
+        if (!pages.Add(HandbookMadeAtPatch.PageCode(capi, stack)))
           continue;
         string text = Lang.Get(
           standsIn

@@ -4,6 +4,8 @@ using ExpandedLib.Helpers;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Config;
+using Vintagestory.API.MathTools;
+using Vintagestory.GameContent;
 
 namespace ExpandedLib.Testing;
 
@@ -31,6 +33,31 @@ public static class HandbookText
           )
         ),
     ];
+
+  /// <summary>The page code Shift+H opens for the block at <paramref name="pos"/>, as the survival
+  /// handbook finds it: the stack the block picks, then its collectible's page code provider, then
+  /// the stack's own page code.</summary>
+  /// <param name="capi">The client api whose world holds the block.</param>
+  /// <param name="pos">The cell the player's selection is on.</param>
+  /// <returns>The page code, or null when the block picks no stack.</returns>
+  public static string? PickPage(ICoreClientAPI capi, BlockPos pos)
+  {
+    ItemStack? stack = capi
+      .World.BlockAccessor.GetBlock(pos)
+      .OnPickBlock(capi.World, pos);
+    return stack == null
+      ? null
+      : stack
+        .Collectible.GetCollectibleInterface<IHandBookPageCodeProvider>()
+        ?.HandbookPageCodeForStack(capi.World, stack)
+        ?? GuiHandbookItemStackPage.PageCodeForStack(stack);
+  }
+
+  /// <summary>Whether <paramref name="pageCode"/> is the page of a stack the handbook lists.</summary>
+  /// <param name="capi">The client api whose collectibles are listed.</param>
+  /// <param name="pageCode">A page code, as <c>PickPage</c> returns.</param>
+  public static bool HasPage(ICoreClientAPI capi, string pageCode) =>
+    HandbookPages.Has(capi, pageCode);
 
   private static string Text(HandbookPart part) =>
     part switch

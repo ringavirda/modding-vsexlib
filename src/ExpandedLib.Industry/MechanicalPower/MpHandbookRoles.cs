@@ -45,7 +45,7 @@ internal static class MpHandbookRoles
         continue;
       foreach (ItemStack stack in other.Block.GetHandBookStacks(capi) ?? [])
       {
-        if (pages.Add(HandbookMadeAtPatch.PageCode(stack)))
+        if (pages.Add(HandbookMadeAtPatch.PageCode(capi, stack)))
           lines.Add([new StackPart([stack], stack.GetName())]);
       }
     }
