@@ -59,6 +59,8 @@ internal static class HandbookSections
     if (collectible is not Block block)
       return sections;
     Add(sections, BuiltInPlace(capi.World, block));
+    Add(sections, HandbookStructures.PartOf(capi, block));
+    Add(sections, Operating(capi, block));
     Add(sections, Guide(capi, block));
     return sections;
   }
@@ -195,6 +197,63 @@ internal static class HandbookSections
       first = false;
       yield return item;
     }
+  }
+
+  /// <summary>One line per interaction of the block's <see cref="IHandbookOperatingHelp"/>, as
+  /// the hotkeys joined to the mouse button, then the action text. Null when the block has no
+  /// implementation or it returns no interaction.</summary>
+  internal static HandbookSection? Operating(ICoreClientAPI capi, Block block)
+  {
+    WorldInteraction[]? help = block
+      .GetCollectibleInterface<IHandbookOperatingHelp>()
+      ?.GetHandbookOperatingHelp(capi);
+    if (help == null || help.Length == 0)
+      return null;
+    return new HandbookSection(
+      ExlibLang.HandbookOperating,
+      [
+        .. help.Select(i =>
+          (HandbookPart[])
+            [
+              new TextPart(
+                Lang.Get(
+                  ExlibLang.HandbookOperatingLine,
+                  InputName(capi, i),
+                  Lang.Get(i.ActionLangCode)
+                )
+              ),
+            ]
+        ),
+      ]
+    );
+  }
+
+  private static string InputName(ICoreClientAPI capi, WorldInteraction input)
+  {
+    string button = input.MouseButton switch
+    {
+      EnumMouseButton.Right => Lang.Get(ExlibLang.HandbookOperatingRight),
+      EnumMouseButton.Left => Lang.Get(ExlibLang.HandbookOperatingLeft),
+      EnumMouseButton other => other.ToString(),
+    };
+    string[] codes =
+      input.HotKeyCodes is { Length: > 0 } ? input.HotKeyCodes
+      : string.IsNullOrEmpty(input.HotKeyCode) ? []
+      : [input.HotKeyCode];
+    return codes
+      .Select(code => HotkeyName(capi, code))
+      .Reverse()
+      .Aggregate(
+        button,
+        (name, key) => Lang.Get(ExlibLang.HandbookOperatingHotkey, key, name)
+      );
+  }
+
+  private static string HotkeyName(ICoreClientAPI capi, string code)
+  {
+    HotKey? hotkey = null;
+    capi.Input?.HotKeys?.TryGetValue(code, out hotkey);
+    return hotkey?.CurrentMapping?.ToString() ?? code;
   }
 
   /// <summary>The Guide line: a link to the text page named by the block's

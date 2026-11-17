@@ -1,9 +1,12 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using ExpandedLib.Definitions;
+using ExpandedLib.Helpers;
 using ExpandedLib.Testing;
 using Newtonsoft.Json.Linq;
 using NSubstitute;
+using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Config;
 using Vintagestory.API.Datastructures;
@@ -36,6 +39,8 @@ public class HandbookSectionsTests : IDisposable
       .Returns(ci => Format(ci.Arg<string>(), ci.Arg<object[]>()));
     svc.GetIfExists(Arg.Any<string>(), Arg.Any<object[]>())
       .Returns(ci => Format(ci.Arg<string>(), ci.Arg<object[]>()));
+    svc.GetMatching(Arg.Any<string>(), Arg.Any<object[]>())
+      .Returns(ci => ci.Arg<string>());
     svc.HasTranslation(Arg.Any<string>(), Arg.Any<bool>()).Returns(true);
     svc.HasTranslation(Arg.Any<string>(), Arg.Any<bool>(), Arg.Any<bool>())
       .Returns(true);
@@ -48,9 +53,21 @@ public class HandbookSectionsTests : IDisposable
 
   public void Dispose() => Lang.AvailableLanguages["en"] = TestLang.Service;
 
-  // A key with arguments reads "key[a,b]"; the guide line is the one template that keeps its words.
+  private static readonly Dictionary<string, string> Templates = new()
+  {
+    ["exlib:handbook-guide"] = "Guide: {0}",
+    ["exlib:handbook-partof-line"] = "{0} ({1} cells)",
+    ["exlib:handbook-partof-standsin"] = "{0} (stands in)",
+    ["exlib:handbook-operating-hotkey"] = "{0} + {1}",
+    ["exlib:handbook-operating-line"] = "{0}: {1}",
+    ["exlib:handbook-operating-right"] = "Right-click",
+    ["exlib:handbook-operating-left"] = "Left-click",
+  };
+
+  // A key with arguments reads "key[a,b]"; the keys of Templates keep their words.
   private static string Format(string key, object[] args) =>
-    key == "exlib:handbook-guide" ? $"Guide: {args[0]}"
+    Templates.TryGetValue(key, out string? template)
+      ? string.Format(template, args)
     : args.Length == 0 ? key
     : $"{key}[{string.Join(",", args)}]";
 
@@ -129,6 +146,124 @@ public class HandbookSectionsTests : IDisposable
     );
 
     Assert.Empty(Page(block));
+  }
+
+  private static string Offsets(int number, int count) =>
+    string.Join(
+      ",",
+      Enumerable
+        .Range(0, count)
+        .Select(x => $"{{\"x\":{x},\"y\":0,\"z\":0,\"w\":{number}}}")
+    );
+
+  // A structure block with a handbook page whose blockNumbers are the given selector -> number pairs
+  // and whose offsets carry each number the given number of times.
+  private Block Structure(
+    int id,
+    string code,
+    string numbers,
+    params (int Number, int Count)[] cells
+  )
+  {
+    Block block = TestBlocks.Configure(new Block(), code, id);
+    block.CreativeInventoryTabs = ["general"];
+    block.Attributes = new JsonObject(
+      JObject.Parse(
+        $"{{\"multiblockStructure\":{{\"blockNumbers\":{numbers},\"offsets\":[{string.Join(",", cells.Select(c => Offsets(c.Number, c.Count)))}]}}}}"
+      )
+    );
+    _world.Register(block);
+    return block;
+  }
+
+  // Fails when every offset is counted: the three machine cells read 5.
+  [Fact]
+  public void Part_of_counts_the_offsets_that_carry_the_blocks_number()
+  {
+    Structure(
+      5100,
+      "stub:core",
+      "{\"stub:machine*\":1,\"stub:other\":2}",
+      (1, 3),
+      (2, 2)
+    );
+
+    string[] page = Page(Machine(RisingStages));
+
+    Assert.Equal(
+      ["exlib:handbook-partof", "stub:block-core (3 cells)"],
+      page[^2..]
+    );
+  }
+
+  // Fails when the air check is dropped: the stand-in reads a cell count.
+  [Fact]
+  public void Part_of_reads_stands_in_for_a_selector_that_also_matches_air()
+  {
+    Structure(5100, "stub:core", "{\"*:@(air|machine)\":1}", (1, 4));
+
+    string[] page = Page(Machine(RisingStages));
+
+    Assert.Equal("stub:block-core (stands in)", page[^1]);
+  }
+
+  // Fails when a structure without a handbook page is listed.
+  [Fact]
+  public void Part_of_leaves_out_a_structure_with_no_handbook_page()
+  {
+    Block core = Structure(5100, "stub:core", "{\"stub:machine*\":1}", (1, 3));
+    core.CreativeInventoryTabs = null;
+
+    string[] page = Page(Machine(RisingStages));
+
+    Assert.DoesNotContain(page, l => l.Contains("block-core"));
+  }
+
+  private sealed class OperatedBlock : Block, IHandbookOperatingHelp
+  {
+    public WorldInteraction[] GetHandbookOperatingHelp(ICoreClientAPI capi) =>
+      [
+        new WorldInteraction
+        {
+          ActionLangCode = "stub:blockhelp-load",
+          MouseButton = EnumMouseButton.Right,
+          HotKeyCode = "sneak",
+        },
+        new WorldInteraction
+        {
+          ActionLangCode = "stub:blockhelp-fire",
+          MouseButton = EnumMouseButton.Left,
+        },
+        new WorldInteraction
+        {
+          ActionLangCode = "stub:blockhelp-pinch",
+          MouseButton = EnumMouseButton.Right,
+          HotKeyCodes = ["ctrl", "unmapped"],
+        },
+      ];
+  }
+
+  // Fails when the hotkey prefix is dropped: the first line reads "Right-click: ...".
+  [Fact]
+  public void Operating_lines_join_the_hotkeys_to_the_button_and_the_action()
+  {
+    var block = TestBlocks.Configure(
+      new OperatedBlock(),
+      "stub:operated",
+      5200
+    );
+
+    string[] page = Page(block);
+
+    Assert.Equal(
+      [
+        "exlib:handbook-operating",
+        "Shift + Right-click: stub:blockhelp-load",
+        "Left-click: stub:blockhelp-fire",
+        "Ctrl + unmapped + Right-click: stub:blockhelp-pinch",
+      ],
+      page
+    );
   }
 
   private void LoadTextPage(string code) =>

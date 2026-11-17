@@ -862,3 +862,5 @@ ExpandedLib.Definitions.ExBlockDef.HandAssembly(string! tool, string! fastener, 
 static readonly ExpandedLib.Helpers.ExOrientations.PipeCorner -> ExpandedLib.Helpers.ExOrientationScheme!
 override ExpandedLib.Machines.BlockEntityMachineStation.GetBlockInfo(Vintagestory.API.Common.IPlayer! forPlayer, System.Text.StringBuilder! dsc) -> void
 ExpandedLib.Definitions.ExBlockDef.HandbookPage(string! pageCode) -> ExpandedLib.Definitions.ExBlockDef!
+ExpandedLib.Helpers.IHandbookOperatingHelp
+ExpandedLib.Helpers.IHandbookOperatingHelp.GetHandbookOperatingHelp(Vintagestory.API.Client.ICoreClientAPI! capi) -> Vintagestory.API.Client.WorldInteraction![]!

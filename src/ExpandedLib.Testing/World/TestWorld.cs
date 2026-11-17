@@ -1499,6 +1499,8 @@ public sealed partial class TestWorld : IDisposable {
     w.GetItem(Arg.Any<AssetLocation>())
       .Returns(ci => GetItem(ci.Arg<AssetLocation>()));
     w.GetItem(Arg.Any<int>()).Returns(ci => GetItem(ci.Arg<int>()));
+    w.Blocks.Returns(ci => (IList<Block>)_blocksById.Values.ToList());
+    w.Items.Returns(ci => (IList<Item>)_itemsByCode.Values.ToList());
     w.Collectibles.Returns(ci =>
       _itemsByCode
         .Values.Cast<CollectibleObject>()

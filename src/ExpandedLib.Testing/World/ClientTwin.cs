@@ -305,6 +305,15 @@ public sealed partial class TestWorld {
     api.Assets.Returns(assets);
     coreApi.Assets.Returns(assets);
 
+    // The registry the world's blocks load with, whichever side built it.
+    api.ClassRegistry.Returns(_ => Api.ClassRegistry);
+    coreApi.ClassRegistry.Returns(_ => Api.ClassRegistry);
+    api.World.ClassRegistry.Returns(_ => Api.ClassRegistry);
+
+    var input = Made<IInputAPI>();
+    input.HotKeys.Returns(ClientHotKeys());
+    api.Input.Returns(input);
+
     // A minimal mesh: the twin's renderer takes it, and nothing draws it.
     var tesselator = Made<ITesselatorAPI>();
     tesselator
@@ -466,6 +475,32 @@ public sealed partial class TestWorld {
       _clientClockMs
     );
     return id;
+  }
+
+  /// <summary>The modifier hotkeys a block's interaction help names, each on its left key:
+  /// <c>sneak</c> and <c>shift</c> on Shift, <c>ctrl</c> on Ctrl.</summary>
+  private static Vintagestory.API.Datastructures.OrderedDictionary<
+    string,
+    HotKey
+  > ClientHotKeys() {
+    var keys = new Vintagestory.API.Datastructures.OrderedDictionary<
+      string,
+      HotKey
+    >();
+    foreach (
+      (string code, GlKeys key) in new[]
+      {
+        ("sneak", GlKeys.LShift),
+        ("shift", GlKeys.LShift),
+        ("ctrl", GlKeys.LControl),
+      }
+    )
+      keys[code] = new HotKey {
+        Code = code,
+        CurrentMapping = new KeyCombination { KeyCode = (int)key },
+        DefaultMapping = new KeyCombination { KeyCode = (int)key },
+      };
+    return keys;
   }
 
   private IAsset? ClientShape(AssetLocation location, bool load) {
