@@ -367,4 +367,33 @@ public class SetupAssemblyStepTests {
       )
     );
   }
+
+  // Fails when a hand assembly gesture is made from the origin, not beside its cell: the cells of the run, 20 blocks out, are refused as out of range.
+  [Fact]
+  public void A_run_far_from_the_origin_is_fixed_from_beside_its_cells() {
+    using SetupScene scene = BuildInline(
+      """
+      [{ "run": { "id": "r", "code": "setupasm:pipe-straight-we",
+         "from": [20, 0, 0], "to": [22, 0, 0],
+         "family": ["setupasm:pipe-straight-*"],
+         "open": [{ "at": [20, 0, 0], "face": "w" }, { "at": [22, 0, 0], "face": "e" }] } }]
+      """
+    );
+
+    for (int x = 20; x < 23; x++)
+      Assert.True(RecordAt(scene, x, 0, 0).Fixed);
+  }
+
+  // Fails when an assemble ignores the spot a stand step left and stands beside its cell: the step 20 blocks from that spot is then fixed, not refused.
+  [Fact]
+  public void An_assemble_far_from_the_stand_spot_is_refused_out_of_range() {
+    using SetupScene scene = BuildInline(
+      "["
+        + WePipe
+        + ", { \"stand\": { \"at\": [20, 0, 0] } },"
+        + " { \"assemble\": { \"code\": \"setupasm:pipe-straight-we\", \"at\": [1, 0, 0], \"arms\": \"ew\", \"fails\": \"exlib-handassembly-outofrange\" } }]"
+    );
+
+    Assert.Equal(0, scene.World.GetBlock(new BlockPos(1, 0, 0)).Id);
+  }
 }

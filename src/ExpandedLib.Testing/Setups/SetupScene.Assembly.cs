@@ -58,6 +58,30 @@ public sealed partial class SetupScene
     RaisePlacedInBeltPath(at);
   }
 
+  /// <summary>The feet position the last <c>stand</c> step set, or null when none ran.</summary>
+  private Vec3d? _stood;
+
+  /// <summary>Runs a hand assembly gesture on <paramref name="at"/> with the player where the live
+  /// runner puts it: at the last <c>stand</c> step's spot when one ran, else at (x + 0.5, y, z + 2.5)
+  /// of the cell. The player's position is restored afterwards.</summary>
+  private AssemblyResult? StandingBeside(
+    BlockPos at,
+    Func<AssemblyResult?> gesture
+  )
+  {
+    Vec3d was = Player.Entity.Pos.XYZ;
+    Vec3d spot = _stood ?? new Vec3d(at.X + 0.5, at.Y, at.Z + 2.5);
+    Player.Entity.Pos.SetPos(spot.X, spot.Y, spot.Z);
+    try
+    {
+      return gesture();
+    }
+    finally
+    {
+      Player.Entity.Pos.SetPos(was.X, was.Y, was.Z);
+    }
+  }
+
   /// <summary>The <c>takeoff</c> step: the player takes the fixed piece off with its tool in the
   /// main hand and the sneak held, and the pack gets back what came to the player.</summary>
   private void TakeOffStep(SetupStep step)
@@ -77,16 +101,20 @@ public sealed partial class SetupScene
     AssemblyResult? refused;
     try
     {
-      refused = HandAssemblyServer.TakeOff(
-        World.World,
-        Player.Player,
-        new AssemblyTakeOff
-        {
-          X = at.X,
-          Y = at.Y,
-          Z = at.Z,
-          Dimension = at.dimension,
-        }
+      refused = StandingBeside(
+        at,
+        () =>
+          HandAssemblyServer.TakeOff(
+            World.World,
+            Player.Player,
+            new AssemblyTakeOff
+            {
+              X = at.X,
+              Y = at.Y,
+              Z = at.Z,
+              Dimension = at.dimension,
+            }
+          )
       );
     }
     finally
@@ -140,15 +168,19 @@ public sealed partial class SetupScene
     AssemblyResult? refused;
     try
     {
-      refused = HandAssemblyServer.Cap(
-        World.World,
-        Player.Player,
+      refused = StandingBeside(
         at,
-        new Vec3d(
-          0.5 + 0.5 * face.Normali.X,
-          0.5 + 0.5 * face.Normali.Y,
-          0.5 + 0.5 * face.Normali.Z
-        )
+        () =>
+          HandAssemblyServer.Cap(
+            World.World,
+            Player.Player,
+            at,
+            new Vec3d(
+              0.5 + 0.5 * face.Normali.X,
+              0.5 + 0.5 * face.Normali.Y,
+              0.5 + 0.5 * face.Normali.Z
+            )
+          )
       );
       ItemSlot wrench = Player.ActiveSlot;
       if (!HandAssemblyGate.IsCreative(Player.Player))
@@ -275,23 +307,27 @@ public sealed partial class SetupScene
           ],
         };
       Supply(where, spec, chosen.Joints * spec.PerJoint);
-      return HandAssemblyServer.Fix(
-        World.World,
-        Player.Player,
-        new AssemblyFix
-        {
-          X = aimed.X,
-          Y = aimed.Y,
-          Z = aimed.Z,
-          Dimension = aimed.dimension,
-          Face = face.Index,
-          HitX = hit.X,
-          HitY = hit.Y,
-          HitZ = hit.Z,
-          Slot = Player.ActiveNumber,
-          PartCode = part.Code.ToString(),
-          CandidateCode = chosen.Block.Code.ToString(),
-        }
+      return StandingBeside(
+        aimed,
+        () =>
+          HandAssemblyServer.Fix(
+            World.World,
+            Player.Player,
+            new AssemblyFix
+            {
+              X = aimed.X,
+              Y = aimed.Y,
+              Z = aimed.Z,
+              Dimension = aimed.dimension,
+              Face = face.Index,
+              HitX = hit.X,
+              HitY = hit.Y,
+              HitZ = hit.Z,
+              Slot = Player.ActiveNumber,
+              PartCode = part.Code.ToString(),
+              CandidateCode = chosen.Block.Code.ToString(),
+            }
+          )
       );
     }
     finally

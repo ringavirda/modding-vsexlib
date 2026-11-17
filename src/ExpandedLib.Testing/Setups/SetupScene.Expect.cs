@@ -284,6 +284,7 @@ public sealed partial class SetupScene
   {
     BlockPos at = At(step, "at");
     Player.Entity.Pos.SetPos(at.X + 0.5, at.Y, at.Z + 0.5);
+    _stood = Player.Entity.Pos.XYZ;
   }
 
   private static string Seconds(double value) =>
