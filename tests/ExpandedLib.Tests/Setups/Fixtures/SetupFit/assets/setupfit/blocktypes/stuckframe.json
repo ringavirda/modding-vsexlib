@@ -1,0 +1,22 @@
+{
+  "code": "stuckframe",
+  "class": "SetupFitBlock",
+  "entityClass": "SetupFitFrame",
+  "attributes": { "refuses": true },
+  "behaviors": [ { "name": "BlockEntityInteract" } ],
+  "entityBehaviors": [
+    {
+      "name": "ExRightClickConstructable",
+      "properties": {
+        "stages": [
+          {},
+          {
+            "requireStacks": [
+              { "type": "item", "code": "game:stick", "quantity": 2 }
+            ]
+          }
+        ]
+      }
+    }
+  ]
+}

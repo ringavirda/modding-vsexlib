@@ -93,20 +93,34 @@ public sealed partial class TestWorld {
   /// <param name="gamePath">As the public overload takes it.</param>
   /// <param name="vanillaCodes">Block and item codes in the <c>game</c> domain, with or without the domain,
   /// <c>*</c> allowed; one no vanilla file defines loads nothing.</param>
+  /// <param name="recipeCodes">Also load the vanilla types the listed mods' recipes name.</param>
+  /// <param name="constructionCodes">Also load the vanilla types the listed mods'
+  /// <c>ExRightClickConstructable</c> stages name as a requirement or tool, each <c>{key}</c>
+  /// placeholder read as <c>*</c>, so a construction can be paid as a player pays it.</param>
   /// <returns>This world.</returns>
   internal TestWorld LoadAssets(
     IReadOnlyList<string> modPaths,
     string? gamePath,
     IReadOnlyCollection<string> vanillaCodes,
-    bool recipeCodes = false
-  ) => Load(modPaths, gamePath, vanillaCodes, asGame: false, recipeCodes);
+    bool recipeCodes = false,
+    bool constructionCodes = false
+  ) =>
+    Load(
+      modPaths,
+      gamePath,
+      vanillaCodes,
+      asGame: false,
+      recipeCodes,
+      constructionCodes
+    );
 
   private TestWorld Load(
     IReadOnlyList<string> modPaths,
     string? gamePath,
     IReadOnlyCollection<string> vanillaCodes,
     bool asGame,
-    bool recipeCodes = false
+    bool recipeCodes = false,
+    bool constructionCodes = false
   ) {
     gamePath ??=
       VsAssemblyResolver.InstallPath
@@ -185,6 +199,17 @@ public sealed partial class TestWorld {
           skips
         );
 #endif
+      if (constructionCodes)
+        MirrorVanillaTypes(
+          (location, asset) =>
+          {
+            if (!mgr.AllAssets.ContainsKey(location))
+              mgr.Add(location, asset);
+          },
+          survival,
+          ConstructionVanillaCodes(mgr),
+          skips
+        );
       RunVanillaLoader(
         loaderApi,
         "Vintagestory.ServerMods.NoObf.ModRegistryObjectTypeLoader"
@@ -217,6 +242,50 @@ public sealed partial class TestWorld {
 
   // Serialises Lang.Load, which rewrites the game's process-wide language table.
   private static readonly object LangGate = new();
+
+  /// <summary>The <c>game:</c> codes the construction stages of every blocktype asset in
+  /// <paramref name="assets"/> outside the game domain name, as a requirement's <c>code</c> or a
+  /// step's <c>tool</c>, each <c>{key}</c> placeholder read as <c>*</c>; a code with no domain is a
+  /// <c>game</c> code, as the construction reads it.</summary>
+  private IReadOnlyCollection<string> ConstructionVanillaCodes(
+    IAssetManager assets
+  ) {
+    var codes = new HashSet<string>();
+    foreach (
+      (AssetLocation file, JToken content) in assets.GetMany<JToken>(
+        Log,
+        "blocktypes/"
+      )
+    ) {
+      if (file.Domain == "game")
+        continue;
+      foreach (
+        JToken behavior in content.SelectTokens(
+          "$..[?(@.name == 'ExRightClickConstructable')]"
+        )
+      )
+        foreach (
+          JProperty named in behavior
+            .SelectTokens("$..*")
+            .Select(t => t.Parent)
+            .OfType<JProperty>()
+            .Where(p => p.Name is "code" or "tool")
+        )
+          if (
+            named.Value is JValue { Value: string code }
+            && new AssetLocation(
+              System.Text.RegularExpressions.Regex.Replace(
+                code,
+                @"\{[^}]*\}",
+                "*"
+              )
+            )
+              is { Domain: "game", Path: { Length: > 0 } } location
+          )
+            codes.Add($"game:{location.Path}");
+    }
+    return codes;
+  }
 
   /// <summary>Loads the install's vanilla survival block and item types named by
   /// <paramref name="blocks"/> and <paramref name="items"/> through the game's own object loader

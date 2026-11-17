@@ -69,8 +69,7 @@ public class SetupPackCompleteTests : IDisposable
     string mod,
     string pack,
     string steps,
-    System.Func<string, SetupFileModel?>? stages = null,
-    bool oakPlank = false
+    System.Func<string, SetupFileModel?>? stages = null
   ) =>
     SetupScene.Build(
       SetupFile.Parse(
@@ -88,12 +87,6 @@ public class SetupPackCompleteTests : IDisposable
       {
         w.RegisterItem("game:stick");
         w.RegisterItem("game:flint");
-        if (oakPlank)
-        {
-          Vintagestory.API.Common.Item plank = w.RegisterItem("game:plank-oak");
-          plank.VariantStrict = new() { ["wood"] = "oak" };
-          plank.Variant = new(plank.VariantStrict);
-        }
       },
       w =>
         w.RegisterClass(
@@ -345,8 +338,7 @@ public class SetupPackCompleteTests : IDisposable
     );
   }
 
-  // Fails when a stage's requirement is drawn once however many the stage needs, or when a
-  // placeholder in a code is drawn as written.
+  // Fails when a stage's requirement is drawn once however many the stage needs.
   [Fact]
   public void A_paid_construction_draws_every_stage_requirement_in_stage_order()
   {
@@ -549,23 +541,36 @@ public class SetupPackCompleteTests : IDisposable
     );
   }
 
-  // Fails when materials is ignored by a complete to a stage, so the planks are drawn as any wood.
+  // Fails when materials is ignored by a complete to a stage, so the planks a placeholder names
+  // are drawn as any wood.
   [Fact]
   public void A_complete_to_a_stage_draws_the_variant_materials_names()
   {
     using SetupScene scene = Build(
       "setupbuild",
-      Gathered(
-        "all",
-        "{\"setupbuild:frame\": 1, \"game:stick\": 2, \"game:plank-pine\": 3}"
-      ),
-      PlacedFrame
-        + ", {\"complete\": {\"of\": \"frame\", \"to\": 2, \"materials\": {\"wood\": \"pine\"}}}"
+      Gathered("all", "{\"setupbuild:keyframe\": 1, \"game:plank-pine\": 3}"),
+      PlacedKey
+        + ", {\"complete\": {\"of\": \"key\", \"to\": 2, \"materials\": {\"wood\": \"pine\"}}}"
     );
 
     SetupPackRecord pack = scene.Run(Mods).Pack!;
 
-    Assert.Contains(("steps[1]", "game:plank-pine", 3), pack.Draws);
+    Assert.Contains(("steps[1]", "game:plank-pine", 2), pack.Draws);
+  }
+
+  // Fails when a placeholder in a code is drawn as written, so a pack never holds it.
+  [Fact]
+  public void A_complete_without_materials_draws_a_placeholder_as_any_variant()
+  {
+    using SetupScene scene = Build(
+      "setupbuild",
+      Gathered("all", "{\"setupbuild:keyframe\": 1, \"game:plank-oak\": 3}"),
+      PlacedKey + ", {\"complete\": {\"of\": \"key\"}}"
+    );
+
+    SetupPackRecord pack = scene.Run(Mods).Pack!;
+
+    Assert.Contains(("steps[1]", "game:plank-*", 2), pack.Draws);
   }
 
   private static ExpandedLib.Blocks.ExRightClickConstruction KeyFrameRcc(
@@ -607,13 +612,15 @@ public class SetupPackCompleteTests : IDisposable
     using SetupScene scene = Build(
       "setupbuild",
       Gathered("all", "{\"setupbuild:keyframe\": 1, \"game:plank-oak\": 1}"),
-      PlacedKey + ", {\"complete\": {\"of\": \"key\", \"to\": 1}}",
-      oakPlank: true
+      PlacedKey + ", {\"complete\": {\"of\": \"key\", \"to\": 1}}"
+    );
+    Item first = scene.World.World.Items.First(i =>
+      i is { Code.Path: { } path, Id: not 0 } && path.StartsWith("plank-")
     );
 
     scene.Run(Mods);
 
-    Assert.Equal("oak", KeyFrameRcc(scene).StoredWildCards["wood"]);
+    Assert.Equal(first.Variant["wood"], KeyFrameRcc(scene).StoredWildCards["wood"]);
   }
 
   // Fails when a stage left unpaid by to stores its variant.

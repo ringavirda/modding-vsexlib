@@ -14,7 +14,7 @@
               { "tool": "game:flint", "hits": 1 }
             ],
             "requireStacks": [
-              { "type": "item", "code": "game:plank-{wood}", "quantity": 1 }
+              { "type": "item", "code": "game:plank-*", "quantity": 1, "storeWildCard": "wood" }
             ]
           }
         ]
