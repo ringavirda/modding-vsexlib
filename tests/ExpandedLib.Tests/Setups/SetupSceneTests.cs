@@ -536,7 +536,7 @@ public class SetupSceneTests : IDisposable
     Assert.True(stack.StructureComplete);
   }
 
-  // Fails when complete on a construction does not run RccFake.Complete.
+  // Fails when complete does not click the blower's construction to its last stage.
   [Fact]
   public void Completing_the_blower_completes_its_construction()
   {

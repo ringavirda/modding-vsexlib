@@ -602,25 +602,29 @@ public sealed partial class SetupScene : IDisposable
     for (int step = 0; step < Math.Max(1, steps.Length); step++)
     {
       tool = null;
+      string? drawn = null;
       if (steps.Length > 0 && steps[step].Tool is { } pattern)
         try
         {
-          tool = SetupTools.Held(World.World, pattern, _pack, out _);
+          tool = SetupTools.Held(World.World, pattern, _pack, out drawn);
         }
         catch (InvalidOperationException e)
         {
-          throw Fail(
-            where,
-            $"stage {stage} of {Describe(pos)}: {e.Message}"
-          );
+          throw Fail(where, $"stage {stage} of {Describe(pos)}: {e.Message}");
         }
+      if (drawn != null)
+        Draw(where, drawn, 1);
       answered = ClickStage(
         where,
         pos,
         supply,
         tool,
-        steps.Length == 0 ? 0 : SetupConstruction.HoldSeconds(steps[step], tool)
+        steps.Length == 0
+          ? 0
+          : SetupConstruction.HoldSeconds(steps[step], tool),
+        out ItemStack? toolLeft
       );
+      Give(toolLeft);
       if (rcc.CurrentCompletedStage == stage)
         return;
     }
@@ -631,7 +635,9 @@ public sealed partial class SetupScene : IDisposable
     throw Fail(
       where,
       $"stage {stage} of {Describe(pos)} was not built: OnBlockInteractStart answered {answered} with {(given.Length == 0 ? "nothing" : given)} in the hotbar"
-        + (tool == null ? "." : $" and {tool.Collectible.Code} in the main hand.")
+        + (
+          tool == null ? "." : $" and {tool.Collectible.Code} in the main hand."
+        )
     );
   }
 
@@ -640,9 +646,11 @@ public sealed partial class SetupScene : IDisposable
     BlockPos pos,
     List<ItemStack> supply,
     ItemStack? tool,
-    double seconds
+    double seconds,
+    out ItemStack? toolLeft
   )
   {
+    toolLeft = null;
     InventoryGeneric hotbar = Player.Hotbar;
     if (supply.Count > hotbar.Count - (tool == null ? 0 : 1))
       throw Fail(
@@ -672,6 +680,8 @@ public sealed partial class SetupScene : IDisposable
     }
     finally
     {
+      if (tool != null)
+        toolLeft = hotbar[Player.ActiveNumber].Itemstack;
       foreach (ItemSlot slot in hotbar)
         slot.Itemstack = null;
     }

@@ -85,8 +85,8 @@ public class SetupPackCompleteTests : IDisposable
       [ModPath(mod)],
       w =>
       {
-        w.RegisterItem("game:stick");
-        w.RegisterItem("game:flint");
+        w.RegisterItem("game:stick").Durability = 0;
+        w.RegisterItem("game:flint").Durability = 0;
       },
       w =>
         w.RegisterClass(
@@ -262,10 +262,10 @@ public class SetupPackCompleteTests : IDisposable
     );
   }
 
-  // Fails when the tool stage draws the tool from the pack as it does a material, so the tool is
-  // spent by a complete.
+  // Fails when the tool stage does not draw its tool from the pack, or does not give the worn tool
+  // back after the click.
   [Fact]
-  public void A_tool_stage_with_its_tool_in_the_pack_completes_and_keeps_the_tool()
+  public void A_tool_stage_with_its_tool_in_the_pack_draws_the_tool_and_gives_it_back()
   {
     using SetupScene scene = Build(
       "setupbuild",
@@ -282,6 +282,7 @@ public class SetupPackCompleteTests : IDisposable
       [
         ("steps[0]", "setupbuild:toolframe", 1),
         ("steps[0]", "game:plank-*", 1),
+        ("steps[0]", "game:stick", 1),
       ],
       pack.Draws
     );
@@ -620,7 +621,10 @@ public class SetupPackCompleteTests : IDisposable
 
     scene.Run(Mods);
 
-    Assert.Equal(first.Variant["wood"], KeyFrameRcc(scene).StoredWildCards["wood"]);
+    Assert.Equal(
+      first.Variant["wood"],
+      KeyFrameRcc(scene).StoredWildCards["wood"]
+    );
   }
 
   // Fails when a stage left unpaid by to stores its variant.
