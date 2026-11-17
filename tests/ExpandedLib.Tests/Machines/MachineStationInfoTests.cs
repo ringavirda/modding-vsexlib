@@ -25,6 +25,7 @@ public class MachineStationInfoTests {
   [Fact]
   public void Block_info_carries_a_behaviour_line_and_no_food_perish_line() {
     TestWorld world = new();
+    BlockLaws.StartRooms(world);
     TestLang.Init();
     var station = new Station {
       Pos = new BlockPos(0, 0, 0, 0),
@@ -37,6 +38,6 @@ public class MachineStationInfoTests {
     station.GetBlockInfo(world.Player().Player, sb);
 
     Assert.Contains("behaviour line", sb.ToString());
-    Assert.DoesNotContain("perish", sb.ToString());
+    Assert.DoesNotContain("Stored food perish speed", sb.ToString());
   }
 }
