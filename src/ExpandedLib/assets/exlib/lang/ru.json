@@ -158,6 +158,7 @@
   "handbook-operating-left": "Левая кнопка",
   "handbook-operating-hotkey": "{0} + {1}",
   "handbook-operating-line": "{0}: {1}",
+  "handbook-operating-control": "{0} - {1}",
   "handbook-guide": "Руководство: {0}",
   "machine-tool-info-nojob": "{0}: ни один станок это не обрабатывает",
   "machine-tool-info-elsewhere": "{0}: обрабатывается на {1}",

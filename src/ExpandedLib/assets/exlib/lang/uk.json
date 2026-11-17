@@ -158,6 +158,7 @@
   "handbook-operating-left": "Ліва кнопка",
   "handbook-operating-hotkey": "{0} + {1}",
   "handbook-operating-line": "{0}: {1}",
+  "handbook-operating-control": "{0} - {1}",
   "handbook-guide": "Посібник: {0}",
   "machine-tool-info-nojob": "{0}: жоден верстат цього не обробляє",
   "machine-tool-info-elsewhere": "{0}: обробляється на {1}",

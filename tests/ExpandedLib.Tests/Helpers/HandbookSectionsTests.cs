@@ -69,6 +69,7 @@ public class HandbookSectionsTests : IDisposable
     ["exlib:handbook-partof-standsin"] = "{0} (stands in)",
     ["exlib:handbook-operating-hotkey"] = "{0} + {1}",
     ["exlib:handbook-operating-line"] = "{0}: {1}",
+    ["exlib:handbook-operating-control"] = "{0} - {1}",
     ["exlib:handbook-operating-right"] = "Right-click",
     ["exlib:handbook-operating-left"] = "Left-click",
   };
@@ -82,10 +83,15 @@ public class HandbookSectionsTests : IDisposable
 
   private Block Machine(
     Action<ConstructionStages> stages,
-    string? guidePage = null
+    string? guidePage = null,
+    Block? host = null
   )
   {
-    Block block = TestBlocks.Configure(new Block(), "stub:machine", 5003);
+    Block block = TestBlocks.Configure(
+      host ?? new Block(),
+      "stub:machine",
+      5003
+    );
     var built = new ConstructionStages();
     stages(built);
     block.BlockEntityBehaviors =
@@ -219,7 +225,7 @@ public class HandbookSectionsTests : IDisposable
 
     Assert.Equal(
       ["exlib:handbook-partof", "stub:block-core (3 cells)"],
-      page[^2..]
+      page[..2]
     );
   }
 
@@ -231,7 +237,7 @@ public class HandbookSectionsTests : IDisposable
 
     string[] page = Page(Machine(RisingStages));
 
-    Assert.Equal("stub:block-core (stands in)", page[^1]);
+    Assert.Equal("stub:block-core (stands in)", page[1]);
   }
 
   // Fails when a structure without a handbook page is listed.
@@ -248,25 +254,30 @@ public class HandbookSectionsTests : IDisposable
 
   private sealed class OperatedBlock : Block, IHandbookOperatingHelp
   {
-    public WorldInteraction[] GetHandbookOperatingHelp(ICoreClientAPI capi) =>
+    public HandbookControl[] GetHandbookOperatingHelp(ICoreClientAPI capi) =>
       [
-        new WorldInteraction
-        {
-          ActionLangCode = "stub:blockhelp-load",
-          MouseButton = EnumMouseButton.Right,
-          HotKeyCode = "sneak",
-        },
-        new WorldInteraction
-        {
-          ActionLangCode = "stub:blockhelp-fire",
-          MouseButton = EnumMouseButton.Left,
-        },
-        new WorldInteraction
-        {
-          ActionLangCode = "stub:blockhelp-pinch",
-          MouseButton = EnumMouseButton.Right,
-          HotKeyCodes = ["ctrl", "unmapped"],
-        },
+        new HandbookControl(
+          null,
+          [
+            new WorldInteraction
+            {
+              ActionLangCode = "stub:blockhelp-load",
+              MouseButton = EnumMouseButton.Right,
+              HotKeyCode = "sneak",
+            },
+            new WorldInteraction
+            {
+              ActionLangCode = "stub:blockhelp-fire",
+              MouseButton = EnumMouseButton.Left,
+            },
+            new WorldInteraction
+            {
+              ActionLangCode = "stub:blockhelp-pinch",
+              MouseButton = EnumMouseButton.Right,
+              HotKeyCodes = ["ctrl", "unmapped"],
+            },
+          ]
+        ),
       ];
   }
 
@@ -295,26 +306,31 @@ public class HandbookSectionsTests : IDisposable
 
   private sealed class RepeatedHelpBlock : Block, IHandbookOperatingHelp
   {
-    public WorldInteraction[] GetHandbookOperatingHelp(ICoreClientAPI capi) =>
+    public HandbookControl[] GetHandbookOperatingHelp(ICoreClientAPI capi) =>
       [
-        new WorldInteraction
-        {
-          ActionLangCode = "stub:blockhelp-load",
-          MouseButton = EnumMouseButton.Right,
-          HotKeyCode = "sneak",
-        },
-        new WorldInteraction
-        {
-          ActionLangCode = "stub:blockhelp-load",
-          MouseButton = EnumMouseButton.Right,
-          HotKeyCode = "sneak",
-        },
-        new WorldInteraction
-        {
-          ActionLangCode = "stub:blockhelp-load",
-          MouseButton = EnumMouseButton.Right,
-          HotKeyCode = "ctrl",
-        },
+        new HandbookControl(
+          null,
+          [
+            new WorldInteraction
+            {
+              ActionLangCode = "stub:blockhelp-load",
+              MouseButton = EnumMouseButton.Right,
+              HotKeyCode = "sneak",
+            },
+            new WorldInteraction
+            {
+              ActionLangCode = "stub:blockhelp-load",
+              MouseButton = EnumMouseButton.Right,
+              HotKeyCode = "sneak",
+            },
+            new WorldInteraction
+            {
+              ActionLangCode = "stub:blockhelp-load",
+              MouseButton = EnumMouseButton.Right,
+              HotKeyCode = "ctrl",
+            },
+          ]
+        ),
       ];
   }
 
@@ -336,6 +352,109 @@ public class HandbookSectionsTests : IDisposable
       ],
       Page(block)
     );
+  }
+
+  private sealed class NamedControlsBlock : Block, IHandbookOperatingHelp
+  {
+    private static WorldInteraction Feed() =>
+      new()
+      {
+        ActionLangCode = "stub:blockhelp-feed",
+        MouseButton = EnumMouseButton.Right,
+      };
+
+    public HandbookControl[] GetHandbookOperatingHelp(ICoreClientAPI capi) =>
+      [
+        new HandbookControl("stub:control-wheel", [Feed()]),
+        new HandbookControl("stub:control-lever", [Feed()]),
+        new HandbookControl(null, [Feed()]),
+      ];
+  }
+
+  // Fails when the name prefix is dropped: the first line reads "Right-click: ..." alone.
+  [Fact]
+  public void A_named_control_prefixes_its_lines_with_its_name()
+  {
+    var block = TestBlocks.Configure(
+      new NamedControlsBlock(),
+      "stub:named",
+      5202
+    );
+
+    Assert.Equal(
+      "stub:control-wheel - Right-click: stub:blockhelp-feed",
+      Page(block)[1]
+    );
+  }
+
+  // Fails when Distinct runs over the unprefixed line: the lever's line is dropped as a repeat of
+  // the wheel's.
+  [Fact]
+  public void Two_controls_with_the_same_interaction_keep_a_line_each()
+  {
+    var block = TestBlocks.Configure(
+      new NamedControlsBlock(),
+      "stub:named",
+      5202
+    );
+
+    Assert.Equal(
+      [
+        "exlib:handbook-operating",
+        "stub:control-wheel - Right-click: stub:blockhelp-feed",
+        "stub:control-lever - Right-click: stub:blockhelp-feed",
+        "Right-click: stub:blockhelp-feed",
+      ],
+      Page(block)
+    );
+  }
+
+  // Fails when a null name renders through Lang.Get: the unnamed line reads " - Right-click: ..."
+  // or "exlib:handbook-operating-control[,...]".
+  [Fact]
+  public void An_unnamed_control_leaves_its_line_unprefixed()
+  {
+    var block = TestBlocks.Configure(
+      new NamedControlsBlock(),
+      "stub:named",
+      5202
+    );
+
+    Assert.Equal("Right-click: stub:blockhelp-feed", Page(block)[^1]);
+  }
+
+  private sealed class OperatedMachine : Block, IHandbookOperatingHelp
+  {
+    public HandbookControl[] GetHandbookOperatingHelp(ICoreClientAPI capi) =>
+      [
+        new HandbookControl(
+          null,
+          [
+            new WorldInteraction
+            {
+              ActionLangCode = "stub:blockhelp-feed",
+              MouseButton = EnumMouseButton.Right,
+            },
+          ]
+        ),
+      ];
+  }
+
+  // Fails when Guide is added last: the guide line follows the Built in place rows.
+  [Fact]
+  public void Sections_read_guide_then_operating_then_built_in_place()
+  {
+    LoadTextPage("iiex-lathe");
+
+    string[] page = Page(
+      Machine(RisingStages, "iiex-lathe", new OperatedMachine())
+    );
+
+    Assert.Equal("Guide: iiex:title -> iiex-lathe", page[0]);
+    Assert.Equal("exlib:handbook-operating", page[1]);
+    Assert.Equal("Right-click: stub:blockhelp-feed", page[2]);
+    Assert.Equal("exlib:handbook-builtinplace", page[3]);
+    Assert.StartsWith("exlib:handbook-builtinplace-total", page[^1]);
   }
 
   private sealed class ProducerEntity : BlockEntity, IMpEnergyProducer
@@ -478,7 +597,7 @@ public class HandbookSectionsTests : IDisposable
     string[] loaded = Page(Machine(RisingStages, "iiex-lathe"));
     string[] unknown = Page(Machine(RisingStages, "iiex-absent"));
 
-    Assert.Equal("Guide: iiex:title -> iiex-lathe", loaded[^1]);
+    Assert.Equal("Guide: iiex:title -> iiex-lathe", loaded[0]);
     Assert.DoesNotContain(unknown, l => l.StartsWith("Guide: "));
   }
 }

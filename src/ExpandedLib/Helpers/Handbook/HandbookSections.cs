@@ -62,11 +62,11 @@ internal static class HandbookSections
     var sections = new List<HandbookSection>();
     if (collectible is not Block block)
       return sections;
-    Add(sections, BuiltInPlace(capi.World, block));
+    Add(sections, Guide(capi, block));
+    Add(sections, Operating(capi, block));
     Add(sections, MpLinks?.Invoke(capi, block));
     Add(sections, HandbookStructures.PartOf(capi, block));
-    Add(sections, Operating(capi, block));
-    Add(sections, Guide(capi, block));
+    Add(sections, BuiltInPlace(capi.World, block));
     return sections;
   }
 
@@ -207,30 +207,44 @@ internal static class HandbookSections
     }
   }
 
-  /// <summary>One line per interaction of the block's <see cref="IHandbookOperatingHelp"/>, as
-  /// the hotkeys joined to the mouse button, then the action text. Null when the block has no
-  /// implementation or it returns no interaction. A line whose text equals an earlier one is
-  /// dropped.</summary>
+  /// <summary>One line per interaction of each control of the block's
+  /// <see cref="IHandbookOperatingHelp"/>, in order: the control's name when it has one, then the
+  /// hotkeys joined to the mouse button, then the action text. Null when the block has no
+  /// implementation or it returns no interaction. A line whose rendered text equals an earlier
+  /// one is dropped.</summary>
   internal static HandbookSection? Operating(ICoreClientAPI capi, Block block)
   {
-    WorldInteraction[]? help = block
+    HandbookControl[]? help = block
       .GetCollectibleInterface<IHandbookOperatingHelp>()
       ?.GetHandbookOperatingHelp(capi);
     if (help == null || help.Length == 0)
       return null;
-    return new HandbookSection(
-      ExlibLang.HandbookOperating,
-      [
-        .. help.Select(i =>
-            Lang.Get(
+    string[] texts =
+    [
+      .. help.SelectMany(control =>
+          control.Interactions.Select(i =>
+          {
+            string line = Lang.Get(
               ExlibLang.HandbookOperatingLine,
               InputName(capi, i),
               Lang.Get(i.ActionLangCode)
-            )
-          )
-          .Distinct()
-          .Select(text => (HandbookPart[])[new TextPart(text)]),
-      ]
+            );
+            return control.NameLangCode == null
+              ? line
+              : Lang.Get(
+                ExlibLang.HandbookOperatingControl,
+                Lang.Get(control.NameLangCode),
+                line
+              );
+          })
+        )
+        .Distinct(),
+    ];
+    if (texts.Length == 0)
+      return null;
+    return new HandbookSection(
+      ExlibLang.HandbookOperating,
+      [.. texts.Select(text => (HandbookPart[])[new TextPart(text)])]
     );
   }
 

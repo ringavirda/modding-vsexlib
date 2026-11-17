@@ -32,6 +32,7 @@ const ExpandedLib.ExlibLang.HandbookGuide = "exlib:handbook-guide" -> string!
 const ExpandedLib.ExlibLang.HandbookMadeat = "exlib:handbook-madeat" -> string!
 const ExpandedLib.ExlibLang.HandbookMadeatLine = "exlib:handbook-madeat-line" -> string!
 const ExpandedLib.ExlibLang.HandbookOperating = "exlib:handbook-operating" -> string!
+const ExpandedLib.ExlibLang.HandbookOperatingControl = "exlib:handbook-operating-control" -> string!
 const ExpandedLib.ExlibLang.HandbookOperatingHotkey = "exlib:handbook-operating-hotkey" -> string!
 const ExpandedLib.ExlibLang.HandbookOperatingLeft = "exlib:handbook-operating-left" -> string!
 const ExpandedLib.ExlibLang.HandbookOperatingLine = "exlib:handbook-operating-line" -> string!
@@ -362,6 +363,12 @@ ExpandedLib.Helpers.GameClockCursor.LastHours.get -> double
 ExpandedLib.Helpers.GameClockCursor.Load(Vintagestory.API.Datastructures.ITreeAttribute! tree, string! key) -> void
 ExpandedLib.Helpers.GameClockCursor.Reset() -> void
 ExpandedLib.Helpers.GameClockCursor.Save(Vintagestory.API.Datastructures.ITreeAttribute! tree, string! key) -> void
+ExpandedLib.Helpers.HandbookControl
+ExpandedLib.Helpers.HandbookControl.HandbookControl(string? NameLangCode, Vintagestory.API.Client.WorldInteraction![]! Interactions) -> void
+ExpandedLib.Helpers.HandbookControl.Interactions.get -> Vintagestory.API.Client.WorldInteraction![]!
+ExpandedLib.Helpers.HandbookControl.Interactions.init -> void
+ExpandedLib.Helpers.HandbookControl.NameLangCode.get -> string?
+ExpandedLib.Helpers.HandbookControl.NameLangCode.init -> void
 ExpandedLib.Helpers.IDrawsShape
 ExpandedLib.Helpers.IDrawsShape.DrawnShape.get -> Vintagestory.API.Common.AssetLocation!
 ExpandedLib.Helpers.ItemViewKind
@@ -863,4 +870,4 @@ static readonly ExpandedLib.Helpers.ExOrientations.PipeCorner -> ExpandedLib.Hel
 override ExpandedLib.Machines.BlockEntityMachineStation.GetBlockInfo(Vintagestory.API.Common.IPlayer! forPlayer, System.Text.StringBuilder! dsc) -> void
 ExpandedLib.Definitions.ExBlockDef.HandbookPage(string! pageCode) -> ExpandedLib.Definitions.ExBlockDef!
 ExpandedLib.Helpers.IHandbookOperatingHelp
-ExpandedLib.Helpers.IHandbookOperatingHelp.GetHandbookOperatingHelp(Vintagestory.API.Client.ICoreClientAPI! capi) -> Vintagestory.API.Client.WorldInteraction![]!
+ExpandedLib.Helpers.IHandbookOperatingHelp.GetHandbookOperatingHelp(Vintagestory.API.Client.ICoreClientAPI! capi) -> ExpandedLib.Helpers.HandbookControl![]!
