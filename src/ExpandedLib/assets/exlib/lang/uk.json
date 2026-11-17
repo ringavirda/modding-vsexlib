@@ -151,7 +151,7 @@
   "handbook-drives": "Приводить у рух",
   "handbook-drivenby": "Приводиться від",
   "handbook-partof": "Входить до складу",
-  "handbook-partof-line": "{0} ({1} комірок)",
+  "handbook-partof-line": "{0} (комірок: {1})",
   "handbook-partof-standsin": "{0} (займає місце)",
   "handbook-operating": "Керування",
   "handbook-operating-right": "Права кнопка",

@@ -151,7 +151,7 @@
   "handbook-drives": "Приводит в движение",
   "handbook-drivenby": "Приводится от",
   "handbook-partof": "Входит в состав",
-  "handbook-partof-line": "{0} ({1} ячеек)",
+  "handbook-partof-line": "{0} (ячеек: {1})",
   "handbook-partof-standsin": "{0} (занимает место)",
   "handbook-operating": "Управление",
   "handbook-operating-right": "Правая кнопка",
