@@ -48,6 +48,10 @@ internal static class HandbookSections
     Dictionary<string, string>
   > TextPageTitles = new();
 
+  /// <summary>Builds the Drives or Driven by section of a block; set by ExpandedLib.Industry, which
+  /// holds the mechanical-power node types, and null while it is not loaded.</summary>
+  internal static System.Func<ICoreClientAPI, Block, HandbookSection?>? MpLinks;
+
   /// <summary>The sections of <paramref name="collectible"/>'s handbook page in page order; none
   /// for an item or a block that has nothing to state.</summary>
   public static List<HandbookSection> For(
@@ -59,6 +63,7 @@ internal static class HandbookSections
     if (collectible is not Block block)
       return sections;
     Add(sections, BuiltInPlace(capi.World, block));
+    Add(sections, MpLinks?.Invoke(capi, block));
     Add(sections, HandbookStructures.PartOf(capi, block));
     Add(sections, Operating(capi, block));
     Add(sections, Guide(capi, block));

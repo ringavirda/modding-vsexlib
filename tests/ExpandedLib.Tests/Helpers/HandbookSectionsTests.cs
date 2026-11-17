@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using ExpandedLib.Definitions;
 using ExpandedLib.Helpers;
+using ExpandedLib.Industry.MechanicalPower;
 using ExpandedLib.Testing;
 using Newtonsoft.Json.Linq;
 using NSubstitute;
@@ -264,6 +265,57 @@ public class HandbookSectionsTests : IDisposable
       ],
       page
     );
+  }
+
+  private sealed class ProducerEntity : BlockEntity, IMpEnergyProducer
+  {
+    public float DriveTorque(float speed) => 1f;
+  }
+
+  private sealed class ConsumerEntity : BlockEntity, IMpEnergyConsumer
+  {
+    public float LoadTorque(float speed) => 1f;
+  }
+
+  private sealed class StorageEntity : BlockEntity, IMpEnergyStorage
+  {
+    public float Inertia => 1f;
+  }
+
+  // A block of the entity class, with a handbook page unless noPage.
+  private Block Mp(int id, string code, Type entity, bool noPage = false)
+  {
+    _world.RegisterClass(entity.Name, entity);
+    Block block = TestBlocks.Configure(new Block(), code, id);
+    block.EntityClass = entity.Name;
+    block.CreativeInventoryTabs = noPage ? null : ["general"];
+    _world.Register(block);
+    return block;
+  }
+
+  // Fails when the page filter is dropped: the consumer with no page reads as a second entry.
+  [Fact]
+  public void Drives_and_driven_by_list_the_partners_that_have_a_page()
+  {
+    Block engine = Mp(5300, "stub:engine", typeof(ProducerEntity));
+    Block press = Mp(5301, "stub:press", typeof(ConsumerEntity));
+    Mp(5302, "stub:hidden", typeof(ConsumerEntity), noPage: true);
+
+    Assert.Equal(["exlib:handbook-drives", "stub:block-press"], Page(engine));
+    Assert.Equal(["exlib:handbook-drivenby", "stub:block-engine"], Page(press));
+  }
+
+  // Fails when storage counts as a producer: the flywheel gets a Drives section and the engine
+  // lists it as driven.
+  [Fact]
+  public void A_storage_block_gets_neither_section_and_is_not_listed()
+  {
+    Block engine = Mp(5300, "stub:engine", typeof(ProducerEntity));
+    Mp(5301, "stub:press", typeof(ConsumerEntity));
+    Block flywheel = Mp(5303, "stub:flywheel", typeof(StorageEntity));
+
+    Assert.Empty(Page(flywheel));
+    Assert.DoesNotContain(Page(engine), l => l.Contains("flywheel"));
   }
 
   private void LoadTextPage(string code) =>

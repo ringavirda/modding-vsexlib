@@ -307,7 +307,6 @@ public sealed partial class TestWorld {
 
     // The registry the world's blocks load with, whichever side built it.
     api.ClassRegistry.Returns(_ => Api.ClassRegistry);
-    coreApi.ClassRegistry.Returns(_ => Api.ClassRegistry);
     api.World.ClassRegistry.Returns(_ => Api.ClassRegistry);
 
     var input = Made<IInputAPI>();
