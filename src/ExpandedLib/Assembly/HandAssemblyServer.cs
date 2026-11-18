@@ -181,7 +181,7 @@ internal static class HandAssemblyServer {
     return null;
   }
 
-  /// <summary>Takes the fixed piece at the packet's position off; a block that is not a network node counts as fixed whatever its record holds, and one with no record returns only itself. In survival the piece and the fasteners of every joint it was part of (<see cref="TakeOffReturns"/>) go to the player, what the pack cannot hold spawns at the player's feet, and the records of those joints clear. In creative nothing returns and no record is lost: the records the piece holds move onto the neighbours across their joints, and the records the neighbours hold toward the cell stay.</summary>
+  /// <summary>Takes the fixed piece at the packet's position off; a block that is not a network node counts as fixed whatever its record holds, and one with no record returns only itself. In survival the piece and the fasteners of every joint it was part of (<see cref="TakeOffReturns"/>) go to the player, what the pack cannot hold spawns at the player's feet, and the records of those joints clear; the player gets the line of what came back in the Info log chat, in the player's language. In creative nothing returns and no record is lost: the records the piece holds move onto the neighbours across their joints, and the records the neighbours hold toward the cell stay.</summary>
   /// <param name="world">The server world.</param>
   /// <param name="player">The sending player; the tool is read from the active hotbar slot.</param>
   /// <param name="take">The packet; nothing in it is trusted but the position; the dimension is the player's own.</param>
@@ -190,21 +190,8 @@ internal static class HandAssemblyServer {
     IWorldAccessor world,
     IPlayer player,
     AssemblyTakeOff take
-  ) => TakeOff(world, player, take, out _);
-
-  /// <summary>Takes the fixed piece off as <see cref="TakeOff(IWorldAccessor, IPlayer, AssemblyTakeOff)"/> does, and builds the answer that names what came back.</summary>
-  /// <param name="world">The server world.</param>
-  /// <param name="player">The sending player; the tool is read from the active hotbar slot.</param>
-  /// <param name="take">The packet; nothing in it is trusted but the position; the dimension is the player's own.</param>
-  /// <param name="done">The answer to send when the piece was taken off, in the player's language: <c>tookoff</c> naming the stacks that came back, or <c>tookoff-bare</c> when none did, as in creative or when every joint was free; null when the take-off was refused.</param>
-  /// <returns>Null when the piece was taken off; otherwise the refusal to send, with nothing changed.</returns>
-  public static AssemblyResult? TakeOff(
-    IWorldAccessor world,
-    IPlayer player,
-    AssemblyTakeOff take,
-    out AssemblyResult? done
   ) {
-    AssemblyResult? refusal = TakeOffPiece(world, player, take, out done);
+    AssemblyResult? refusal = TakeOffPiece(world, player, take);
     if (refusal != null) {
       var cell = new BlockPos(
         take.X,
@@ -226,10 +213,8 @@ internal static class HandAssemblyServer {
   private static AssemblyResult? TakeOffPiece(
     IWorldAccessor world,
     IPlayer player,
-    AssemblyTakeOff take,
-    out AssemblyResult? done
+    AssemblyTakeOff take
   ) {
-    done = null;
     IBlockAccessor accessor = world.BlockAccessor;
     var cell = new BlockPos(
       take.X,
@@ -295,7 +280,7 @@ internal static class HandAssemblyServer {
       back,
       []
     );
-    done = TookOff(player, block, back);
+    TellTookOff(player, block, back);
     PlaySuccess(world, cell, toolSlot);
     if (creative)
       return null;
@@ -306,32 +291,30 @@ internal static class HandAssemblyServer {
     return null;
   }
 
-  private static AssemblyResult TookOff(
+  private static void TellTookOff(
     IPlayer player,
     Block block,
     IReadOnlyList<ItemStack> back
   ) {
+    if (player is not IServerPlayer serverPlayer)
+      return;
     string? lang = LanguageOf(player);
     string piece = NameKey(block.Code, EnumItemClass.Block, lang);
-    return back.Count == 0
-      ? new AssemblyResult {
-        Code = "tookoff-bare",
-        Args = [piece],
-        Done = true,
-      }
-      : new AssemblyResult {
-        Code = "tookoff",
-        Args =
-        [
+    string Say(string key, params object[] args) =>
+      lang == null ? Lang.Get(key, args) : Lang.GetL(lang, key, args);
+    string line =
+      back.Count == 0
+        ? Say("exlib:handassembly-hud-tookoff-bare", piece)
+        : Say(
+          "exlib:handassembly-hud-tookoff",
           piece,
-          HandAssemblyHud.Stacks(
-            (key, args) =>
-              lang == null ? Lang.Get(key, args) : Lang.GetL(lang, key, args),
-            Grouped(back, lang)
-          ),
-        ],
-        Done = true,
-      };
+          HandAssemblyHud.Stacks(Say, Grouped(back, lang))
+        );
+    serverPlayer.SendMessage(
+      GlobalConstants.InfoLogChatGroup,
+      line,
+      EnumChatType.Notification
+    );
   }
 
   /// <summary>The stacks grouped by item, in the order each item first appears.</summary>

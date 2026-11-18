@@ -10,6 +10,7 @@ using NSubstitute;
 using Vintagestory.API.Common;
 using Vintagestory.API.Config;
 using Vintagestory.API.MathTools;
+using Vintagestory.API.Server;
 using Vintagestory.API.Util;
 using Xunit;
 using Scene = ExpandedLib.Tests.HandAssemblyFixTests.Scene;
@@ -82,7 +83,7 @@ public class HandAssemblyPacketPathTests {
     /// <summary>The HUD line the control showed on the aim of the last take-off.</summary>
     public string? Line { get; private set; }
 
-    public AssemblyResult? TakeOff(BlockPos pos, EnumGameMode mode) {
+    public void TakeOff(BlockPos pos, EnumGameMode mode) {
       Scene.Player.GameMode = mode;
       Scene.Player.Hold(new ItemStack(Scene.Wrench));
       Scene.Player.Sneaking = true;
@@ -107,11 +108,9 @@ public class HandAssemblyPacketPathTests {
         HandAssemblyServer.TakeOff(
           Scene.World.World,
           Scene.Player.Player,
-          arrived,
-          out AssemblyResult? done
+          arrived
         )
       );
-      return done;
     }
 
     public void FitCap(BlockPos pos, BlockFacing face, EnumGameMode mode) {
@@ -364,31 +363,37 @@ public class HandAssemblyPacketPathTests {
     );
   }
 
-  // Fails when the server sends no answer after a take-off, words it bare in survival, or its count differs from what reached the pack and the feet.
+  // Fails when the take-off line is not sent as an Info log chat notification (the SendMessage call removed, or the group changed to the general one), is worded bare in survival, or its count differs from what reached the pack and the feet.
   [Theory]
   [InlineData(false)]
   [InlineData(true)]
-  public void AfterTakeOff_AnswerNamesWhatCameBack(bool fullPack) {
+  public void AfterTakeOff_ChatLineNamesWhatCameBack(bool fullPack) {
     using Translating _ = new("uk");
     Rig rig = Rig.Standing(fullPack ? 2 : 10).Pair();
-    rig.Scene.Player.ServerPlayer!.LanguageCode.Returns("uk");
+    IServerPlayer server = rig.Scene.Player.ServerPlayer!;
+    server.LanguageCode.Returns("uk");
     if (fullPack)
       for (int slot = 1; slot < 10; slot++)
         rig.Scene.Player.Hotbar[slot].Itemstack = new ItemStack(
           rig.Scene.Hammer
         );
     int before = rig.Scene.Carried;
+    var lines = new List<string>();
+    server
+      .When(p =>
+        p.SendMessage(
+          GlobalConstants.InfoLogChatGroup,
+          Arg.Any<string>(),
+          EnumChatType.Notification
+        )
+      )
+      .Do(c => lines.Add(c.ArgAt<string>(1)));
 
-    AssemblyResult? done = rig.TakeOff(North, EnumGameMode.Survival);
+    rig.TakeOff(North, EnumGameMode.Survival);
 
-    Assert.NotNull(done);
-    Assert.True(done!.Done);
-    Assert.Equal("tookoff", done.Code);
-    Assert.Equal(2, done.Args.Length);
-    Match count = Regex.Match(
-      (string)done.Args[1],
-      @"handassembly-hud-stack\((\d+),"
-    );
+    string line = Assert.Single(lines);
+    Assert.StartsWith("exlib:handassembly-hud-tookoff(", line);
+    Match count = Regex.Match(line, @"handassembly-hud-stack\((\d+),");
     Assert.True(count.Success);
     Assert.Equal(
       rig.Scene.Carried - before + rig.Spawned(rig.Scene.Bolt),
@@ -397,10 +402,12 @@ public class HandAssemblyPacketPathTests {
     Assert.Equal(2, int.Parse(count.Groups[1].Value));
 
     rig.Fix(Cell, BlockFacing.NORTH, EnumGameMode.Creative);
-    AssemblyResult? bare = rig.TakeOff(North, EnumGameMode.Creative);
-    Assert.Equal("tookoff-bare", bare!.Code);
-    Assert.True(bare.Done);
-    Assert.Single(bare.Args);
+    lines.Clear();
+    rig.TakeOff(North, EnumGameMode.Creative);
+    Assert.StartsWith(
+      "exlib:handassembly-hud-tookoff-bare(",
+      Assert.Single(lines)
+    );
   }
 
   // Fails when a break loses a joint's bolts twice (spawns the record's spent bolts), or the neighbour's record toward the broken piece stays.

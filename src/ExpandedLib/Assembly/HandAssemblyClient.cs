@@ -70,17 +70,9 @@ internal sealed class HandAssemblyClient : IRenderer {
       Lang.Get("game:placefailure-" + code, args)
     );
 
-  /// <summary>Shows what the server answered: the line of a take-off it did, or a refusal.</summary>
-  public void ShowResult(AssemblyResult result) {
-    if (result.Done)
-      _capi.TriggerIngameDiscovery(
-        this,
-        result.Code,
-        Lang.Get("exlib:handassembly-hud-" + result.Code, result.Args)
-      );
-    else
-      Show(result.Code, result.Args);
-  }
+  /// <summary>Shows the refusal the server answered.</summary>
+  public void ShowResult(AssemblyResult result) =>
+    Show(result.Code, result.Args);
 
   private void Refresh() {
     IClientPlayer? player = Player;
