@@ -414,6 +414,9 @@ public class ExItemDefTests {
       "no block-entity analogue: items carry no BlockEntity",
     ["EntityBehavior(String,JObject)"] =
       "no block-entity analogue: items carry no BlockEntity",
+    // The guide line is written for blocks only.
+    ["HandbookPage(String)"] =
+      "the guide line is written for blocks only: HandbookSections reads the page of a block",
     // Hand assembly is placing a block.
     ["HandAssembly(String,String,Int32,String)"] =
       "hand assembly is a block placement behaviour: items are not placed",

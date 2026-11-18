@@ -78,6 +78,12 @@ public class ExWorldStateTests {
     ["ExpandedLib.Config.ExConfigDocument._byApi"] = WeakByWorld,
     ["ExpandedLib.Checks.AssetCheckSource.HeldAtLoad"] = WeakByWorld,
     ["ExpandedLib.Blocks.ConstructionHints.Worlds"] = WeakByWorld,
+    ["ExpandedLib.Helpers.HandbookSections.TextPageTitles"] = WeakByWorld,
+    ["ExpandedLib.Helpers.HandbookSections.MpLinks"] =
+      "hook delegate set once by a module initializer, a pure function of the loaded types",
+    ["ExpandedLib.Helpers.HandbookStructures.Structures"] = WeakByWorld,
+    ["ExpandedLib.Industry.MechanicalPower.MpHandbookRoles.Roles"] =
+      WeakByWorld,
     ["ExpandedLib.Blocks.BlockControls.Tables"] = WeakByWorld,
     ["ExpandedLib.Machines.CraftSequenceGate.Registered"] = WeakByWorld,
     ["ExpandedLib.Blocks.ControlBoxes.Tables"] = WeakByWorld,

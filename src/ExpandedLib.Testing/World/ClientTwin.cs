@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using Newtonsoft.Json.Linq;
 using NSubstitute;
 using NSubstitute.Core;
 using Vintagestory.API.Client;
@@ -140,7 +141,8 @@ public sealed partial class TestWorld {
   /// a <c>shapes</c> folder beneath it.</summary>
   /// <remarks>A domain not named here reads <c>RepoPaths.Assets</c>, and <c>game</c> reads the install's
   /// survival tree. Named before the domain's shapes are first read: the directory is read once, on
-  /// that first read.</remarks>
+  /// that first read. The domain's <c>config/handbook</c> json files answer
+  /// <c>Assets.GetMany&lt;GuiHandbookTextPage&gt;</c>.</remarks>
   /// <param name="domain">The asset domain the shapes belong to, such as a mod id.</param>
   /// <param name="directory">The folder holding the domain's <c>shapes</c>, absolute.</param>
   /// <returns>This world.</returns>
@@ -302,8 +304,23 @@ public sealed partial class TestWorld {
       null
 #endif
       );
+    assets
+      .GetMany<GuiHandbookTextPage>(
+        Arg.Any<Vintagestory.API.Common.ILogger>(),
+        Arg.Any<string>(),
+        Arg.Any<string>()
+      )
+      .Returns(ci => ClientTextPages(ci.ArgAt<string>(1), ci.ArgAt<string>(2)));
     api.Assets.Returns(assets);
     coreApi.Assets.Returns(assets);
+
+    // The registry the world's blocks load with, whichever side built it.
+    api.ClassRegistry.Returns(_ => Api.ClassRegistry);
+    api.World.ClassRegistry.Returns(_ => Api.ClassRegistry);
+
+    var input = Made<IInputAPI>();
+    input.HotKeys.Returns(ClientHotKeys());
+    api.Input.Returns(input);
 
     // A minimal mesh: the twin's renderer takes it, and nothing draws it.
     var tesselator = Made<ITesselatorAPI>();
@@ -468,11 +485,69 @@ public sealed partial class TestWorld {
     return id;
   }
 
+  /// <summary>The modifier hotkeys a block's interaction help names, each on its left key:
+  /// <c>sneak</c> and <c>shift</c> on Shift, <c>ctrl</c> on Ctrl.</summary>
+  private static Vintagestory.API.Datastructures.OrderedDictionary<
+    string,
+    HotKey
+  > ClientHotKeys() {
+    var keys = new Vintagestory.API.Datastructures.OrderedDictionary<
+      string,
+      HotKey
+    >();
+    foreach (
+      (string code, GlKeys key) in new[]
+      {
+        ("sneak", GlKeys.LShift),
+        ("shift", GlKeys.LShift),
+        ("ctrl", GlKeys.LControl),
+      }
+    )
+      keys[code] = new HotKey {
+        Code = code,
+        CurrentMapping = new KeyCombination { KeyCode = (int)key },
+        DefaultMapping = new KeyCombination { KeyCode = (int)key },
+      };
+    return keys;
+  }
+
   private IAsset? ClientShape(AssetLocation location, bool load) {
     _clientShapes ??= NewClientShapeManager();
     if (_clientShapeDomains.Add(location.Domain))
       LoadClientShapes(_clientShapes, location.Domain);
     return _clientShapes.TryGet(location, load);
+  }
+
+  // The json files under pathBegins of the domain's asset folder, or of every domain named with
+  // ClientAssets when domain is null, each read as a text page.
+  private Dictionary<AssetLocation, GuiHandbookTextPage> ClientTextPages(
+    string pathBegins,
+    string? domain
+  ) {
+    var pages = new Dictionary<AssetLocation, GuiHandbookTextPage>();
+    foreach (
+      string name in domain != null
+        ? [domain]
+        : (IEnumerable<string>)_clientAssetRoots.Keys
+    ) {
+      string folder = Path.Combine(ClientAssetRoot(name), pathBegins);
+      if (!Directory.Exists(folder))
+        continue;
+      foreach (
+        string file in Directory.GetFiles(
+          folder,
+          "*.json",
+          SearchOption.AllDirectories
+        )
+      ) {
+        string relative = Path.GetRelativePath(ClientAssetRoot(name), file)
+          .Replace('\\', '/');
+        pages[new AssetLocation(name, relative)] = JObject
+          .Parse(File.ReadAllText(file))
+          .ToObject<GuiHandbookTextPage>()!;
+      }
+    }
+    return pages;
   }
 
   private AssetManager NewClientShapeManager() {

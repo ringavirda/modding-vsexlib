@@ -891,11 +891,26 @@ public sealed class ExBlockDef : IExDef {
     return this;
   }
 
-  /// <summary>Sets <c>attributes.handbook.groupBy</c>, the handbook variant grouping.</summary>
+  /// <summary>Sets <c>attributes.handbook.groupBy</c>, the handbook variant grouping. Keeps the
+  /// other <c>attributes.handbook</c> keys, so it and <see cref="HandbookPage"/> work in either
+  /// order.</summary>
   public ExBlockDef Handbook(params string[] groupBy) {
-    Nested("attributes")["handbook"] = new JObject {
-      ["groupBy"] = new JArray(groupBy),
-    };
+    JObject attributes = Nested("attributes");
+    JObject handbook = attributes["handbook"] as JObject ?? new JObject();
+    handbook["groupBy"] = new JArray(groupBy);
+    attributes["handbook"] = handbook;
+    return this;
+  }
+
+  /// <summary>Sets <c>attributes.handbook.page</c>, the code of the handbook text page that guides
+  /// this block; the block's handbook page links it when a text page of that code is loaded.
+  /// Keeps the other <c>attributes.handbook</c> keys.</summary>
+  /// <param name="pageCode">The <c>pageCode</c> of a <c>config/handbook</c> text page.</param>
+  public ExBlockDef HandbookPage(string pageCode) {
+    JObject attributes = Nested("attributes");
+    JObject handbook = attributes["handbook"] as JObject ?? new JObject();
+    handbook["page"] = pageCode;
+    attributes["handbook"] = handbook;
     return this;
   }
 

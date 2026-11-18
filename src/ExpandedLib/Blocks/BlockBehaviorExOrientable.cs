@@ -10,7 +10,7 @@ namespace ExpandedLib.Blocks;
 /// <summary>Places a block wearing the <c>side</c> variant the player's look implies; the family's
 /// replacement for vanilla's <c>HorizontalOrientable</c>.</summary>
 [BlockBehaviorRegister("ExOrientable", PrefixModId = false)]
-public class BlockBehaviorExOrientable : BlockBehavior {
+public partial class BlockBehaviorExOrientable : BlockBehavior {
   /// <summary>The variant group a player-oriented block writes its facing to.</summary>
   public const string SideVariant = "side";
 
