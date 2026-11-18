@@ -63,6 +63,11 @@ public class MetalDef {
   /// the emitter's default set.</summary>
   public List<string>? ItemForms { get; set; }
 
+  /// <summary>The forms of <see cref="ItemForms"/> whose storage flags gain the off-hand bit (256), so a
+  /// stack of the form can be held in the off hand. Null or empty -> none; a token that is not an emitted
+  /// form is ignored.</summary>
+  public List<string>? OffHandForms { get; set; }
+
   /// <summary>The vanilla texture every generated form paints with. Null -> the emitter's
   /// fallback.</summary>
   public string? TexturePath { get; set; }
