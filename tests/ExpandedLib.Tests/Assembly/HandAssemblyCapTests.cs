@@ -206,18 +206,30 @@ public class HandAssemblyCapTests {
     );
   }
 
-  // Fails when a crossing beside an occupied cell that does not shut it is refused: a pipe whose joint was refused, a structure filler, a block solid only on its top.
+  // Fails when the clear-cell check is dropped from OpenRefusal, so an end whose next cell holds a pipe side, a mismatched mouth, a machine wall, a canal or a part block takes a cap.
   [Theory]
-  [InlineData("turned pipe")]
-  [InlineData("filler host")]
-  [InlineData("solid on top only")]
-  public void FitCap_FitsBesideOccupiedNotSolid(string beside) {
+  [InlineData("air", null)]
+  [InlineData("full block", HandAssemblyServer.CapClosed)]
+  [InlineData("joined pipe", HandAssemblyServer.CapJoined)]
+  [InlineData("turned pipe", HandAssemblyServer.CapNoRoom)]
+  [InlineData("other family", HandAssemblyServer.CapNoRoom)]
+  [InlineData("passthrough arm", HandAssemblyServer.CapJoined)]
+  [InlineData("passthrough wall", HandAssemblyServer.CapClosed)]
+  [InlineData("filler host", HandAssemblyServer.CapNoRoom)]
+  [InlineData("canal", HandAssemblyServer.CapNoRoom)]
+  [InlineData("solid on top only", HandAssemblyServer.CapNoRoom)]
+  [InlineData("unloaded", HandAssemblyServer.CapJoined)]
+  public void FitCap_AnswersByWhatStandsInFront(string beside, string? code) {
     var scene = CapScene.Standing();
     scene.Beside(BlockFacing.NORTH, beside);
 
-    Assert.Null(scene.Fit(BlockFacing.NORTH));
+    AssemblyResult? result = scene.Fit(BlockFacing.NORTH);
 
-    Assert.NotNull(scene.Record.CapAt(BlockFacing.NORTH));
+    Assert.Equal(code, result?.Code);
+    Assert.Equal(
+      code == null,
+      scene.Record.CapAt(BlockFacing.NORTH) != null
+    );
   }
 
   // Fails when the check that the held stack is still the cap the packet names is dropped.
@@ -470,9 +482,9 @@ public class HandAssemblyCapTests {
     scene.AssertNothingTaken();
   }
 
-  // Fails when the aim takes the nearest arm whatever it is beside, not the nearest that takes a cap.
+  // Fails when the open-arm filter is restored in AimCap, so an end shut by a block beside it snaps the aim to the far open end.
   [Fact]
-  public void CapGesture_AimsTheNearestOpenArm() {
+  public void CapGesture_AimsTheEndNearestTheCrosshair() {
     var scene = CapScene.Standing();
     scene.Beside(BlockFacing.NORTH, "full block");
     var channel = new HandAssemblyControlTests.SentPackets();
@@ -486,9 +498,9 @@ public class HandAssemblyCapTests {
       out _
     );
 
-    Assert.Equal(BlockFacing.SOUTH, control.CapFace);
-    Assert.Null(control.CapRefusal);
-    Assert.False(control.Short);
+    Assert.Equal(BlockFacing.NORTH, control.CapFace);
+    Assert.Equal(HandAssemblyServer.CapClosed, control.CapRefusal);
+    Assert.True(control.Short);
   }
 
   #endregion
@@ -999,6 +1011,40 @@ public class HandAssemblyCapTests {
           World.Place(pos, turned);
           World.AddNode(pos, "test");
           break;
+        case "other family":
+          World.Place(pos, new MouthNode(_nextId++));
+          World.AddNode(pos, "test");
+          break;
+        case "passthrough arm":
+          TestNetworkBlock arm = TestNetworkBlock.Create(
+            "test",
+            "ns",
+            _nextId++
+          );
+          arm.SideSolid = new SmallBoolArray(
+            0x3F & ~(1 << BlockFacing.SOUTH.Index)
+          );
+          World.Place(pos, arm);
+          World.AddNode(pos, "test");
+          break;
+        case "passthrough wall":
+          TestNetworkBlock wall = TestNetworkBlock.Create(
+            "test",
+            "we",
+            _nextId++
+          );
+          wall.SideSolid = new SmallBoolArray(0x3F);
+          World.Place(pos, wall);
+          World.AddNode(pos, "test");
+          break;
+        case "canal":
+          World.Place(pos, Solid(new Block(), 0));
+          break;
+        case "unloaded":
+          World.UnloadChunkAt(pos);
+          break;
+        case "air":
+          break;
         case "filler host":
           World.Place(pos, Solid(new FillerHost(), 0x3F));
           break;
@@ -1032,6 +1078,22 @@ public class HandAssemblyCapTests {
 
   private sealed class FillerHost : Block, IFillerHost {
     public JsonObject? FillerOffsets => null;
+  }
+
+  private sealed class MouthNode : BlockNetworkNode {
+    public MouthNode(int id) {
+      TestBlocks.Configure(this, $"test:mouth-{id}", id);
+      SideSolid = new SmallBoolArray(0);
+      Type = "straight";
+      Orientation = "ns";
+    }
+
+    public override string NetworkType => "test";
+
+    public override bool HasConnectorAt(BlockFacing face) =>
+      face == BlockFacing.SOUTH;
+
+    public override bool AcceptsNeighbour(Block neighbour) => false;
   }
 
   private sealed class LumpedNode : BlockNetworkNode {

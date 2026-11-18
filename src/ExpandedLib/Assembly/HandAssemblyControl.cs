@@ -255,15 +255,7 @@ internal sealed class HandAssemblyControl {
     )
       return false;
     Vec3d hit = selection.HitPosition ?? new Vec3d(0.5, 0.5, 0.5);
-    BlockFacing? face =
-      HandAssemblyCaps.NearestArm(
-        accessor,
-        node,
-        pos,
-        hit,
-        arm =>
-          HandAssemblyCaps.FitRefusal(world, node, pos, record, arm) == null
-      ) ?? HandAssemblyCaps.NearestArm(accessor, node, pos, hit);
+    BlockFacing? face = HandAssemblyCaps.NearestArm(accessor, node, pos, hit);
     if (face == null)
       return false;
     CapAt = pos.Copy();

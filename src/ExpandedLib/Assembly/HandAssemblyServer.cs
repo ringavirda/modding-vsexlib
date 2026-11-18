@@ -26,6 +26,7 @@ internal static class HandAssemblyServer {
   internal const string NeedsToolMain = "exlib-handassembly-needstoolmain";
   internal const string CapClosed = "exlib-handassembly-capclosed";
   internal const string CapJoined = "exlib-handassembly-capjoined";
+  internal const string CapNoRoom = "exlib-handassembly-capnoroom";
 
   // Blocks added to the player's picking range.
   private const float RangeSlack = 1f;

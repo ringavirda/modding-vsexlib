@@ -35,7 +35,7 @@ internal static class HandAssemblyCaps {
       )
       .FirstOrDefault();
 
-  /// <summary>Why the end <paramref name="face"/> of a fixed piece takes no cap: it carries one already, it is joined to the piece beside it, or the block beside it closes it.</summary>
+  /// <summary>Why the end <paramref name="face"/> of a fixed piece takes no cap: it carries one already, it is joined to the piece beside it, the block beside it closes it, or the cell in front of it is not clear for the cap.</summary>
   /// <param name="world">The world read; its network system names the joined faces.</param>
   /// <param name="node">The piece's block.</param>
   /// <param name="cell">The piece's position.</param>
@@ -53,8 +53,8 @@ internal static class HandAssemblyCaps {
       ? HandAssemblyServer.Occupied
       : OpenRefusal(world, node, cell, face);
 
-  /// <summary>Why the uncapped end <paramref name="face"/> takes no cap: <see cref="HandAssemblyServer.CapJoined"/> when it is joined to the piece beside it, <see cref="HandAssemblyServer.CapClosed"/> when the block beside it closes it.</summary>
-  /// <returns>Null when the end is open.</returns>
+  /// <summary>Why the uncapped end <paramref name="face"/> takes no cap: <see cref="HandAssemblyServer.CapJoined"/> when it is joined to the piece beside it, <see cref="HandAssemblyServer.CapClosed"/> when the block beside it closes it, <see cref="HandAssemblyServer.CapNoRoom"/> when the cell in front of it is neither air nor replaceable by the piece.</summary>
+  /// <returns>Null when the end is open and clear.</returns>
   internal static string? OpenRefusal(
     IWorldAccessor world,
     BlockNetworkNode node,
@@ -75,12 +75,11 @@ internal static class HandAssemblyCaps {
         .Contains(face)
     )
       return HandAssemblyServer.CapJoined;
-    return NetworkFaces.ClosesOpening(
-      accessor,
-      cell.AddCopy(face),
-      face.Opposite
-    )
-      ? HandAssemblyServer.CapClosed
-      : null;
+    BlockPos front = cell.AddCopy(face);
+    if (NetworkFaces.ClosesOpening(accessor, front, face.Opposite))
+      return HandAssemblyServer.CapClosed;
+    return accessor.GetBlock(front).IsReplacableBy(node)
+      ? null
+      : HandAssemblyServer.CapNoRoom;
   }
 }
