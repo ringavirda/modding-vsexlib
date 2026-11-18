@@ -21,7 +21,7 @@ public class HandAssemblyFixTests {
   private static readonly BlockPos East = Cell.AddCopy(BlockFacing.EAST);
 
   private const string SpecJson =
-    """{"handAssembly":{"tool":"test:wrench-*","fastener":"test:bolt","perJoint":2}}""";
+    """{"handAssembly":{"tool":"test:wrench-*","fastener":"test:bolt","perJoint":2,"cap":"test:cap-cast"}}""";
 
   #region Checks before anything is taken
 
@@ -579,6 +579,7 @@ public class HandAssemblyFixTests {
       Hammer.StorageFlags =
         EnumItemStorageFlags.General | EnumItemStorageFlags.Offhand;
       Bolt = world.RegisterItem("test:bolt");
+      CapItem = world.RegisterItem("test:cap-cast");
       player.HoldOffHand(new ItemStack(Wrench));
       player.Hold(new ItemStack(held));
       player.Player.InventoryManager.Inventories["backpack-test"] =
@@ -590,6 +591,7 @@ public class HandAssemblyFixTests {
     public Item Wrench { get; }
     public Item Hammer { get; }
     public Item Bolt { get; }
+    public Item CapItem { get; }
     public Block PlainPart { get; private set; } = null!;
     public Block ChairPart { get; private set; } = null!;
 
