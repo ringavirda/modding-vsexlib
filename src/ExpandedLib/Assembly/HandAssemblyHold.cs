@@ -9,6 +9,11 @@ internal sealed class HandAssemblyHold {
   /// <summary>Seconds a hold takes when it makes or breaks no joint.</summary>
   public const float NoJointSeconds = 0.5f;
 
+  /// <summary>The sound each strike plays when the tool brings none or the wrench's latch.</summary>
+  internal const string StrokeSound = "game:sounds/block/heavymetal-hit";
+
+  private const string LatchSound = "sounds/effect/latch";
+
   private string _target = "";
   private string _what = "";
   private int _slot;
@@ -40,7 +45,7 @@ internal sealed class HandAssemblyHold {
   /// <param name="what">Names what the hold does there: the candidate's code, or a take-off.</param>
   /// <param name="slot">The hotbar slot holding the part or tool.</param>
   /// <param name="joints">Joints made or broken.</param>
-  /// <param name="tool">The tool's stroke defaults; null for the default stroke with no animation or sound.</param>
+  /// <param name="tool">The tool's stroke defaults; null for the default stroke with no animation. The strike sound is <see cref="StrokeSound"/> unless the tool brings a sound other than the wrench's latch.</param>
   public void Begin(
     string target,
     string what,
@@ -54,7 +59,10 @@ internal sealed class HandAssemblyHold {
     _stroke = tool?.Stroke ?? CraftToolDefault.DefaultStroke;
     _strike = tool?.Strike ?? CraftToolDefault.DefaultStrike;
     _animation = tool?.Animation;
-    _sound = tool?.Sound;
+    _sound = tool?.Sound switch {
+      null or LatchSound or "game:" + LatchSound => StrokeSound,
+      string own => own,
+    };
     _seconds = Seconds(joints, _stroke);
     _elapsed = 0f;
     _swings = 0;

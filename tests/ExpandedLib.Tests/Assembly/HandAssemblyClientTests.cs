@@ -104,22 +104,64 @@ public class HandAssemblyClientTests {
     Assert.Equal(["start hammerhit"], effects.Log);
     Assert.False(hold.Advance(0.3f, effects));
     Assert.Equal(
-      ["start hammerhit", "strike sounds/effect/latch"],
+      ["start hammerhit", "strike " + HandAssemblyHold.StrokeSound],
       effects.Log
     );
     Assert.False(hold.Advance(1f, effects));
     Assert.Equal(
       [
         "start hammerhit",
-        "strike sounds/effect/latch",
+        "strike " + HandAssemblyHold.StrokeSound,
         "start hammerhit",
-        "strike sounds/effect/latch",
+        "strike " + HandAssemblyHold.StrokeSound,
       ],
       effects.Log
     );
     Assert.True(hold.Advance(0.7f, effects));
     Assert.Equal("stop hammerhit", effects.Log[^1]);
     Assert.False(hold.Active);
+  }
+
+  // Fails when a hold with no tool strikes no sound.
+  [Fact]
+  public void Hold_WithoutAToolStrikesTheSound() {
+    var hold = new HandAssemblyHold();
+    var effects = new Effects();
+    hold.Begin("c|n", "tee", 2, 1, null);
+
+    hold.Advance(0.4f, effects);
+
+    Assert.Equal(["strike " + HandAssemblyHold.StrokeSound], effects.Log);
+  }
+
+  // Fails when the wrench plays its latch instead of the hand assembly sound.
+  [Fact]
+  public void Hold_WithTheWrenchStrikesTheHandAssemblySound() {
+    var hold = new HandAssemblyHold();
+    var effects = new Effects();
+    hold.Begin("c|n", "tee", 2, 1, Wrench);
+
+    hold.Advance(0.4f, effects);
+
+    Assert.Equal(
+      ["start hammerhit", "strike game:sounds/block/heavymetal-hit"],
+      effects.Log
+    );
+  }
+
+  // Fails when a tool with a sound of its own has it replaced by the hand assembly sound.
+  [Fact]
+  public void Hold_WithAHammerKeepsItsOwnHit() {
+    var hold = new HandAssemblyHold();
+    var effects = new Effects();
+    hold.Begin("c|n", "tee", 2, 1, CraftToolDefault.Hammer);
+
+    hold.Advance(0.5f, effects);
+
+    Assert.Equal(
+      ["start hammerhit", "strike sounds/effect/anvilhit"],
+      effects.Log
+    );
   }
 
   // Fails when progress is not the fraction of the time done.
