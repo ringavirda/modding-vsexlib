@@ -54,7 +54,10 @@ public class HandAssemblyHelpTests {
     Assert.Equal(scene.Wrench, Assert.Single(fix.Itemstacks).Collectible);
     Assert.Null(
       Assert
-        .Single(help, w => w.ActionLangCode == ExlibLang.BlockhelpHandassemblyStep)
+        .Single(
+          help,
+          w => w.ActionLangCode == ExlibLang.BlockhelpHandassemblyStep
+        )
         .Itemstacks
     );
   }

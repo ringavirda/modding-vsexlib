@@ -634,7 +634,8 @@ public abstract class BlockNetworkNode
       List<WorldInteraction> fixedHelp =
       [
         .. baseHelp,
-        new WorldInteraction {
+        new WorldInteraction
+        {
           ActionLangCode = ExlibLang.BlockhelpHandassemblyTakeoff,
           MouseButton = EnumMouseButton.Right,
           HotKeyCode = "shift",
