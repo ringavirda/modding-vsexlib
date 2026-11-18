@@ -187,7 +187,7 @@ internal static class SetupSteps {
       "turn",
     ],
     ["takeoff"] = ["at"],
-    ["cap"] = ["at", "face", "fails"],
+    ["cap"] = ["id", "at", "face", "fails"],
     ["pickup"] = ["at", "code", "offHand"],
   };
 
