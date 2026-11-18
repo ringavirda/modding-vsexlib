@@ -274,13 +274,68 @@ public class MoltenNetwork(BlockNetworkModSystem system) : BlockNetwork(system) 
         if (CompareFlowOrder(a, b, distFromStart) >= 0)
           continue;
 
-        FlowEdge(a, b, maxFlow, rules, distFromStart, distToMold, world);
+        int arms =
+          DistanceOf(distFromStart, b.Pos) < DistanceOf(distFromStart, a.Pos)
+          && b.Cell.CellAmount > a.Cell.CellAmount
+            ? RemainingArms(blockAccessor, b, a, distFromStart)
+            : 1;
+        FlowEdge(
+          a,
+          b,
+          maxFlow,
+          rules,
+          distFromStart,
+          distToMold,
+          world,
+          arms: arms
+        );
       }
     }
 
     // Thermal pass: cool / solidify each cell.
     foreach (var c in cells)
       c.Cell.UpdateThermal(world);
+  }
+
+  /// <summary>The neighbours farther than <paramref name="giver"/> from the source that it can still
+  /// hand metal to this tick, <paramref name="driver"/> included: neither sealed nor solidified, with
+  /// room, holding less than the giver and no other metal, and not yet past in the flow order. At
+  /// least 1.</summary>
+  private int RemainingArms(
+    IBlockAccessor blockAccessor,
+    (BlockPos Pos, IMoltenCell Cell) giver,
+    (BlockPos Pos, IMoltenCell Cell) driver,
+    Dictionary<BlockPos, int> distFromStart
+  ) {
+    if (blockAccessor.GetBlock(giver.Pos) is not BlockNetworkNode gNode)
+      return 1;
+    int giverDist = DistanceOf(distFromStart, giver.Pos);
+    int arms = 0;
+    foreach (var face in BlockFacing.HORIZONTALS) {
+      BlockPos npos = giver.Pos.AddCopy(face);
+      if (
+        !JointOpen(blockAccessor, giver.Pos, gNode, face, npos)
+        || !Nodes.Contains(npos)
+        || blockAccessor.GetBlockEntity(npos) is not IMoltenCell x
+      )
+        continue;
+      if (
+        x.Sealed
+        || x.Solidified
+        || x.CellAmount >= x.MaxUnitCapacity
+        || x.CellAmount >= giver.Cell.CellAmount
+        || (x.CellAmount > 0 && x.CellMetalType != giver.Cell.CellMetalType)
+        || DistanceOf(distFromStart, npos) <= giverDist
+      )
+        continue;
+      if (
+        !npos.Equals(driver.Pos)
+        && CompareFlowOrder(driver, (npos, x), distFromStart) >= 0
+      )
+        continue;
+      arms++;
+    }
+    return Math.Max(arms, 1);
   }
 
   /// <summary>The rules of a connection whose two cells both return rules, or null when either
@@ -310,7 +365,9 @@ public class MoltenNetwork(BlockNetworkModSystem system) : BlockNetwork(system) 
   /// cell of smaller <see cref="IMoltenCell.Fall"/> when the falls differ, and from a downhill edge's
   /// upper cell of larger fall, handing over its whole charge, else toward the nearer end
   /// in <paramref name="distToMold"/>, else by <paramref name="rules"/> or the defaults;
-  /// <paramref name="downhillOnly"/> makes the edge one-way from <paramref name="a"/>.</summary>
+  /// <paramref name="downhillOnly"/> makes the edge one-way from <paramref name="a"/>. A level giver
+  /// pushing on to a farther cell hands it at most its spare over the skin split evenly across
+  /// <paramref name="arms"/>, the remainder to this one.</summary>
   private static void FlowEdge(
     (BlockPos Pos, IMoltenCell Cell) a,
     (BlockPos Pos, IMoltenCell Cell) b,
@@ -319,7 +376,8 @@ public class MoltenNetwork(BlockNetworkModSystem system) : BlockNetwork(system) 
     Dictionary<BlockPos, int> distFromStart,
     Dictionary<BlockPos, int> distToMold,
     IWorldAccessor world,
-    bool downhillOnly = false
+    bool downhillOnly = false,
+    int arms = 1
   ) {
     var aCap = a.Cell.MaxUnitCapacity;
     var bCap = b.Cell.MaxUnitCapacity;
@@ -381,11 +439,14 @@ public class MoltenNetwork(BlockNetworkModSystem system) : BlockNetwork(system) 
     else if (
       DistanceOf(distFromStart, receiver.Pos)
       > DistanceOf(distFromStart, giver.Pos)
-    )
-      step =
+    ) {
+      int spare = giver.Cell.CellAmount - ExlibValues.MoltenMinFlowAmount;
+      step = Math.Min(
         giver.Cell.CellAmount
-        - Math.Max(receiver.Cell.CellAmount, ExlibValues.MoltenMinFlowAmount);
-    else
+          - Math.Max(receiver.Cell.CellAmount, ExlibValues.MoltenMinFlowAmount),
+        spare - (arms - 1) * (spare / arms)
+      );
+    } else
       step = diff / 2;
     Transfer(giver, receiver, step > maxFlow ? maxFlow : step, world);
   }

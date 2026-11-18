@@ -1,5 +1,6 @@
 using System;
 using System.Linq;
+using ExpandedLib.Industry.Casting;
 using ExpandedLib.Industry.Molten;
 using ExpandedLib.Networks;
 using ExpandedLib.Testing;
@@ -163,6 +164,119 @@ public class MoltenLevelRunTests {
     }
   }
 
+  // Fails when a tee hands each arm all but its skin in turn: the arm sorted first takes the whole
+  // spare every tick and the other stands empty past the cold-shut time.
+  [Fact]
+  public void A_tee_fed_beside_the_start_feeds_both_drawn_arms_every_tick() {
+    var w = new TestWorld();
+    w.RegisterNetwork("molten", sys => new MoltenNetwork(sys));
+    var source = new Cell { IsFlowSource = true, MaxUnitCapacity = 200 };
+    var tee = new Cell { MaxUnitCapacity = 200 };
+    var stub = new Cell { MaxUnitCapacity = 100 };
+    var coupling = new Cell { MaxUnitCapacity = 100 };
+    (BlockPos Pos, Cell Cell)[] cells =
+    [
+      (new BlockPos(2, 0, 0), source),
+      (new BlockPos(1, 0, 0), tee),
+      (new BlockPos(0, 0, 0), stub),
+      (new BlockPos(1, 0, -1), coupling),
+    ];
+    foreach (var (pos, cell) in cells) {
+      w.Place(pos, Cross, cell);
+      w.Attach(cell);
+      w.AddNode(pos, "molten");
+    }
+    void Tick() {
+      source.PushMetalRaw(100, Iron, 1500f, null!);
+      w.Tick();
+    }
+    Tick();
+    Assert.True(tee.CellAmount > 0);
+    Tick();
+    Assert.True(stub.CellAmount > 0, $"stub {stub.CellAmount}");
+    Assert.True(coupling.CellAmount > 0, $"coupling {coupling.CellAmount}");
+    int stubIdle = 0,
+      couplingIdle = 0,
+      stubLongest = 0,
+      couplingLongest = 0;
+    for (int t = 0; t < 7; t++) {
+      stub.DrainMetal(stub.CellAmount);
+      coupling.DrainMetal(coupling.CellAmount);
+      Tick();
+      stubIdle = stub.CellAmount == 0 ? stubIdle + 1 : 0;
+      couplingIdle = coupling.CellAmount == 0 ? couplingIdle + 1 : 0;
+      stubLongest = Math.Max(stubLongest, stubIdle);
+      couplingLongest = Math.Max(couplingLongest, couplingIdle);
+    }
+    // One network tick is one second.
+    int limit = (int)SandStationLogic.ColdShutSeconds;
+    Assert.True(stubLongest <= limit, $"stub stood empty {stubLongest} ticks");
+    Assert.True(
+      couplingLongest <= limit,
+      $"coupling stood empty {couplingLongest} ticks"
+    );
+    Assert.Equal(100, stub.CellAmount + coupling.CellAmount);
+  }
+
+  // Fails when the share counts the arms already served or the start (three arms take 34, 22, 16),
+  // or counts an arm that takes nothing: a full, sealed, solid, other-metal or fuller last arm leaves a
+  // third of the spare in the tee.
+  [Theory]
+  [InlineData("three arms", 100, 34, 33, 33)]
+  [InlineData("short west", 20, 20, 40, 40)]
+  [InlineData("full south", 100, 50, 50, 55)]
+  [InlineData("sealed south", 100, 50, 50, 0)]
+  [InlineData("solid south", 100, 50, 50, 0)]
+  [InlineData("copper south", 100, 50, 50, 5)]
+  [InlineData("fuller south", 100, 50, 50, 80)]
+  public void A_tee_shares_its_spare_between_the_arms_that_can_take_it(
+    string south,
+    int westRoom,
+    int westAfter,
+    int northAfter,
+    int southAfter
+  ) {
+    var w = new TestWorld();
+    w.RegisterNetwork("molten", sys => new MoltenNetwork(sys));
+    var tee = new Cell { MaxUnitCapacity = 200 };
+    var west = new Cell { MaxUnitCapacity = westRoom };
+    var north = new Cell { MaxUnitCapacity = 100 };
+    var southCell = new Cell
+    {
+      MaxUnitCapacity = south == "fuller south" ? 200 : 100,
+      Sealed = south == "sealed south",
+      Solidified = south == "solid south",
+    };
+    (BlockPos Pos, Cell Cell)[] cells =
+    [
+      (
+        new BlockPos(2, 0, 0),
+        new Cell { IsFlowSource = true, MaxUnitCapacity = 200 }
+      ),
+      (new BlockPos(1, 0, 0), tee),
+      (new BlockPos(0, 0, 0), west),
+      (new BlockPos(1, 0, -1), north),
+      (new BlockPos(1, 0, 1), southCell),
+    ];
+    foreach (var (pos, cell) in cells) {
+      w.Place(pos, Cross, cell);
+      w.Attach(cell);
+      w.AddNode(pos, "molten");
+    }
+    tee.PushMetalRaw(110, Iron, 1500f, null!);
+    if (south == "full south")
+      southCell.PushMetalRaw(100, Iron, 1500f, null!);
+    if (south == "copper south")
+      southCell.PushMetalRaw(5, "game:ingot-copper", 1500f, null!);
+    if (south == "fuller south")
+      southCell.PushMetalRaw(150, Iron, 1500f, null!);
+    w.Tick();
+    Assert.Equal(
+      [westAfter, northAfter, southAfter],
+      new[] { west, north, southCell }.Select(c => c.CellAmount)
+    );
+  }
+
   // Fails when cells at one distance from the start hand over all but the skin in place of half.
   [Fact]
   public void Two_cells_at_one_distance_level_by_half() {
@@ -205,8 +319,7 @@ public class MoltenLevelRunTests {
       );
   }
 
-  /// <summary>A molten cell holding whole units at a fixed 1500 C, never sealed or
-  /// solidified.</summary>
+  /// <summary>A molten cell holding whole units at a fixed 1500 C.</summary>
   private sealed class Cell : BlockEntity, IMoltenCell {
     public int CellAmount { get; set; }
 
@@ -216,9 +329,9 @@ public class MoltenLevelRunTests {
 
     public int MaxUnitCapacity { get; init; }
 
-    public bool Sealed => false;
+    public bool Sealed { get; init; }
 
-    public bool Solidified => false;
+    public bool Solidified { get; init; }
 
     public bool IsFlowSource { get; init; }
 
