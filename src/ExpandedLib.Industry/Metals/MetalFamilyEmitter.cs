@@ -73,8 +73,7 @@ public static class MetalFamilyEmitter {
             token,
             out System.Func<MetalDef, string, ExItemDef>? build
           )
-        )
-        {
+        ) {
           ExItemDef def = build(metal, domain);
           yield return metal.OffHandForms?.Contains(token) == true
             ? def.StorageFlags(OffHandStorageFlags)
