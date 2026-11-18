@@ -696,7 +696,13 @@ public abstract class BlockNetworkNode
 
     foreach (var kvp in AllowedOrientations) {
       foreach (string orient in kvp.Value) {
-        GetRotations(orient, out float rotX, out float rotY, out float rotZ);
+        GetTurnedRotations(
+          orient,
+          Variant["turn"],
+          out float rotX,
+          out float rotY,
+          out float rotZ
+        );
         string cacheKey = $"{kvp.Key}-{orient}";
 
         Cuboidf[] rotatedCollision = new Cuboidf[CollisionBoxes.Length];
@@ -727,7 +733,13 @@ public abstract class BlockNetworkNode
         if (this is IFillerHost host)
           turned = row.Turned(((host.StructureAngle % 360) + 360) % 360);
         else {
-          GetRotations(orient, out float rotX, out float rotY, out float rotZ);
+          GetTurnedRotations(
+            orient,
+            Variant["turn"],
+            out float rotX,
+            out float rotY,
+            out float rotZ
+          );
           turned = row.Turned(box => box.RotatedCopy(rotX, rotY, rotZ, pivot));
         }
         cellCache[$"{kvp.Key}-{orient}"] = new ControlBoxes.PlacedCell(turned);
@@ -789,6 +801,25 @@ public abstract class BlockNetworkNode
     RenderBoxDelegate renderBoxHandler
   ) => ControlOutline.Render(this, api, blockSel, renderBoxHandler);
 #endif
+
+  /// <summary>Returns the Euler rotation in degrees, applied about the block centre in the tessellator's order
+  /// (Z, then Y, then X), for <paramref name="orientation"/> turned to <paramref name="turn"/>; the selection,
+  /// collision and cell boxes take it. The default ignores <paramref name="turn"/> and returns
+  /// <see cref="GetRotations"/>.</summary>
+  /// <param name="orientation">The orientation token, e.g. "ns" or "ud".</param>
+  /// <param name="turn">The face letter of the block's <c>turn</c> variant; null when the block has no turn group.
+  /// May name a face along the token's axis while the caches fill for other orientations: an override returns the
+  /// unturned rotation then.</param>
+  /// <param name="rotX">Degrees about X.</param>
+  /// <param name="rotY">Degrees about Y.</param>
+  /// <param name="rotZ">Degrees about Z.</param>
+  protected virtual void GetTurnedRotations(
+    string orientation,
+    string? turn,
+    out float rotX,
+    out float rotY,
+    out float rotZ
+  ) => GetRotations(orientation, out rotX, out rotY, out rotZ);
 
   /// <summary>Returns the Euler rotation angles in degrees for <paramref name="orientation"/>.</summary>
   protected virtual void GetRotations(
@@ -945,10 +976,24 @@ public abstract class BlockNetworkNode
   public override ItemStack OnPickBlock(IWorldAccessor world, BlockPos pos) =>
     FallbackStack(world);
 
-  /// <summary>One stack of this def's fallback-orientation variant, or of this block when that variant
-  /// is not registered.</summary>
+  /// <summary>One stack of this def's fallback-orientation variant at its first turn when the def declares a
+  /// turn group, or of this block when that variant is not registered.</summary>
   protected ItemStack FallbackStack(IWorldAccessor world) {
     string fallback = GetFallbackOrientation(Type);
+    if (Variant["turn"] != null) {
+      IEnumerable<string> turns = ExDefinitions
+        .DefinitionsOf(GetType(), Code.Domain)
+        .SelectMany(def => def.VariantGroups)
+        .Where(group => group.Name == "turn")
+        .SelectMany(group => group.States);
+      foreach (string turn in turns) {
+        Block? turned = world.GetBlock(
+          this.WithVariants(["orientation", "turn"], [fallback, turn])
+        );
+        if (turned != null)
+          return new ItemStack(turned);
+      }
+    }
     AssetLocation loc = this.WithVariant("orientation", fallback);
     return new ItemStack(world.GetBlock(loc) ?? this);
   }

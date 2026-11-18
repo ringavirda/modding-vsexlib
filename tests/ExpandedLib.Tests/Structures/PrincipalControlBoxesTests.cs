@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using ExpandedLib.Blocks;
+using ExpandedLib.Definitions;
 using ExpandedLib.Helpers;
 using ExpandedLib.Networks;
 using ExpandedLib.Structures;
@@ -230,6 +231,93 @@ public class PrincipalControlBoxesTests {
     );
   }
 
+  private const string TurnCell = """
+    {
+      "collisionBoxes": [{ "x1": 0.4, "y1": 0.6, "z1": 0.4, "x2": 0.6, "y2": 0.9, "z2": 0.6 }],
+      "selectionBoxes": [{ "x1": 0.4, "y1": 0.6, "z1": 0.4, "x2": 0.6, "y2": 0.9, "z2": 0.6 }]
+    }
+    """;
+
+  // Fails when PrecomputeCells turns the cell by GetRotations instead of GetTurnedRotations.
+  [Fact]
+  public void Turn_CellBoxesTakeTurnedRotation() {
+    var node = TestBlocks.Configure(
+      new TurnNode(),
+      "test:node-ns-w",
+      62,
+      ("orientation", "ns"),
+      ("turn", "w")
+    );
+    node.Attributes = Attributes(TurnCell);
+    node.SetNetworkTypeForTest("straight");
+    node.ApplyOrientationForTest("ns");
+    node.Precompute();
+
+    Cuboidf box = Assert.Single(
+      node.GetCollisionBoxes(Substitute.For<IBlockAccessor>(), Pos)
+    );
+
+    Assert.Equal(0.1f, box.X1, 4);
+    Assert.Equal(0.4f, box.X2, 4);
+    Assert.Equal(0.4f, box.Y1, 4);
+    Assert.Equal(0.6f, box.Y2, 4);
+  }
+
+  // Fails when PrecomputeRotatedBoxes turns the plain boxes by GetRotations instead of GetTurnedRotations.
+  [Fact]
+  public void Turn_PlainBoxesTakeTurnedRotation() {
+    var node = TestBlocks.Configure(
+      new TurnNode(),
+      "test:node-ns-w",
+      63,
+      ("orientation", "ns"),
+      ("turn", "w")
+    );
+    node.CollisionBoxes = [new Cuboidf(0.4f, 0.6f, 0.4f, 0.6f, 0.9f, 0.6f)];
+    node.SelectionBoxes = node.CollisionBoxes;
+    node.SetNetworkTypeForTest("straight");
+    node.ApplyOrientationForTest("ns");
+    node.Precompute();
+
+    Cuboidf box = Assert.Single(
+      node.GetSelectionBoxes(Substitute.For<IBlockAccessor>(), Pos)
+    );
+
+    Assert.Equal(0.1f, box.X1, 4);
+    Assert.Equal(0.4f, box.X2, 4);
+  }
+
+  // Fails when FallbackStack drops the turn reset and asks for the fallback orientation at the block's own turn.
+  [Fact]
+  public void Turn_FallbackStackTakesFirstTurn() {
+    var registry = new Dictionary<string, Block>();
+    foreach (string turn in new[] { "u", "d", "e", "w" })
+      registry[$"turnprobe:node-ns-{turn}"] = TestBlocks.Configure(
+        new DefNode(),
+        $"turnprobe:node-ns-{turn}",
+        70,
+        ("orientation", "ns"),
+        ("turn", turn)
+      );
+    var world = Substitute.For<IWorldAccessor>();
+    world
+      .GetBlock(Arg.Any<AssetLocation>())
+      .Returns(call =>
+        registry.GetValueOrDefault(call.Arg<AssetLocation>().ToString())
+      );
+    var picked = TestBlocks.Configure(
+      new DefNode(),
+      "turnprobe:node-ud-n",
+      71,
+      ("orientation", "ud"),
+      ("turn", "n")
+    );
+
+    ItemStack stack = picked.OnPickBlock(world, Pos);
+
+    Assert.Equal("turnprobe:node-ns-u", stack.Collectible.Code.ToString());
+  }
+
   private static JsonObject Attributes(string? cell) =>
     new(
       cell == null
@@ -287,6 +375,36 @@ public class PrincipalControlBoxesTests {
     protected override string GetFallbackOrientation(string? type) => "ns";
 
     public void Precompute() => PrecomputeRotatedBoxes();
+  }
+
+  private sealed class TurnNode : NodeBase {
+    protected override void GetTurnedRotations(
+      string orientation,
+      string? turn,
+      out float rotX,
+      out float rotY,
+      out float rotZ
+    ) {
+      base.GetTurnedRotations(orientation, turn, out rotX, out rotY, out rotZ);
+      if (turn == "w")
+        rotZ = 90;
+    }
+  }
+
+  private sealed class DefNode : BlockNetworkNode, IExBlockDefProvider {
+    public override string NetworkType => "test";
+
+    public static IEnumerable<ExBlockDef> Definitions(string domain) =>
+      domain == "turnprobe"
+        ?
+        [
+          ExBlockDef
+            .Create(domain, "node")
+            .VariantGroup("orientation", "ns", "ud")
+            .VariantGroup("turn", "u", "d", "n", "s", "e", "w")
+            .SkipVariants("*-ns-n", "*-ns-s", "*-ud-u", "*-ud-d"),
+        ]
+        : [];
   }
 
   private sealed class PlainNode : NodeBase { }
