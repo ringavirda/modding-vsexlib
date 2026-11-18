@@ -1,11 +1,11 @@
 using Vintagestory.API.Client;
+using Vintagestory.API.Config;
 
 namespace ExpandedLib.Assembling;
 
-/// <summary>The one line of text hand assembly shows near the bottom of the screen.</summary>
+/// <summary>The text hand assembly shows near the bottom of the screen: one line where it fits the screen, else whole lines growing upward from the one line's place.</summary>
 internal sealed class HandAssemblyHudDialog : HudElement {
   private const string TextKey = "line";
-  private const double Width = 640;
   private const double Gap = 8;
 
   /// <summary>Lines of held-item help the line clears: hand assembly's two and one the game may add.</summary>
@@ -20,19 +20,43 @@ internal sealed class HandAssemblyHudDialog : HudElement {
   /// <summary>Step between help lines: the hotbar's <c>DrawWorldInteractionUtil.UnscaledLineHeight</c> of 25 plus the 8 <c>ComposeBlockWorldInteractionHelp</c> adds.</summary>
   internal const double HelpLineStep = 33;
 
+  private const double ScreenMargin = 40;
+  private const double WidthSlack = 8;
+
+  private readonly CairoFont _font = CairoFont.WhiteSmallText();
+  private string _text = "";
+  private double _maxWidth;
+
   public HandAssemblyHudDialog(ICoreClientAPI capi)
     : base(capi) {
+    Compose(HandAssemblyHud.Layout("", 0, MeasureUnscaled));
+  }
+
+  private static double Scale => RuntimeEnv.GUIScale;
+
+  private double MeasureUnscaled(string text) =>
+    _font.GetTextExtents(text).Width / Scale;
+
+  /// <summary>Width the text may take: the screen's width less its margins, in unscaled GUI px.</summary>
+  private double ScreenWidth => (capi.Render.FrameWidth / Scale) - ScreenMargin;
+
+  private void Compose(HandAssemblyHud.HudLayout layout) {
     ElementBounds dialog = ElementStdBounds
       .AutosizedMainDialog.WithAlignment(EnumDialogArea.CenterBottom)
       .WithFixedAlignmentOffset(0, BottomOffset(HeldHelpLines));
-    ElementBounds text = ElementBounds.Fixed(0, 0, Width, 24);
+    ElementBounds text = ElementBounds.Fixed(
+      0,
+      0,
+      layout.Width + WidthSlack,
+      layout.Height
+    );
     dialog.BothSizing = ElementSizing.FitToChildren;
     dialog.WithChild(text);
     SingleComposer = capi
       .Gui.CreateCompo("exlib-handassembly-hud", dialog)
       .AddDynamicText(
-        "",
-        CairoFont.WhiteSmallText(),
+        string.Join("\n", layout.Lines),
+        _font,
         EnumTextOrientation.Center,
         text,
         TextKey
@@ -48,9 +72,14 @@ internal sealed class HandAssemblyHudDialog : HudElement {
 
   public override bool ShouldReceiveKeyboardEvents() => false;
 
-  /// <summary>Shows <paramref name="line"/>, opening the element when it is closed.</summary>
+  /// <summary>Shows <paramref name="line"/>, sized to it and the screen's width and recomposed when either changed, opening the element when it is closed.</summary>
   public void Show(string line) {
-    SingleComposer.GetDynamicText(TextKey).SetNewText(line);
+    double maxWidth = ScreenWidth;
+    if (line != _text || maxWidth != _maxWidth) {
+      _text = line;
+      _maxWidth = maxWidth;
+      Compose(HandAssemblyHud.Layout(line, maxWidth, MeasureUnscaled));
+    }
     if (!IsOpened())
       TryOpen();
   }

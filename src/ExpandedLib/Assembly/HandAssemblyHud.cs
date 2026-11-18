@@ -79,6 +79,47 @@ internal static class HandAssemblyHud {
     return line.ToString();
   }
 
+  /// <summary>Height of one line of the HUD's text, in unscaled GUI px.</summary>
+  internal const double LineHeight = 24;
+
+  /// <summary>The HUD's text broken into whole lines, with the widest line's width and the height of all of them.</summary>
+  /// <param name="Lines">The lines, in order; one empty line for empty text.</param>
+  /// <param name="Width">The widest line's measured width, in the unit <c>measure</c> returns.</param>
+  /// <param name="Height">The lines' total height, in unscaled GUI px.</param>
+  internal readonly record struct HudLayout(
+    IReadOnlyList<string> Lines,
+    double Width,
+    double Height
+  );
+
+  /// <summary>Breaks <paramref name="text"/> between words into lines no wider than <paramref name="maxWidth"/>; text that fits stays one line. A word wider than <paramref name="maxWidth"/> stands alone on its line, uncut.</summary>
+  /// <param name="text">The line to show; words are separated by single spaces.</param>
+  /// <param name="maxWidth">The widest a line may be, in the unit <c>measure</c> returns.</param>
+  /// <param name="measure">The width of a string in the font the text is drawn in.</param>
+  public static HudLayout Layout(
+    string text,
+    double maxWidth,
+    Func<string, double> measure
+  ) {
+    var lines = new List<string>();
+    if (measure(text) <= maxWidth)
+      lines.Add(text);
+    else {
+      var current = new StringBuilder();
+      foreach (string word in text.Split(' ')) {
+        if (current.Length > 0 && measure(current + " " + word) > maxWidth) {
+          lines.Add(current.ToString());
+          current.Clear();
+        }
+        if (current.Length > 0)
+          current.Append(' ');
+        current.Append(word);
+      }
+      lines.Add(current.ToString());
+    }
+    return new HudLayout(lines, lines.Max(measure), lines.Count * LineHeight);
+  }
+
   private static char Letter(BlockFacing face) =>
     char.ToUpperInvariant(face.Code[0]);
 }
