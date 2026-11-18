@@ -277,7 +277,7 @@ public class MoltenNetwork(BlockNetworkModSystem system) : BlockNetwork(system) 
         int arms =
           DistanceOf(distFromStart, b.Pos) < DistanceOf(distFromStart, a.Pos)
           && b.Cell.CellAmount > a.Cell.CellAmount
-            ? RemainingArms(blockAccessor, b, a, distFromStart)
+            ? RemainingArms(blockAccessor, b, a, distFromStart, distToMold)
             : 1;
         FlowEdge(
           a,
@@ -297,19 +297,22 @@ public class MoltenNetwork(BlockNetworkModSystem system) : BlockNetwork(system) 
       c.Cell.UpdateThermal(world);
   }
 
-  /// <summary>The neighbours farther than <paramref name="giver"/> from the source that it can still
-  /// hand metal to this tick, <paramref name="driver"/> included: neither sealed nor solidified, with
-  /// room, holding less than the giver and no other metal, and not yet past in the flow order. At
-  /// least 1.</summary>
+  /// <summary>The level neighbours <paramref name="giver"/> still pushes on to this tick,
+  /// <paramref name="driver"/> included: farther than it from the source, of its fall, neither
+  /// sealed, solidified nor a drain, with room, holding less than the giver and no other metal, on a
+  /// connection that neither conveys nor runs toward an open mold, and not yet past in the flow
+  /// order. At least 1.</summary>
   private int RemainingArms(
     IBlockAccessor blockAccessor,
     (BlockPos Pos, IMoltenCell Cell) giver,
     (BlockPos Pos, IMoltenCell Cell) driver,
-    Dictionary<BlockPos, int> distFromStart
+    Dictionary<BlockPos, int> distFromStart,
+    Dictionary<BlockPos, int> distToMold
   ) {
     if (blockAccessor.GetBlock(giver.Pos) is not BlockNetworkNode gNode)
       return 1;
     int giverDist = DistanceOf(distFromStart, giver.Pos);
+    bool giverInDraw = distToMold.TryGetValue(giver.Pos, out int giverToMold);
     int arms = 0;
     foreach (var face in BlockFacing.HORIZONTALS) {
       BlockPos npos = giver.Pos.AddCopy(face);
@@ -322,11 +325,21 @@ public class MoltenNetwork(BlockNetworkModSystem system) : BlockNetwork(system) 
       if (
         x.Sealed
         || x.Solidified
+        || x.AcceptsSubMinimumFlow
+        || x.Fall != giver.Cell.Fall
         || x.CellAmount >= x.MaxUnitCapacity
         || x.CellAmount >= giver.Cell.CellAmount
         || (x.CellAmount > 0 && x.CellMetalType != giver.Cell.CellMetalType)
         || DistanceOf(distFromStart, npos) <= giverDist
       )
+        continue;
+      if (
+        giverInDraw
+        && distToMold.TryGetValue(npos, out int armToMold)
+        && armToMold != giverToMold
+      )
+        continue;
+      if (EdgeRules(giver.Cell.FlowRules, x.FlowRules)?.Conveys == true)
         continue;
       if (
         !npos.Equals(driver.Pos)

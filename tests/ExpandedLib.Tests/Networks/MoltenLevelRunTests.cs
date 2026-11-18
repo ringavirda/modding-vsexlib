@@ -220,7 +220,9 @@ public class MoltenLevelRunTests {
 
   // Fails when the share counts the arms already served or the start (three arms take 34, 22, 16),
   // or counts an arm that takes nothing: a full, sealed, solid, other-metal or fuller last arm leaves a
-  // third of the spare in the tee.
+  // third of the spare in the tee. Fails when it counts an arm the tee does not push on to (one of
+  // larger fall, a drain, a conveying connection, one drawn toward a mold): the level arms take 34
+  // and 33.
   [Theory]
   [InlineData("three arms", 100, 34, 33, 33)]
   [InlineData("short west", 20, 20, 40, 40)]
@@ -229,6 +231,10 @@ public class MoltenLevelRunTests {
   [InlineData("solid south", 100, 50, 50, 0)]
   [InlineData("copper south", 100, 50, 50, 5)]
   [InlineData("fuller south", 100, 50, 50, 80)]
+  [InlineData("falling south", 100, 50, 50, 10)]
+  [InlineData("drain south", 100, 50, 50, 10)]
+  [InlineData("conveying south", 100, 50, 50, 10)]
+  [InlineData("mold beyond south", 100, 50, 50, 10)]
   public void A_tee_shares_its_spare_between_the_arms_that_can_take_it(
     string south,
     int westRoom,
@@ -238,7 +244,12 @@ public class MoltenLevelRunTests {
   ) {
     var w = new TestWorld();
     w.RegisterNetwork("molten", sys => new MoltenNetwork(sys));
-    var tee = new Cell { MaxUnitCapacity = 200 };
+    var conveying = new MoltenFlowRules(100, 0, true, false);
+    var tee = new Cell
+    {
+      MaxUnitCapacity = 200,
+      FlowRules = south == "conveying south" ? conveying : null,
+    };
     var west = new Cell { MaxUnitCapacity = westRoom };
     var north = new Cell { MaxUnitCapacity = 100 };
     var southCell = new Cell
@@ -246,6 +257,9 @@ public class MoltenLevelRunTests {
       MaxUnitCapacity = south == "fuller south" ? 200 : 100,
       Sealed = south == "sealed south",
       Solidified = south == "solid south",
+      Fall = south == "falling south" ? 1 : 0,
+      AcceptsSubMinimumFlow = south == "drain south",
+      FlowRules = south == "conveying south" ? conveying : null,
     };
     (BlockPos Pos, Cell Cell)[] cells =
     [
@@ -258,6 +272,21 @@ public class MoltenLevelRunTests {
       (new BlockPos(1, 0, -1), north),
       (new BlockPos(1, 0, 1), southCell),
     ];
+    if (south == "mold beyond south")
+      cells =
+      [
+        .. cells,
+        (new BlockPos(1, 0, 2), new Cell { MaxUnitCapacity = 100 }),
+        (
+          new BlockPos(1, 0, 3),
+          new Cell
+          {
+            MaxUnitCapacity = 100,
+            AcceptsSubMinimumFlow = true,
+            IsOpenMold = true,
+          }
+        ),
+      ];
     foreach (var (pos, cell) in cells) {
       w.Place(pos, Cross, cell);
       w.Attach(cell);
@@ -338,6 +367,10 @@ public class MoltenLevelRunTests {
     public bool AcceptsSubMinimumFlow { get; init; }
 
     public int Fall { get; init; }
+
+    public MoltenFlowRules? FlowRules { get; init; }
+
+    public bool IsOpenMold { get; init; }
 
     public void EnsureMetalStack(IWorldAccessor world) { }
 
