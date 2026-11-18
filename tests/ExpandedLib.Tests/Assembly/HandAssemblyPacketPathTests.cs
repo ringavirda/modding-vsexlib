@@ -299,10 +299,12 @@ public class HandAssemblyPacketPathTests {
     rig.Fix(Ground, BlockFacing.UP, EnumGameMode.Survival);
 
     Assert.Equal(6, rig.Scene.Carried);
+    Assert.NotNull(rig.Scene.RecordAt(North).FastenerAt(BlockFacing.SOUTH));
     Assert.Equal(
       2,
       rig.Scene.RecordAt(North).FastenerAt(BlockFacing.SOUTH)!.StackSize
     );
+    Assert.NotNull(rig.Scene.RecordAt(Cell).FastenerAt(BlockFacing.NORTH));
     Assert.Equal(
       2,
       rig.Scene.RecordAt(Cell).FastenerAt(BlockFacing.NORTH)!.StackSize
