@@ -232,6 +232,8 @@ public class MoltenLevelRunTests {
   [InlineData("drain south", 100, 50, 50, 10)]
   [InlineData("conveying south", 100, 50, 50, 10)]
   [InlineData("mold beyond south", 100, 50, 50, 10)]
+  [InlineData("part-filled south", 100, 34, 33, 93)]
+  [InlineData("deep south", 100, 45, 45, 110)]
   public void A_tee_shares_its_spare_between_the_arms_that_can_take_it(
     string south,
     int westRoom,
@@ -249,7 +251,7 @@ public class MoltenLevelRunTests {
     var west = new Cell { MaxUnitCapacity = westRoom };
     var north = new Cell { MaxUnitCapacity = 100 };
     var southCell = new Cell {
-      MaxUnitCapacity = south == "fuller south" ? 200 : 100,
+      MaxUnitCapacity = south is "fuller south" or "deep south" ? 200 : 100,
       Sealed = south == "sealed south",
       Solidified = south == "solid south",
       Fall = south == "falling south" ? 1 : 0,
@@ -294,6 +296,10 @@ public class MoltenLevelRunTests {
       southCell.PushMetalRaw(5, "game:ingot-copper", 1500f, null!);
     if (south == "fuller south")
       southCell.PushMetalRaw(150, Iron, 1500f, null!);
+    if (south == "part-filled south")
+      southCell.PushMetalRaw(60, Iron, 1500f, null!);
+    if (south == "deep south")
+      southCell.PushMetalRaw(100, Iron, 1500f, null!);
     w.Tick();
     Assert.Equal(
       [westAfter, northAfter, southAfter],
