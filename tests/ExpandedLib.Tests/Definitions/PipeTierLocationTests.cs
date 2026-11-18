@@ -63,7 +63,6 @@ public class PipeTierLocationTests {
 
   [Fact]
   public void Two_tiers_in_one_domain_share_no_segment_shape() {
-    // Segments only; the passthrough blocktypes deliberately share one mesh across every tier.
     string[] shared =
     [
       .. ShapesOf(Segments(BlockPipe.PlatedTier))
@@ -76,6 +75,42 @@ public class PipeTierLocationTests {
       $"{shared.Length} segment shape path(s) are claimed by both tiers; under one domain they resolve "
         + "to one art file and the surviving tier renders the other's mesh:\n  "
         + string.Join("\n  ", shared)
+    );
+  }
+
+  [Fact]
+  public void Two_tiers_in_one_domain_share_no_passthrough_shape() {
+    // Fails when a tiered passthrough or bend is drawn with the shared exlib shape again.
+    string[] shared =
+    [
+      .. ShapesOf(Passthroughs(BlockPipe.PlatedTier))
+        .Intersect(ShapesOf(Passthroughs(BlockPipe.CastTier)))
+        .OrderBy(p => p),
+    ];
+
+    Assert.True(
+      shared.Length == 0,
+      $"{shared.Length} passthrough shape path(s) are claimed by both tiers:\n  "
+        + string.Join("\n  ", shared)
+    );
+    Assert.All(
+      ShapesOf(Passthroughs(BlockPipe.CastTier)),
+      s => Assert.StartsWith($"{Domain}:pipe/{BlockPipe.CastTier}/", s)
+    );
+  }
+
+  [Fact]
+  public void A_tierless_passthrough_uses_the_shared_exlib_shapes() {
+    // Fails when a tierless call stops using exlib:pipe/passthrough and passthroughbend.
+    string[] shapes =
+    [
+      .. ShapesOf(BlockPipePassthrough.Passthroughs(Domain, tier: null))
+        .OrderBy(s => s),
+    ];
+
+    Assert.Equal(
+      ["exlib:pipe/passthrough", "exlib:pipe/passthroughbend"],
+      shapes
     );
   }
 

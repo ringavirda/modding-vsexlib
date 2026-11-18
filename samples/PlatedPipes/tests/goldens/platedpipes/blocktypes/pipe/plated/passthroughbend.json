@@ -111,55 +111,55 @@
   ],
   "shapebytype": {
     "*-passthroughbend-*-nw": {
-      "base": "exlib:pipe/passthroughbend"
+      "base": "platedpipes:pipe/plated/passthroughbend"
     },
     "*-passthroughbend-*-en": {
-      "base": "exlib:pipe/passthroughbend",
+      "base": "platedpipes:pipe/plated/passthroughbend",
       "rotateY": 270
     },
     "*-passthroughbend-*-se": {
-      "base": "exlib:pipe/passthroughbend",
+      "base": "platedpipes:pipe/plated/passthroughbend",
       "rotateY": 180
     },
     "*-passthroughbend-*-ws": {
-      "base": "exlib:pipe/passthroughbend",
+      "base": "platedpipes:pipe/plated/passthroughbend",
       "rotateY": 90
     },
     "*-passthroughbend-*-dn": {
-      "base": "exlib:pipe/passthroughbend",
+      "base": "platedpipes:pipe/plated/passthroughbend",
       "rotateZ": 90
     },
     "*-passthroughbend-*-de": {
-      "base": "exlib:pipe/passthroughbend",
+      "base": "platedpipes:pipe/plated/passthroughbend",
       "rotateY": 270,
       "rotateZ": 90
     },
     "*-passthroughbend-*-ds": {
-      "base": "exlib:pipe/passthroughbend",
+      "base": "platedpipes:pipe/plated/passthroughbend",
       "rotateY": 180,
       "rotateZ": 90
     },
     "*-passthroughbend-*-dw": {
-      "base": "exlib:pipe/passthroughbend",
+      "base": "platedpipes:pipe/plated/passthroughbend",
       "rotateY": 90,
       "rotateZ": 90
     },
     "*-passthroughbend-*-un": {
-      "base": "exlib:pipe/passthroughbend",
+      "base": "platedpipes:pipe/plated/passthroughbend",
       "rotateZ": 270
     },
     "*-passthroughbend-*-ue": {
-      "base": "exlib:pipe/passthroughbend",
+      "base": "platedpipes:pipe/plated/passthroughbend",
       "rotateY": 270,
       "rotateZ": 270
     },
     "*-passthroughbend-*-us": {
-      "base": "exlib:pipe/passthroughbend",
+      "base": "platedpipes:pipe/plated/passthroughbend",
       "rotateY": 180,
       "rotateZ": 270
     },
     "*-passthroughbend-*-uw": {
-      "base": "exlib:pipe/passthroughbend",
+      "base": "platedpipes:pipe/plated/passthroughbend",
       "rotateY": 90,
       "rotateZ": 270
     }
