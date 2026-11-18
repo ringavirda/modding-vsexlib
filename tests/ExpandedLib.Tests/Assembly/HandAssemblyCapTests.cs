@@ -226,10 +226,7 @@ public class HandAssemblyCapTests {
     AssemblyResult? result = scene.Fit(BlockFacing.NORTH);
 
     Assert.Equal(code, result?.Code);
-    Assert.Equal(
-      code == null,
-      scene.Record.CapAt(BlockFacing.NORTH) != null
-    );
+    Assert.Equal(code == null, scene.Record.CapAt(BlockFacing.NORTH) != null);
   }
 
   // Fails when the check that the held stack is still the cap the packet names is dropped.
