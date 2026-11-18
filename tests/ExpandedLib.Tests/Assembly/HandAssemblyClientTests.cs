@@ -241,4 +241,67 @@ public class HandAssemblyClientTests {
   }
 
   #endregion
+
+  #region The marks
+
+  // Fails when a mark stands inside the cell or on the opposite face (a sign flipped on the face normal), leaves the face's centre, or is not 6/16 by 1/16.
+  [Theory]
+  [InlineData("north")]
+  [InlineData("east")]
+  [InlineData("south")]
+  [InlineData("west")]
+  [InlineData("up")]
+  [InlineData("down")]
+  public void Mark_IsAPlateCentredJustOutsideTheArmFace(string face) {
+    BlockFacing arm = BlockFacing.FromCode(face);
+    Cuboidf box = HandAssemblyMarks.Box(arm);
+    float[] lo = [box.X1, box.Y1, box.Z1];
+    float[] hi = [box.X2, box.Y2, box.Z2];
+    int[] normal = [arm.Normali.X, arm.Normali.Y, arm.Normali.Z];
+
+    for (int axis = 0; axis < 3; axis++) {
+      if (normal[axis] > 0) {
+        Assert.InRange(lo[axis], 1f, 1.02f);
+        Assert.Equal(1f / 16f, hi[axis] - lo[axis], 4);
+      } else if (normal[axis] < 0) {
+        Assert.InRange(hi[axis], -0.02f, 0f);
+        Assert.Equal(1f / 16f, hi[axis] - lo[axis], 4);
+      } else {
+        Assert.Equal(0.5f, (lo[axis] + hi[axis]) / 2f, 4);
+        Assert.Equal(6f / 16f, hi[axis] - lo[axis], 4);
+      }
+    }
+  }
+
+  // Fails when the open and the joined colours are swapped.
+  [Fact]
+  public void Mark_OpenIsAmberJoinedIsGreen() {
+    Vec4f open = HandAssemblyMarks.Color(true);
+    Vec4f joined = HandAssemblyMarks.Color(false);
+
+    Assert.True(open.R > open.G && open.G > open.B, "open is amber");
+    Assert.True(joined.G > joined.R && joined.G > joined.B, "joined is green");
+    Assert.Equal(1f, open.A);
+    Assert.Equal(1f, joined.A);
+  }
+
+  #endregion
+
+  #region The line's place
+
+  // Fails when the line sits inside the held-item help, as at an offset of -140.
+  [Theory]
+  [InlineData(2)]
+  [InlineData(3)]
+  public void HudLine_ClearsTheHeldHelp(int helpLines) {
+    double helpTop = 95 + 80 + ((helpLines - 1) * (25 + 8));
+
+    Assert.True(
+      -HandAssemblyHudDialog.BottomOffset(HandAssemblyHudDialog.HeldHelpLines)
+        > helpTop
+    );
+    Assert.True(-HandAssemblyHudDialog.BottomOffset(helpLines) > helpTop);
+  }
+
+  #endregion
 }

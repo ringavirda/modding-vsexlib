@@ -6,12 +6,25 @@ namespace ExpandedLib.Assembling;
 internal sealed class HandAssemblyHudDialog : HudElement {
   private const string TextKey = "line";
   private const double Width = 640;
+  private const double Gap = 8;
+
+  /// <summary>Lines of held-item help the line clears: hand assembly's two and one the game may add.</summary>
+  internal const int HeldHelpLines = 3;
+
+  /// <summary>Height of the held-item help's bottom above the screen's bottom, as <c>HudHotbar.OnRenderGUI</c> places its composer.</summary>
+  internal const double HelpBottom = 95;
+
+  /// <summary>Height of one line's element in <c>DrawWorldInteractionUtil.ComposeBlockWorldInteractionHelp</c>.</summary>
+  internal const double HelpLineHeight = 80;
+
+  /// <summary>Step between help lines: the hotbar's <c>DrawWorldInteractionUtil.UnscaledLineHeight</c> of 25 plus the 8 <c>ComposeBlockWorldInteractionHelp</c> adds.</summary>
+  internal const double HelpLineStep = 33;
 
   public HandAssemblyHudDialog(ICoreClientAPI capi)
     : base(capi) {
     ElementBounds dialog = ElementStdBounds
       .AutosizedMainDialog.WithAlignment(EnumDialogArea.CenterBottom)
-      .WithFixedAlignmentOffset(0, -140);
+      .WithFixedAlignmentOffset(0, BottomOffset(HeldHelpLines));
     ElementBounds text = ElementBounds.Fixed(0, 0, Width, 24);
     dialog.BothSizing = ElementSizing.FitToChildren;
     dialog.WithChild(text);
@@ -26,6 +39,10 @@ internal sealed class HandAssemblyHudDialog : HudElement {
       )
       .Compose();
   }
+
+  /// <summary>The line's vertical offset from the screen's bottom, in unscaled GUI px (negative is up), clearing <paramref name="helpLines"/> lines of held-item help by a gap of 8 px.</summary>
+  internal static double BottomOffset(int helpLines) =>
+    -(HelpBottom + HelpLineHeight + ((helpLines - 1) * HelpLineStep) + Gap);
 
   public override bool Focusable => false;
 
