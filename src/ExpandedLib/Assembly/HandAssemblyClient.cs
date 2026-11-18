@@ -20,7 +20,7 @@ internal sealed class HandAssemblyClient : IRenderer {
   private readonly Matrixf _model = new();
 
   private bool _hudShown;
-  private MeshRef? _markMesh;
+  private readonly MeshRef?[] _rings = new MeshRef?[6];
   private LoadedTexture? _white;
 
   public HandAssemblyClient(ICoreClientAPI capi, IClientNetworkChannel channel) {
@@ -301,7 +301,7 @@ internal sealed class HandAssemblyClient : IRenderer {
     previous?.Use();
   }
 
-  /// <summary>Draws the mark at each arm end of <paramref name="shown"/>, opaque, with the ghost's cell at (<paramref name="x"/>, <paramref name="y"/>, <paramref name="z"/>) from the camera.</summary>
+  /// <summary>Draws the see-through ring at each arm end of <paramref name="shown"/>, with the ghost's cell at (<paramref name="x"/>, <paramref name="y"/>, <paramref name="z"/>) from the camera.</summary>
   private void DrawMarks(
     IStandardShaderProgram shader,
     AssemblyCandidate shown,
@@ -310,28 +310,26 @@ internal sealed class HandAssemblyClient : IRenderer {
     double z
   ) {
     IRenderAPI render = _capi.Render;
-    _markMesh ??= render.UploadMesh(
-      CubeMeshUtil.GetCube(0.5f, 0.5f, 0.5f, new Vec3f())
-    );
     shader.NormalShaded = 0;
-    render.BindTexture2d(White().TextureId);
+    shader.BindTexture2D("tex", White().TextureId, 0);
+    shader.ModelMatrix = _model.Identity().Translate(x, y, z).Values;
     render.GlDisableCullFace();
+    render.GlToggleBlend(true);
+    render.GLDepthMask(false);
     foreach (BlockFacing arm in shown.Arms) {
-      Cuboidf box = HandAssemblyMarks.Box(arm);
+      _rings[arm.Index] ??= render.UploadMesh(HandAssemblyMarks.Ring(arm));
       shader.RgbaTint = HandAssemblyMarks.Color(shown.OpenArms.Contains(arm));
-      shader.ModelMatrix = _model
-        .Identity()
-        .Translate(x + box.X1, y + box.Y1, z + box.Z1)
-        .Scale(box.XSize, box.YSize, box.ZSize)
-        .Values;
-      render.RenderMesh(_markMesh);
+      render.RenderMesh(_rings[arm.Index]);
     }
+    render.GLDepthMask(true);
+    render.GlToggleBlend(false);
     render.GlEnableCullFace();
   }
 
   public void Dispose() {
     _capi.Event.UnregisterRenderer(this, EnumRenderStage.Opaque);
-    _markMesh?.Dispose();
+    foreach (MeshRef? ring in _rings)
+      ring?.Dispose();
     _white?.Dispose();
     _capGhost.Dispose();
     _hud.Dispose();

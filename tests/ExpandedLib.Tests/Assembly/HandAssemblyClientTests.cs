@@ -1,8 +1,10 @@
+using System;
 using System.Collections.Generic;
 using ExpandedLib.Assembling;
 using ExpandedLib.Catalogues;
 using ExpandedLib.Helpers;
 using ExpandedLib.Machines;
+using Vintagestory.API.Client;
 using Vintagestory.API.MathTools;
 using Xunit;
 
@@ -329,7 +331,7 @@ public class HandAssemblyClientTests {
 
   #region The marks
 
-  // Fails when a mark stands inside the cell or on the opposite face (a sign flipped on the face normal), leaves the face's centre, or is not 6/16 by 1/16.
+  // Fails when the ring leaves the flange rim, sits inside the cell or on the opposite face, or loses segments.
   [Theory]
   [InlineData("north")]
   [InlineData("east")]
@@ -337,25 +339,75 @@ public class HandAssemblyClientTests {
   [InlineData("west")]
   [InlineData("up")]
   [InlineData("down")]
-  public void Mark_IsAPlateCentredJustOutsideTheArmFace(string face) {
+  public void Marks_RingSpansTheFlangeRim(string face) {
     BlockFacing arm = BlockFacing.FromCode(face);
-    Cuboidf box = HandAssemblyMarks.Box(arm);
-    float[] lo = [box.X1, box.Y1, box.Z1];
-    float[] hi = [box.X2, box.Y2, box.Z2];
-    int[] normal = [arm.Normali.X, arm.Normali.Y, arm.Normali.Z];
+    MeshData m = HandAssemblyMarks.Ring(arm);
+    Vec3i n = arm.Normali;
+    float plane = n.X + n.Y + n.Z > 0 ? 1.005f : -0.005f;
+    float min = float.MaxValue;
+    float max = 0f;
 
-    for (int axis = 0; axis < 3; axis++) {
-      if (normal[axis] > 0) {
-        Assert.InRange(lo[axis], 1f, 1.02f);
-        Assert.Equal(1f / 16f, hi[axis] - lo[axis], 4);
-      } else if (normal[axis] < 0) {
-        Assert.InRange(hi[axis], -0.02f, 0f);
-        Assert.Equal(1f / 16f, hi[axis] - lo[axis], 4);
-      } else {
-        Assert.Equal(0.5f, (lo[axis] + hi[axis]) / 2f, 4);
-        Assert.Equal(6f / 16f, hi[axis] - lo[axis], 4);
+    for (int i = 0; i < m.VerticesCount; i++) {
+      float[] p = [m.xyz[3 * i], m.xyz[(3 * i) + 1], m.xyz[(3 * i) + 2]];
+      int[] normal = [n.X, n.Y, n.Z];
+      double radiusSquared = 0;
+      for (int axis = 0; axis < 3; axis++) {
+        if (normal[axis] != 0)
+          Assert.Equal(plane, p[axis], 4);
+        else
+          radiusSquared += (p[axis] - 0.5) * (p[axis] - 0.5);
+      }
+      float radius = (float)Math.Sqrt(radiusSquared);
+      min = Math.Min(min, radius);
+      max = Math.Max(max, radius);
+    }
+
+    Assert.Equal(2.5f / 16f, min, 4);
+    Assert.Equal(4f / 16f, max, 4);
+    Assert.Equal(16 * 6, m.IndicesCount);
+  }
+
+  // Fails when the ring covers the bore.
+  [Fact]
+  public void Marks_BoreStaysClear() {
+    foreach (BlockFacing arm in BlockFacing.ALLFACES) {
+      MeshData m = HandAssemblyMarks.Ring(arm);
+      Vec3i n = arm.Normali;
+      float[] Radii(int i) {
+        float[] p = [m.xyz[3 * i], m.xyz[(3 * i) + 1], m.xyz[(3 * i) + 2]];
+        int[] normal = [n.X, n.Y, n.Z];
+        double sum = 0;
+        for (int axis = 0; axis < 3; axis++)
+          if (normal[axis] == 0)
+            sum += (p[axis] - 0.5) * (p[axis] - 0.5);
+        return [p[0], p[1], p[2], (float)Math.Sqrt(sum)];
+      }
+
+      for (int i = 0; i < m.VerticesCount; i++)
+        Assert.True(Radii(i)[3] >= (2.5f / 16f) - 1e-4f);
+
+      for (int k = 0; k < HandAssemblyMarks.Segments; k++) {
+        float[] a = Radii(2 * k);
+        float[] b = Radii(2 * ((k + 1) % HandAssemblyMarks.Segments));
+        float mx = (a[0] + b[0]) / 2f;
+        float my = (a[1] + b[1]) / 2f;
+        float mz = (a[2] + b[2]) / 2f;
+        double sum = 0;
+        float[] mid = [mx, my, mz];
+        int[] normal = [n.X, n.Y, n.Z];
+        for (int axis = 0; axis < 3; axis++)
+          if (normal[axis] == 0)
+            sum += (mid[axis] - 0.5) * (mid[axis] - 0.5);
+        Assert.True(Math.Sqrt(sum) > 2f / 16f);
       }
     }
+  }
+
+  // Fails when a mark draws opaque.
+  [Fact]
+  public void Marks_AreSeeThrough() {
+    Assert.Equal(0x60 / 255f, HandAssemblyMarks.Color(true).A, 4);
+    Assert.Equal(0x60 / 255f, HandAssemblyMarks.Color(false).A, 4);
   }
 
   // Fails when the open and the joined colours are swapped.
@@ -366,8 +418,6 @@ public class HandAssemblyClientTests {
 
     Assert.True(open.R > open.G && open.G > open.B, "open is amber");
     Assert.True(joined.G > joined.R && joined.G > joined.B, "joined is green");
-    Assert.Equal(1f, open.A);
-    Assert.Equal(1f, joined.A);
   }
 
   #endregion

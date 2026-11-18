@@ -1,42 +1,70 @@
+using System;
+using ExpandedLib.Helpers;
+using Vintagestory.API.Client;
 using Vintagestory.API.MathTools;
 
 namespace ExpandedLib.Assembling;
 
-/// <summary>The marks the hand assembly ghost carries at its arm ends: where each one stands and its colour.</summary>
+/// <summary>The ring drawn at each arm end of the hand-assembly ghost, on the flange face, in block units.</summary>
 internal static class HandAssemblyMarks {
-  private const float HalfWidth = 3f / 16f;
-  private const float Thickness = 1f / 16f;
-  private const float Standoff = 0.005f;
+  /// <summary>Inner radius from the face centre in blocks: the cast flange rim, outside the bore (radius 2/16).</summary>
+  internal const float Inner = 2.5f / 16f;
 
-  private static readonly Vec4f Joined = new(
-    94f / 255f,
-    215f / 255f,
-    150f / 255f,
-    1f
-  );
-  private static readonly Vec4f Open = new(
-    240f / 255f,
-    180f / 255f,
-    60f / 255f,
-    1f
-  );
+  /// <summary>Outer radius from the face centre in blocks: the cast flange rim.</summary>
+  internal const float Outer = 4f / 16f;
 
-  /// <summary>The mark of the arm toward <paramref name="arm"/>, in block-local units where the ghost's cell is 0..1 on each axis: a square plate 6/16 wide and 1/16 thick, centred on that face and standing just outside it.</summary>
-  internal static Cuboidf Box(BlockFacing arm) {
+  /// <summary>Quads around the ring.</summary>
+  internal const int Segments = 16;
+
+  /// <summary>Distance in blocks the ring stands outside the face.</summary>
+  internal const float Standoff = 0.005f;
+
+  /// <summary>A fresh mesh of the ring toward <paramref name="arm"/> in the cell's frame (0..1 on each axis): <see cref="Segments"/> white quads, flat on the plane <see cref="Standoff"/> outside that face.</summary>
+  internal static MeshData Ring(BlockFacing arm) {
+    var mesh = new MeshData(
+      2 * Segments,
+      6 * Segments,
+      false,
+      true,
+      true,
+      true
+    );
     Vec3i n = arm.Normali;
-    (float x1, float x2) = Span(n.X);
-    (float y1, float y2) = Span(n.Y);
-    (float z1, float z2) = Span(n.Z);
-    return new Cuboidf(x1, y1, z1, x2, y2, z2);
+    float plane = n.X + n.Y + n.Z > 0 ? 1f + Standoff : -Standoff;
+    for (int k = 0; k < Segments; k++) {
+      double angle = 2 * Math.PI * k / Segments;
+      float cos = (float)Math.Cos(angle);
+      float sin = (float)Math.Sin(angle);
+      Add(mesh, n, plane, Inner * cos, Inner * sin);
+      Add(mesh, n, plane, Outer * cos, Outer * sin);
+    }
+    for (int k = 0; k < Segments; k++) {
+      int i0 = 2 * k;
+      int i1 = 2 * ((k + 1) % Segments);
+      mesh.AddIndices(i0, i0 + 1, i1 + 1, i0, i1 + 1, i1);
+    }
+    return mesh;
   }
 
-  /// <summary>The tint of a mark: amber for an open end, green for a join. Alpha is 1.</summary>
-  internal static Vec4f Color(bool open) => (open ? Open : Joined).Clone();
+  /// <summary>The tint of a ring: amber for an open end, green for a join, alpha 0x60.</summary>
+  internal static Vec4f Color(bool open) =>
+    ProjectionColors.Tint(
+      open ? ProjectionColors.Open : ProjectionColors.Joined
+    );
 
-  private static (float, float) Span(int normal) =>
-    normal switch {
-      > 0 => (1f + Standoff, 1f + Standoff + Thickness),
-      < 0 => (-Standoff - Thickness, -Standoff),
-      _ => (0.5f - HalfWidth, 0.5f + HalfWidth),
-    };
+  private static void Add(
+    MeshData mesh,
+    Vec3i normal,
+    float plane,
+    float a,
+    float b
+  ) {
+    float x = normal.X != 0 ? plane : 0.5f + a;
+    float y =
+      normal.Y != 0 ? plane
+      : normal.X != 0 ? 0.5f + a
+      : 0.5f + b;
+    float z = normal.Z != 0 ? plane : 0.5f + b;
+    mesh.AddVertexWithFlags(x, y, z, 0.5f, 0.5f, ColorUtil.WhiteArgb, 0);
+  }
 }
