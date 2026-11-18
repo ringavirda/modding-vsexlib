@@ -94,14 +94,6 @@ internal sealed class ScenarioRunner {
     api.Logger.EntryAdded += _feed;
     Active = true;
     _tick = api.Event.RegisterGameTickListener(Tick, TickMilliseconds);
-    try {
-      LiveOffHand.Allowed = LiveOffHand.Load(
-        api.GetOrCreateDataPath("Scenarios")
-      );
-    } catch (SetupFileException e) {
-      LiveOffHand.Allowed = new Dictionary<string, string>();
-      Emit(ScenarioOutput.Error("run", e.Message));
-    }
     var cases = new List<ScenarioCase>();
     foreach (string name in names)
       if (TryLoad(name, out ScenarioCase? loaded, out _))
