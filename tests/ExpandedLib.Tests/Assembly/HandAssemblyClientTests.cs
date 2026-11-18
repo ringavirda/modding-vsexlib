@@ -96,27 +96,25 @@ public class HandAssemblyClientTests {
     float expected
   ) => Assert.Equal(expected, HandAssemblyHold.Seconds(joints, stroke), 3);
 
-  // Fails when the animation or the sound is not played once per stroke, or the animation is not stopped at the end.
+  // Fails when the animation or the latch is not played at each stroke start, or the animation is not stopped at the end.
   [Fact]
-  public void Hold_PlaysAnimationAndSoundEachStrokeAndStopsAtTheEnd() {
+  public void Hold_PlaysAnimationAndLatchEachStrokeAndStopsAtTheEnd() {
     var hold = new HandAssemblyHold();
     var effects = new Effects();
     hold.Begin("c|n", "tee", 2, 2, Wrench);
 
     Assert.False(hold.Advance(0.1f, effects));
-    Assert.Equal(["start hammerhit"], effects.Log);
-    Assert.False(hold.Advance(0.3f, effects));
     Assert.Equal(
-      ["start hammerhit", "strike " + HandAssemblyHold.StrokeSound],
+      ["start hammerhit", "strike sounds/effect/latch"],
       effects.Log
     );
-    Assert.False(hold.Advance(1f, effects));
+    Assert.False(hold.Advance(1.2f, effects));
     Assert.Equal(
       [
         "start hammerhit",
-        "strike " + HandAssemblyHold.StrokeSound,
+        "strike sounds/effect/latch",
         "start hammerhit",
-        "strike " + HandAssemblyHold.StrokeSound,
+        "strike sounds/effect/latch",
       ],
       effects.Log
     );
@@ -125,29 +123,69 @@ public class HandAssemblyClientTests {
     Assert.False(hold.Active);
   }
 
-  // Fails when a hold with no tool strikes no sound.
+  // Fails when the hit is played at a stroke's strike time instead of once at the end of the hold.
   [Fact]
-  public void Hold_WithoutAToolStrikesTheSound() {
+  public void Hold_WithTheWrenchLatchesEachStrokeAndHitsOnceAtTheEnd() {
+    var hold = new HandAssemblyHold();
+    var effects = new Effects();
+    hold.Begin("c|n", "tee", 2, 2, Wrench);
+
+    hold.Advance(0.5f, effects);
+    hold.Advance(0.6f, effects);
+    Assert.DoesNotContain(
+      "strike " + HandAssemblyHold.StrokeSound,
+      effects.Log
+    );
+    Assert.True(hold.Advance(1f, effects));
+
+    Assert.Equal(
+      [
+        "start hammerhit",
+        "strike sounds/effect/latch",
+        "start hammerhit",
+        "strike sounds/effect/latch",
+        "strike " + HandAssemblyHold.StrokeSound,
+        "stop hammerhit",
+      ],
+      effects.Log
+    );
+  }
+
+  // Fails when a hold cancelled before its end plays the hit, on Release or on Keep.
+  [Theory]
+  [InlineData(true)]
+  [InlineData(false)]
+  public void Hold_CancelledEarlyPlaysNoHit(bool release) {
+    var hold = new HandAssemblyHold();
+    var effects = new Effects();
+    hold.Begin("c|n", "tee", 2, 2, Wrench);
+    hold.Advance(1.5f, effects);
+
+    if (release)
+      hold.Release(effects);
+    else
+      hold.Keep("c2|n", "tee", 2, effects);
+
+    Assert.DoesNotContain(
+      "strike " + HandAssemblyHold.StrokeSound,
+      effects.Log
+    );
+    Assert.False(hold.Active);
+  }
+
+  // Fails when a hold with no tool plays no latch at the stroke start or no hit at its end.
+  [Fact]
+  public void Hold_WithoutAToolLatchesAndHits() {
     var hold = new HandAssemblyHold();
     var effects = new Effects();
     hold.Begin("c|n", "tee", 2, 1, null);
 
     hold.Advance(0.4f, effects);
-
-    Assert.Equal(["strike " + HandAssemblyHold.StrokeSound], effects.Log);
-  }
-
-  // Fails when the wrench plays its latch instead of the hand assembly sound.
-  [Fact]
-  public void Hold_WithTheWrenchStrikesTheHandAssemblySound() {
-    var hold = new HandAssemblyHold();
-    var effects = new Effects();
-    hold.Begin("c|n", "tee", 2, 1, Wrench);
-
-    hold.Advance(0.4f, effects);
+    Assert.Equal(["strike sounds/effect/latch"], effects.Log);
+    Assert.True(hold.Advance(1f, effects));
 
     Assert.Equal(
-      ["start hammerhit", "strike game:sounds/block/heavymetal-hit"],
+      ["strike sounds/effect/latch", "strike " + HandAssemblyHold.StrokeSound],
       effects.Log
     );
   }

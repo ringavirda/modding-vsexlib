@@ -9,7 +9,7 @@ internal sealed class HandAssemblyHold {
   /// <summary>Seconds a hold takes when it makes or breaks no joint.</summary>
   public const float NoJointSeconds = 0.5f;
 
-  /// <summary>The sound each strike plays when the tool brings none or the wrench's latch.</summary>
+  /// <summary>The heavy hit played once when a hold with no sound of its own, or the wrench's latch, completes.</summary>
   internal const string StrokeSound = "game:sounds/block/heavymetal-hit";
 
   private const string LatchSound = "sounds/effect/latch";
@@ -23,6 +23,7 @@ internal sealed class HandAssemblyHold {
   private float _strike;
   private string? _animation;
   private string? _sound;
+  private bool _hitAtEnd;
   private string? _playing;
   private int _swings;
   private int _strikes;
@@ -45,7 +46,7 @@ internal sealed class HandAssemblyHold {
   /// <param name="what">Names what the hold does there: the candidate's code, or a take-off.</param>
   /// <param name="slot">The hotbar slot holding the part or tool.</param>
   /// <param name="joints">Joints made or broken.</param>
-  /// <param name="tool">The tool's stroke defaults; null for the default stroke with no animation. The strike sound is <see cref="StrokeSound"/> unless the tool brings a sound other than the wrench's latch.</param>
+  /// <param name="tool">The tool's stroke defaults; null for the default stroke with no animation. A tool with no sound, or the wrench's latch, plays a latch at the start of every stroke and <see cref="StrokeSound"/> once when the hold completes; any other sound plays at each stroke's strike time.</param>
   public void Begin(
     string target,
     string what,
@@ -60,9 +61,10 @@ internal sealed class HandAssemblyHold {
     _strike = tool?.Strike ?? CraftToolDefault.DefaultStrike;
     _animation = tool?.Animation;
     _sound = tool?.Sound switch {
-      null or LatchSound or "game:" + LatchSound => StrokeSound,
+      null or LatchSound or "game:" + LatchSound => null,
       string own => own,
     };
+    _hitAtEnd = _sound == null;
     _seconds = Seconds(joints, _stroke);
     _elapsed = 0f;
     _swings = 0;
@@ -71,10 +73,10 @@ internal sealed class HandAssemblyHold {
     Active = true;
   }
 
-  /// <summary>Carries the hold forward, starting the animation of each stroke and playing the sound of each strike reached.</summary>
+  /// <summary>Carries the hold forward, starting the animation of each stroke and playing the sound of each strike reached, or the latch of each stroke started.</summary>
   /// <param name="seconds">Seconds since the last call.</param>
   /// <param name="effects">Receives the animation and sound; null plays none.</param>
-  /// <returns>True when the hold has run its time; it is then no longer active.</returns>
+  /// <returns>True when the hold has run its time, after playing <see cref="StrokeSound"/> if the tool's sound is not its own; it is then no longer active. A hold cancelled early plays no hit.</returns>
   public bool Advance(float seconds, ICraftEffects? effects) {
     if (!Active)
       return false;
@@ -89,6 +91,14 @@ internal sealed class HandAssemblyHold {
       _swings++;
     }
     while (
+      _hitAtEnd
+      && _strikes * _stroke < _seconds
+      && _strikes * _stroke <= _elapsed
+    ) {
+      effects?.Strike(LatchSound);
+      _strikes++;
+    }
+    while (
       _sound != null
       && _strikes * _stroke < _seconds
       && (_strikes * _stroke) + _strike <= _elapsed
@@ -98,6 +108,8 @@ internal sealed class HandAssemblyHold {
     }
     if (_elapsed < _seconds)
       return false;
+    if (_hitAtEnd)
+      effects?.Strike(StrokeSound);
     Release(effects);
     return true;
   }
