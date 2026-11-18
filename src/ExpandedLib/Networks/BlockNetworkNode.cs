@@ -442,7 +442,7 @@ public abstract class BlockNetworkNode
       world.BlockAccessor.BreakBlock(pos, null);
   }
 
-  /// <summary>Removes this block's position from the network graph, then calls the base break logic. A fixed piece's own fasteners are lost with it, and the caps fitted to it drop; the fasteners its neighbours hold toward it are lost through <see cref="OnBlockRemoved(IWorldAccessor, BlockPos)"/>. Only a take-off with the wrench returns them.</summary>
+  /// <summary>Removes this block's position from the network graph, then calls the base break logic. A fixed piece's own fasteners are lost with it, and the caps fitted to it drop; the fasteners its neighbours hold toward it are lost through <see cref="OnBlockRemoved(IWorldAccessor, BlockPos)"/>. Only a take-off with the wrench returns them. On the server a break of a fixed piece writes its debug line.</summary>
   public override void OnBlockBroken(
     IWorldAccessor world,
     BlockPos pos,
