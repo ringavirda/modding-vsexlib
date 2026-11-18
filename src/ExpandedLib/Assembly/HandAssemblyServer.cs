@@ -607,6 +607,25 @@ internal static class HandAssemblyServer {
     return refusal;
   }
 
+  /// <summary>The end of a fixed piece a wrench click at <paramref name="hit"/> takes the cap off.</summary>
+  /// <param name="accessor">The world's block accessor.</param>
+  /// <param name="node">The piece's block.</param>
+  /// <param name="cell">The piece's position.</param>
+  /// <param name="record">The piece's assembly record.</param>
+  /// <param name="hit">The hit point inside the cell, each axis in 0 to 1.</param>
+  /// <returns>The arm whose face centre is nearest <paramref name="hit"/>; null when the piece has no arm or that arm carries no cap.</returns>
+  internal static BlockFacing? CappedEnd(
+    IBlockAccessor accessor,
+    BlockNetworkNode node,
+    BlockPos cell,
+    BEBehaviorAssembled record,
+    Vec3d hit
+  ) =>
+    HandAssemblyCaps.NearestArm(accessor, node, cell, hit) is { } face
+    && record.CapAt(face) != null
+      ? face
+      : null;
+
   private static AssemblyResult? TakeCap(
     IWorldAccessor world,
     IPlayer player,
@@ -628,8 +647,7 @@ internal static class HandAssemblyServer {
     )
       return Refusal(Fixed);
 
-    BlockFacing? face = HandAssemblyCaps.NearestArm(accessor, node, cell, hit);
-    if (face == null || record.CapAt(face) == null)
+    if (CappedEnd(accessor, node, cell, record, hit) is not { } face)
       return Refusal(Fixed);
 
     bool creative = HandAssemblyGate.IsCreative(player);

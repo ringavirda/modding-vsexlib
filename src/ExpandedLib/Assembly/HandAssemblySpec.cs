@@ -1,4 +1,6 @@
+using System.Linq;
 using Vintagestory.API.Common;
+using Vintagestory.API.Util;
 
 namespace ExpandedLib.Assembling;
 
@@ -35,5 +37,28 @@ public sealed record HandAssemblySpec(
       attribute["perJoint"].AsInt(1),
       string.IsNullOrEmpty(cap) ? null : cap
     );
+  }
+
+  /// <summary>One stack per registered item the tool pattern matches, for interaction-help icons. Computed once per pattern and world, then read from the world's object cache.</summary>
+  /// <param name="world">The world whose items are matched.</param>
+  /// <returns>The stacks; empty when no item matches.</returns>
+  internal ItemStack[] ToolStacks(IWorldAccessor world) {
+    string key = "exlib:handAssemblyTool:" + Tool;
+    if (
+      world.Api.ObjectCache.TryGetValue(key, out object? cached)
+      && cached is ItemStack[] stacks
+    )
+      return stacks;
+
+    ItemStack[] built =
+    [
+      .. world
+        .Items.Where(i =>
+          i is { Code: not null } && WildcardUtil.Match(Tool, i.Code.ToString())
+        )
+        .Select(i => new ItemStack(i)),
+    ];
+    world.Api.ObjectCache[key] = built;
+    return built;
   }
 }

@@ -58,7 +58,7 @@ internal sealed class CollectibleBehaviorCapHelp(
       [
         .. specs
           .Where(s => WildcardUtil.Match(s.Cap!, code))
-          .SelectMany(s => ToolStacks(api, s.Tool))
+          .SelectMany(s => s.ToolStacks(api.World))
           .DistinctBy(s => s.Collectible.Id),
       ];
       if (!specs.Any(s => WildcardUtil.Match(s.Cap!, code)))
@@ -70,15 +70,4 @@ internal sealed class CollectibleBehaviorCapHelp(
     }
     return attached;
   }
-
-  private static IEnumerable<ItemStack> ToolStacks(
-    ICoreAPI api,
-    string pattern
-  ) =>
-    api
-      .World.Items.Where(i =>
-        i is { Code: not null }
-        && WildcardUtil.Match(pattern, i.Code.ToString())
-      )
-      .Select(i => new ItemStack(i));
 }

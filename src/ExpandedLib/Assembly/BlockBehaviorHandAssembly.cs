@@ -43,11 +43,23 @@ public class BlockBehaviorHandAssembly : BlockBehavior {
     return placed;
   }
 
-  /// <summary>Adds the stepping and fixing gestures to the help of the held part.</summary>
+  private ICoreAPI? _api;
+  private ItemStack[]? _tools;
+
+  /// <inheritdoc />
+  public override void OnLoaded(ICoreAPI api) {
+    base.OnLoaded(api);
+    _api = api;
+  }
+
+  /// <summary>Adds the stepping and fixing gestures to the help of the held part; the fixing line shows the tools of <see cref="Spec"/>.</summary>
   public override WorldInteraction[] GetHeldInteractionHelp(
     ItemSlot inSlot,
     ref EnumHandling handling
-  ) =>
+  ) {
+    if (_tools == null && _api != null && Spec is { } spec)
+      _tools = spec.ToolStacks(_api.World);
+    return
     [
       new WorldInteraction
       {
@@ -59,6 +71,8 @@ public class BlockBehaviorHandAssembly : BlockBehavior {
         ActionLangCode = ExlibLang.BlockhelpHandassemblyFix,
         MouseButton = EnumMouseButton.Right,
         HotKeyCode = "shift",
+        Itemstacks = _tools,
       },
     ];
+  }
 }

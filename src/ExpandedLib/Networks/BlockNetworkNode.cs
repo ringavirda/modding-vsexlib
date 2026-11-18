@@ -616,7 +616,7 @@ public abstract class BlockNetworkNode
   #endregion
 
   #region Interaction help
-  /// <summary>Appends the wrench rotate hint to the placed-block help when the block can be rotated here.</summary>
+  /// <summary>Appends the wrench rotate hint to the placed-block help when the block can be rotated here. A fixed hand-assembled piece lists its take-off, and the cap take-off when the end nearest the aim carries a cap, in place of the rotate hint.</summary>
   public override WorldInteraction[] GetPlacedBlockInteractionHelp(
     IWorldAccessor world,
     BlockSelection selection,
@@ -624,6 +624,49 @@ public abstract class BlockNetworkNode
   ) {
     WorldInteraction[] baseHelp =
       base.GetPlacedBlockInteractionHelp(world, selection, forPlayer) ?? [];
+
+    IBlockAccessor accessor = world.BlockAccessor;
+    if (
+      BEBehaviorAssembled.At(accessor, selection.Position)
+        is { Fixed: true } record
+      && HandAssemblySpec.Of(this) is { } spec
+    ) {
+      List<WorldInteraction> fixedHelp =
+      [
+        .. baseHelp,
+        new WorldInteraction {
+          ActionLangCode = ExlibLang.BlockhelpHandassemblyTakeoff,
+          MouseButton = EnumMouseButton.Right,
+          HotKeyCode = "shift",
+          Itemstacks = spec.ToolStacks(world),
+        },
+      ];
+      if (
+        !WrenchFixed(world, selection.Position, selection)
+        && HandAssemblyServer.CappedEnd(
+          accessor,
+          this,
+          selection.Position,
+          record,
+          selection.HitPosition ?? new Vec3d(0.5, 0.5, 0.5)
+        ) != null
+      )
+        foreach (
+          EnumMouseButton button in new[]
+          {
+            EnumMouseButton.Left,
+            EnumMouseButton.Right,
+          }
+        )
+          fixedHelp.Add(
+            new WorldInteraction {
+              ActionLangCode = ExlibLang.BlockhelpHandassemblyCapoff,
+              MouseButton = button,
+              Itemstacks = ExItems.WrenchStacks(world),
+            }
+          );
+      return [.. fixedHelp];
+    }
 
     if (!CanWrenchRotate(world, selection.Position))
       return baseHelp;
