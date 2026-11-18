@@ -280,7 +280,16 @@ internal static class HandAssemblyServer {
     }
     accessor.TriggerNeighbourBlockUpdate(cell);
 
-    HandAssemblyLog.Write(world, player, "takeoff", block.Code, cell, joints, back, []);
+    HandAssemblyLog.Write(
+      world,
+      player,
+      "takeoff",
+      block.Code,
+      cell,
+      joints,
+      back,
+      []
+    );
     done = TookOff(player, block, back);
     if (creative)
       return null;
@@ -306,7 +315,8 @@ internal static class HandAssemblyServer {
       }
       : new AssemblyResult {
         Code = "tookoff",
-        Args = [
+        Args =
+        [
           piece,
           HandAssemblyHud.Stacks(
             (key, args) =>
@@ -329,10 +339,12 @@ internal static class HandAssemblyServer {
     [
       .. stacks
         .GroupBy(s => s.Collectible.Code.ToString())
-        .Select(g => (
-          NameKey(g.First().Collectible.Code, g.First().Class, langCode),
-          g.Sum(s => s.StackSize)
-        )),
+        .Select(g =>
+          (
+            NameKey(g.First().Collectible.Code, g.First().Class, langCode),
+            g.Sum(s => s.StackSize)
+          )
+        ),
     ];
 
   /// <summary>The faces of the piece at <paramref name="cell"/> that carry a joint: its own record holds a fastener or a free mark there, or the neighbour across it holds one toward the cell.</summary>
@@ -381,10 +393,9 @@ internal static class HandAssemblyServer {
       lost = [.. lost, .. record.Caps];
     foreach (BlockFacing face in BlockFacing.ALLFACES)
       if (
-        BEBehaviorAssembled.At(accessor, cell.AddCopy(face))?.FastenerAt(
-          face.Opposite
-        )
-        is { } toward
+        BEBehaviorAssembled
+          .At(accessor, cell.AddCopy(face))
+          ?.FastenerAt(face.Opposite) is { } toward
       )
         lost = [.. lost, toward];
     HandAssemblyLog.Write(

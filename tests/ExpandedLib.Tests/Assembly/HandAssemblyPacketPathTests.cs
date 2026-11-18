@@ -486,7 +486,11 @@ public class HandAssemblyPacketPathTests {
           HandAssemblyServer.TakeOff(
             rig.Scene.World.World,
             rig.Scene.Player.Player,
-            new AssemblyTakeOff { X = 64, Y = 15, Z = 64 }
+            new AssemblyTakeOff {
+              X = 64,
+              Y = 15,
+              Z = 64,
+            }
           )
         );
         piece = rig.Scene.World.GetBlock(Ground).Code.ToString();

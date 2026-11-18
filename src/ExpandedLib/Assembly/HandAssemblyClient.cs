@@ -101,8 +101,11 @@ internal sealed class HandAssemblyClient : IRenderer {
     if (_control.CapFace != null)
       RebuildCap();
     else if (
-      _control.TakeOffLine(_capi.World, Player, (key, args) => Lang.Get(key, args))
-      is { } takeOff
+      _control.TakeOffLine(
+        _capi.World,
+        Player,
+        (key, args) => Lang.Get(key, args)
+      ) is { } takeOff
     )
       ShowHud(takeOff);
     else if (_control.Part == null || _control.Aim == null)
