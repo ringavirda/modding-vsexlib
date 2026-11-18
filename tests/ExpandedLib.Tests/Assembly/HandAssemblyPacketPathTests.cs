@@ -16,11 +16,9 @@ using Scene = ExpandedLib.Tests.HandAssemblyFixTests.Scene;
 
 namespace ExpandedLib.Tests;
 
-/// <summary>Fixes and take-offs driven from the client's hold through the packet bytes to the server, and where the bolts a joint spent end up.</summary>
+/// <summary>Fixes and take-offs driven from the client's click through the packet bytes to the server, and where the bolts a joint spent end up.</summary>
 [Collection(LangCollection.Name)]
 public class HandAssemblyPacketPathTests {
-  private const double HoldSeconds = 10;
-
   private static readonly BlockPos Cell = new(64, 16, 64, 0);
   private static readonly BlockPos Ground = new(64, 15, 64, 0);
   private static readonly BlockPos North = Cell.AddCopy(BlockFacing.NORTH);
@@ -68,7 +66,7 @@ public class HandAssemblyPacketPathTests {
         Scene,
         Scene.Select(aimed, face)
       ).Start();
-      driver.Hold(HoldSeconds, sneak: true);
+      driver.Click(sneak: true);
 
       AssemblyFix sent = Assert.IsType<AssemblyFix>(
         Assert.Single(driver.Channel.Sent)
@@ -97,7 +95,7 @@ public class HandAssemblyPacketPathTests {
         Scene.Player.Player,
         English
       );
-      driver.Hold(HoldSeconds, sneak: true);
+      driver.Click(sneak: true);
 
       AssemblyTakeOff sent = Assert.IsType<AssemblyTakeOff>(
         Assert.Single(driver.Channel.Sent)

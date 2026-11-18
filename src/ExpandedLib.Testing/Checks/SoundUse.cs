@@ -37,6 +37,8 @@ public static class SoundUse {
       "the helpers every other sound goes through; they apply MachineVolume and the sound type",
     ["ExpandedLib/Blocks/Construction/ExConstruction.cs"] =
       "the paying block's place sound at the block's centre, for the paying player; not a machine sound",
+    ["ExpandedLib/Assembly/HandAssemblyServer.cs"] =
+      "the one sound of a fix, a cap fit or a take-off at its cell; not a machine sound",
     ["ExpandedLib/Machines/EntityCraftEffects.cs"] =
       "a held craft step's stroke sound at its holder; not a machine sound",
   };

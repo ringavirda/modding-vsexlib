@@ -11,8 +11,8 @@ using Vintagestory.API.MathTools;
 
 namespace ExpandedLib.Assembling;
 
-/// <summary>The client's control of hand assembly: what the held part or cap and the aim offer, the press of the right button, the hold it begins and the packet sent at the hold's end. Draws nothing. Used from one thread.</summary>
-/// <remarks>The game repeats a held right button's press every build repeat delay and never reports its release, so a press stays one press until a frame reads the button up: its repeats neither step again nor begin another hold.</remarks>
+/// <summary>The client's control of hand assembly: what the held part or cap and the aim offer, the press of the right button and the packet it sends. Draws nothing. Used from one thread.</summary>
+/// <remarks>The game repeats a held right button's press every build repeat delay and never reports its release, so a press stays one press until a frame reads the button up: its repeats neither step again nor send another packet.</remarks>
 internal sealed class HandAssemblyControl {
   private const string TakeOffKey = "takeoff";
   private const string CapKey = "cap";
@@ -20,17 +20,15 @@ internal sealed class HandAssemblyControl {
   private readonly IClientNetworkChannel _channel;
   private readonly Action<string, string[]> _refuse;
   private readonly HandAssemblyStepper _stepper = new();
-  private readonly HandAssemblyHold _hold = new();
 
   private IReadOnlyList<AssemblyCandidate> _candidates = [];
   private BlockPos? _takeOff;
   private string _capCode = "";
   private string _target = "";
-  private string _what = "";
   private int _slot;
   private bool _pressed;
 
-  /// <param name="channel">Receives the <see cref="AssemblyFix"/>, <see cref="AssemblyTakeOff"/> or <see cref="AssemblyCap"/> a finished hold sends.</param>
+  /// <param name="channel">Receives the <see cref="AssemblyFix"/>, <see cref="AssemblyTakeOff"/> or <see cref="AssemblyCap"/> a click sends.</param>
   /// <param name="refuse">Shows a refusal: the placement failure code and the arguments its line formats.</param>
   public HandAssemblyControl(
     IClientNetworkChannel channel,
@@ -94,25 +92,20 @@ internal sealed class HandAssemblyControl {
   /// <summary>How many placements are offered.</summary>
   public int Count => _stepper.Count;
 
-  /// <summary>The fraction of the running hold done, 0 to 1; 0 when none runs.</summary>
-  public float Progress => _hold.Progress;
-
   /// <summary>The placement shown; null when none is offered.</summary>
   public AssemblyCandidate? Shown =>
     _stepper.Shown is { } code
       ? _candidates.FirstOrDefault(c => c.Block.Code.ToString() == code)
       : null;
 
-  /// <summary>Recomputes the offer from what <paramref name="player"/> holds and aims at, and cancels a hold whose aim, placement or slot changed.</summary>
+  /// <summary>Recomputes the offer from what <paramref name="player"/> holds and aims at.</summary>
   /// <param name="world">The world read.</param>
-  /// <param name="player">The local player; null clears the offer and leaves a hold as it is.</param>
+  /// <param name="player">The local player; null clears the offer.</param>
   /// <param name="selection">The block aimed at; null for none.</param>
-  /// <param name="effects">The effects a cancelled hold stops; null for none.</param>
   public void Refresh(
     IWorldAccessor world,
     IPlayer? player,
-    BlockSelection? selection,
-    ICraftEffects? effects
+    BlockSelection? selection
   ) {
     Part = null;
     Spec = null;
@@ -163,104 +156,61 @@ internal sealed class HandAssemblyControl {
       _target,
       [.. _candidates.Select(c => c.Block.Code.ToString())]
     );
-    _what =
-      _takeOff != null ? TakeOffKey
-      : CapFace != null ? CapKey
-      : _stepper.Shown ?? "";
     Short =
       CapFace != null
         ? IsCapShort(player)
         : Spec != null && Shown is { } shown && IsShort(player, shown);
-    _hold.Keep(_target, _what, _slot, effects);
   }
 
-  /// <summary>Takes a right-button press: the first of a press steps the shown placement, or with sneak begins the fix, take-off or cap hold; a repeat of the same press does nothing. A press without sneak on an aimed cap is not hand assembly's.</summary>
+  /// <summary>Takes a right-button press: the first of a press steps the shown placement, or with sneak sends the fix, take-off or cap; a repeat of the same press does nothing. A press without sneak on an aimed cap is not hand assembly's.</summary>
   /// <param name="world">The world read.</param>
   /// <param name="player">The local player.</param>
   /// <param name="selection">The block aimed at; null for none.</param>
   /// <param name="sneak">Whether sneak is held.</param>
-  /// <param name="effects">The effects a hold plays on; null for none.</param>
   /// <returns>Whether the press is hand assembly's, and the game's own use of it is to be skipped.</returns>
   public bool Press(
     IWorldAccessor world,
     IPlayer player,
     BlockSelection? selection,
-    bool sneak,
-    ICraftEffects? effects
+    bool sneak
   ) {
     if (_pressed)
       return true;
 
-    Refresh(world, player, selection, effects);
+    Refresh(world, player, selection);
     if (Part != null && Aim != null) {
       if (!sneak)
         _stepper.Step();
       else
-        BeginFix(world, player);
+        SendFix(world, player);
     } else if (sneak && _takeOff != null)
-      BeginTakeOff(world, player);
+      Send();
     else if (sneak && CapFace != null)
-      BeginCap(world, player);
+      SendCap(world, player);
     else
       return false;
     _pressed = true;
     return true;
   }
 
-  /// <summary>Carries the hold one frame: the button up ends the press, the button up or sneak let go cancels the hold, and a hold that runs its time sends its packet.</summary>
-  /// <param name="seconds">Seconds since the last frame.</param>
+  /// <summary>Reads the button for a frame: the button up ends the press, so the next press acts again.</summary>
   /// <param name="down">Whether the right button is down now.</param>
-  /// <param name="sneak">Whether sneak is held now.</param>
-  /// <param name="effects">The effects the hold plays on; null for none.</param>
-  public void Frame(
-    float seconds,
-    bool down,
-    bool sneak,
-    ICraftEffects? effects
-  ) {
+  public void Frame(bool down) {
     if (!down)
       _pressed = false;
-    if (!_hold.Active)
-      return;
-    if (!down || !sneak)
-      _hold.Release(effects);
-    else if (_hold.Advance(seconds, effects))
-      Send();
   }
 
-  /// <summary>Ends the press and cancels the hold.</summary>
-  /// <param name="effects">The effects the hold played on; null for none.</param>
-  public void Release(ICraftEffects? effects) {
-    _pressed = false;
-    _hold.Release(effects);
-  }
+  /// <summary>Ends the press.</summary>
+  public void Release() => _pressed = false;
 
-  private void BeginFix(IWorldAccessor world, IPlayer player) {
+  private void SendFix(IWorldAccessor world, IPlayer player) {
     if (Shown is not { } shown || Spec == null)
       return;
     if (Short) {
       ShowRefusal(world, player, Spec, shown);
       return;
     }
-    _hold.Begin(
-      _target,
-      _what,
-      _slot,
-      shown.Joints,
-      ToolDefault(player.Entity.LeftHandItemSlot)
-    );
-  }
-
-  private void BeginTakeOff(IWorldAccessor world, IPlayer player) {
-    IBlockAccessor accessor = world.BlockAccessor;
-    Block block = accessor.GetBlock(_takeOff);
-    _hold.Begin(
-      _target,
-      _what,
-      _slot,
-      HandAssemblyCandidates.JointsMade(accessor, _takeOff!, block),
-      ToolDefault(player.InventoryManager.ActiveHotbarSlot)
-    );
+    Send();
   }
 
   private bool AimCap(
@@ -290,18 +240,12 @@ internal sealed class HandAssemblyControl {
     return true;
   }
 
-  private void BeginCap(IWorldAccessor world, IPlayer player) {
+  private void SendCap(IWorldAccessor world, IPlayer player) {
     if (Short) {
       ShowCapRefusal(world, player);
       return;
     }
-    _hold.Begin(
-      _target,
-      _what,
-      _slot,
-      1,
-      ToolDefault(player.Entity.LeftHandItemSlot)
-    );
+    Send();
   }
 
   private void ShowCapRefusal(IWorldAccessor world, IPlayer player) {
@@ -362,11 +306,6 @@ internal sealed class HandAssemblyControl {
         ]
       );
   }
-
-  private static CraftToolDefault? ToolDefault(ItemSlot tool) =>
-    CraftSequenceRegistry.Shared.ToolDefault(
-      tool.Itemstack?.Collectible.Code.ToString()
-    );
 
   private static bool IsFixed(IBlockAccessor world, BlockPos pos) =>
     world.GetBlock(pos) is not BlockNetworkNode

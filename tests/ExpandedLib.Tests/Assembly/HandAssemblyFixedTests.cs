@@ -70,7 +70,7 @@ public class HandAssemblyFixedTests {
     Assert.Equal("test:node-ns", scene.CodeAtCentre);
   }
 
-  // Fails when a plain click says nothing, or a sneaking click, which starts the take-off hold, says it too.
+  // Fails when a plain click says nothing, or a sneaking click, which sends the take-off, says it too.
   [Theory]
   [InlineData(false, 1)]
   [InlineData(true, 0)]

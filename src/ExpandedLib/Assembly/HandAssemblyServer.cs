@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using System.Linq;
+using ExpandedLib.Catalogues;
 using ExpandedLib.Helpers;
 using ExpandedLib.Networks;
 using Vintagestory.API.Common;
@@ -173,6 +174,7 @@ internal static class HandAssemblyServer {
       [],
       spent == null ? [] : [spent]
     );
+    PlaySuccess(world, cell, toolSlot);
     return null;
   }
 
@@ -291,6 +293,7 @@ internal static class HandAssemblyServer {
       []
     );
     done = TookOff(player, block, back);
+    PlaySuccess(world, cell, toolSlot);
     if (creative)
       return null;
     toolSlot.Itemstack.Collectible.DamageItem(world, player.Entity, toolSlot);
@@ -580,6 +583,7 @@ internal static class HandAssemblyServer {
       [],
       spent == null ? [] : [spent]
     );
+    PlaySuccess(world, cell, toolSlot);
     return null;
   }
 
@@ -685,6 +689,7 @@ internal static class HandAssemblyServer {
       creative ? [] : returned.OfType<ItemStack>(),
       []
     );
+    PlaySuccess(world, cell, player.InventoryManager.ActiveHotbarSlot);
     if (creative)
       return null;
     foreach (ItemStack? stack in returned)
@@ -854,6 +859,31 @@ internal static class HandAssemblyServer {
     return langCode == null
       ? Lang.GetMatching(key)
       : Lang.GetMatchingL(langCode, key);
+  }
+
+  private const string LatchSound = "sounds/effect/latch";
+  private const string AnvilSound = "game:sounds/block/anvil";
+
+  private static void PlaySuccess(
+    IWorldAccessor world,
+    BlockPos cell,
+    ItemSlot tool
+  ) {
+    string sound = CraftSequenceRegistry
+      .Shared.ToolDefault(tool.Itemstack?.Collectible.Code.ToString())
+      ?.Sound switch {
+        null or LatchSound or "game:" + LatchSound => AnvilSound,
+        string own => own,
+      };
+    world.PlaySoundAt(
+      new AssetLocation(sound),
+      cell.X + 0.5,
+      cell.Y + 0.5,
+      cell.Z + 0.5,
+      null,
+      true,
+      16
+    );
   }
 
   internal static bool HoldsTool(ItemSlot slot, string pattern) =>

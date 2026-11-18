@@ -213,8 +213,8 @@
   "handassembly-hud-tookoff": "Took off {0}: {1} came back",
   "handassembly-hud-tookoff-bare": "Took off {0}",
   "blockhelp-handassembly-step": "Next placement",
-  "blockhelp-handassembly-fix": "Hold to fix the part",
-  "blockhelp-handassembly-cap": "Hold to fit the cap",
-  "blockhelp-handassembly-takeoff": "Hold to take the part off",
+  "blockhelp-handassembly-fix": "Click to fix the part",
+  "blockhelp-handassembly-cap": "Click to fit the cap",
+  "blockhelp-handassembly-takeoff": "Click to take the part off",
   "blockhelp-handassembly-capoff": "Take the cap off"
 }

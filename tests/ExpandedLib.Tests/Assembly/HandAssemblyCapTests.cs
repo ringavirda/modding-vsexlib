@@ -45,7 +45,7 @@ public class HandAssemblyCapTests {
 
   #region Held help
 
-  // Fails when the cap item is not given the behaviour, or its help drops the sneak-hold gesture or the off-hand tool.
+  // Fails when the cap item is not given the behaviour, or its help drops the sneak-click gesture or the off-hand tool.
   [Fact]
   public void CapHeldHelp_NamesTheGesture() {
     var scene = CapScene.Standing();
@@ -431,7 +431,6 @@ public class HandAssemblyCapTests {
     CapScene scene,
     BlockFacing face,
     bool sneak,
-    double seconds,
     HandAssemblyControlTests.SentPackets channel,
     out bool taken
   ) {
@@ -440,21 +439,18 @@ public class HandAssemblyCapTests {
       scene.World.World,
       scene.Player.Player,
       Aim(face),
-      sneak,
-      null
+      sneak
     );
-    for (int frame = 0; frame < seconds * 60; frame++)
-      control.Frame(1f / 60, true, sneak, null);
     return control;
   }
 
-  // Fails when a held cap aimed at a fixed piece's open end is not offered, so the sneak hold sends nothing.
+  // Fails when BeginCap no longer sends on the click, or a held cap aimed at a fixed piece's open end is not offered.
   [Fact]
-  public void CapGesture_HoldSendsAssemblyCapAndTheServerFits() {
+  public void Press_CapFitSendsOnTheClick() {
     var scene = CapScene.Standing(bolts: 10);
     var channel = new HandAssemblyControlTests.SentPackets();
 
-    Gesture(scene, BlockFacing.NORTH, sneak: true, 6, channel, out bool taken);
+    Gesture(scene, BlockFacing.NORTH, sneak: true, channel, out bool taken);
 
     Assert.True(taken);
     AssemblyCap sent = Assert.IsType<AssemblyCap>(Assert.Single(channel.Sent));
@@ -466,13 +462,46 @@ public class HandAssemblyCapTests {
     Assert.Equal(6, scene.Carried(scene.Bolt));
   }
 
-  // Fails when a press without sneak begins the cap hold, so the game's own use of the click is skipped.
+  // Fails when a cap fit plays no sound, or a refused fit plays one.
+  [Fact]
+  public void Sound_CapFitPlaysTheAnvilOnceAndARefusalNothing() {
+    var scene = CapScene.Standing(bolts: 1);
+    Assert.NotNull(scene.Fit(BlockFacing.NORTH));
+    Assert.Empty(HandAssemblySoundTests.Played(scene.World));
+
+    scene = CapScene.Standing(bolts: 10);
+    Assert.Null(scene.Fit(BlockFacing.NORTH));
+
+    Assert.Equal(
+      ["game:sounds/block/anvil"],
+      HandAssemblySoundTests.Played(scene.World)
+    );
+  }
+
+  // Fails when a cap take-off plays no sound, or a click on an uncapped end plays one.
+  [Fact]
+  public void Sound_CapTakeOffPlaysTheAnvilOnceAndARefusalNothing() {
+    var scene = CapScene.Standing(bolts: 10);
+    Assert.Null(scene.Fit(BlockFacing.NORTH));
+    scene.World.World.ClearReceivedCalls();
+
+    Assert.NotNull(scene.Click(BlockFacing.SOUTH));
+    Assert.Empty(HandAssemblySoundTests.Played(scene.World));
+
+    Assert.Null(scene.Click(BlockFacing.NORTH));
+    Assert.Equal(
+      ["game:sounds/block/anvil"],
+      HandAssemblySoundTests.Played(scene.World)
+    );
+  }
+
+  // Fails when a press without sneak sends the cap, so the game's own use of the click is skipped.
   [Fact]
   public void CapGesture_PlainClickDoesNothing() {
     var scene = CapScene.Standing();
     var channel = new HandAssemblyControlTests.SentPackets();
 
-    Gesture(scene, BlockFacing.NORTH, sneak: false, 3, channel, out bool taken);
+    Gesture(scene, BlockFacing.NORTH, sneak: false, channel, out bool taken);
 
     Assert.False(taken);
     Assert.Empty(channel.Sent);
@@ -490,7 +519,6 @@ public class HandAssemblyCapTests {
       scene,
       BlockFacing.NORTH,
       sneak: false,
-      0,
       channel,
       out _
     );

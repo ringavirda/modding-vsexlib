@@ -137,7 +137,7 @@ public sealed partial class SetupScene
   }
 
   /// <summary>The <c>cap</c> step: on an uncapped end of a fixed piece the player fits the def's cap
-  /// held in the main hand with the wrench in the off hand, as a finished sneak hold sends it; on a
+  /// held in the main hand with the wrench in the off hand, as a sneak click sends it; on a
   /// capped end the player clicks it with the wrench in the main hand and takes the cap off. The
   /// step's <c>fails</c> names the refusal the server must answer.</summary>
   private void CapStep(SetupStep step)

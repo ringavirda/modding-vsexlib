@@ -13,7 +13,7 @@ internal sealed class CollectibleBehaviorCapHelp(
   CollectibleObject collObj,
   ItemStack[] tools
 ) : CollectibleBehavior(collObj) {
-  /// <summary>The held-help line naming the sneak hold, with the spec's tool shown for the off hand.</summary>
+  /// <summary>The held-help line naming the sneak click, with the spec's tool shown for the off hand.</summary>
   public override WorldInteraction[] GetHeldInteractionHelp(
     ItemSlot inSlot,
     ref EnumHandling handling

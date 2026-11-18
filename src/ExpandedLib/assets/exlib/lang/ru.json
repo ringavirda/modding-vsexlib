@@ -213,8 +213,8 @@
   "handassembly-hud-tookoff": "Снято: {0}; вернулось: {1}",
   "handassembly-hud-tookoff-bare": "Снято: {0}",
   "blockhelp-handassembly-step": "Следующее положение",
-  "blockhelp-handassembly-fix": "Удерживать, чтобы закрепить деталь",
-  "blockhelp-handassembly-cap": "Удерживать, чтобы надеть заглушку",
-  "blockhelp-handassembly-takeoff": "Удерживать, чтобы снять деталь",
+  "blockhelp-handassembly-fix": "Нажать, чтобы закрепить деталь",
+  "blockhelp-handassembly-cap": "Нажать, чтобы надеть заглушку",
+  "blockhelp-handassembly-takeoff": "Нажать, чтобы снять деталь",
   "blockhelp-handassembly-capoff": "Снять заглушку"
 }

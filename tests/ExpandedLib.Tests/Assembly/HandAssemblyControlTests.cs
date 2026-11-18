@@ -56,7 +56,7 @@ public class HandAssemblyControlTests {
         Channel,
         (code, _) => Refusals.Add(code)
       );
-      Control.Refresh(scene.World.World, scene.Player.Player, aim, null);
+      Control.Refresh(scene.World.World, scene.Player.Player, aim);
       return this;
     }
 
@@ -68,24 +68,23 @@ public class HandAssemblyControlTests {
       for (int i = 0; i < frames; i++, _frame++) {
         double now = Ms(_frame);
         for (; nextRefresh <= now; nextRefresh += RefreshMs)
-          Control.Refresh(scene.World.World, scene.Player.Player, aim, null);
+          Control.Refresh(scene.World.World, scene.Player.Player, aim);
         for (; nextPress <= now; nextPress += RepeatMs)
-          Control.Press(
-            scene.World.World,
-            scene.Player.Player,
-            aim,
-            sneak,
-            null
-          );
-        Control.Frame(1f / FramesPerSecond, true, sneak, null);
+          Control.Press(scene.World.World, scene.Player.Player, aim, sneak);
+        Control.Frame(true);
         Shown.Add(Control.Index);
       }
     }
 
-    public void Up(double seconds, bool sneak) {
+    public void Up(double seconds) {
       int frames = (int)Math.Round(seconds * FramesPerSecond);
       for (int i = 0; i < frames; i++, _frame++)
-        Control.Frame(1f / FramesPerSecond, false, sneak, null);
+        Control.Frame(false);
+    }
+
+    public void Click(bool sneak) {
+      Hold(1.0 / FramesPerSecond, sneak);
+      Up(1.0 / FramesPerSecond);
     }
 
     private static double Ms(int frame) => frame * 1000.0 / FramesPerSecond;
@@ -99,9 +98,9 @@ public class HandAssemblyControlTests {
     return scene;
   }
 
-  // Fails when a repeat of the held press begins the hold again (nothing is ever sent) or begins a second hold after the first sent.
+  // Fails when BeginFix no longer sends on the click, so a sneak press with a fix shown sends nothing.
   [Fact]
-  public void A_held_sneak_press_sends_one_fix_and_the_server_places_it_from_the_sent_bytes() {
+  public void Press_FixSendsOnTheClick() {
     Scene scene = Joined();
     var driver = new Driver(
       scene,
@@ -110,58 +109,82 @@ public class HandAssemblyControlTests {
     AssemblyCandidate shown = driver.Control.Shown!;
     Assert.True(shown.Joints > 0);
 
-    driver.Hold(6, sneak: true);
+    Assert.True(
+      driver.Control.Press(
+        scene.World.World,
+        scene.Player.Player,
+        Scene.Select(Ground, BlockFacing.UP),
+        sneak: true
+      )
+    );
 
     AssemblyFix sent = Assert.IsType<AssemblyFix>(
       Assert.Single(driver.Channel.Sent)
     );
-    byte[] bytes = SerializerUtil.Serialize(sent);
-    AssemblyFix arrived = SerializerUtil.Deserialize<AssemblyFix>(bytes);
-    AssemblyResult? refusal = HandAssemblyServer.Fix(
-      scene.World.World,
-      scene.Player.Player,
-      arrived
+    AssemblyFix arrived = SerializerUtil.Deserialize<AssemblyFix>(
+      SerializerUtil.Serialize(sent)
     );
-
-    Assert.Null(refusal);
+    Assert.Null(
+      HandAssemblyServer.Fix(scene.World.World, scene.Player.Player, arrived)
+    );
     Assert.Equal(shown.Block, scene.World.World.BlockAccessor.GetBlock(Cell));
     Assert.True(scene.RecordAt(Cell).Fixed);
     Assert.Equal(10 - (shown.Joints * 2), scene.Carried);
     Assert.Empty(driver.Refusals);
   }
 
-  // Fails when the hold runs on after sneak is let go while the button stays down.
+  // Fails when BeginTakeOff no longer sends on the click, so a sneak press with the tool in hand on a fixed piece sends nothing.
   [Fact]
-  public void Letting_go_of_sneak_cancels_the_hold_and_sends_nothing() {
-    Scene scene = Joined();
-    var driver = new Driver(
-      scene,
-      Scene.Select(Ground, BlockFacing.UP)
-    ).Start();
+  public void Press_TakeOffSendsOnTheClick() {
+    var scene = Scene.Standing(["ns"]);
+    scene.Bolts(10);
+    Assert.Null(scene.Fix("ns", Ground, BlockFacing.UP));
+    scene.Player.Hold(new ItemStack(scene.Wrench));
+    scene.Player.Sneaking = true;
+    var driver = new Driver(scene, Scene.Select(Cell, BlockFacing.UP)).Start();
 
-    driver.Hold(0.5, sneak: true);
-    Assert.True(driver.Control.Progress > 0f);
-    driver.Hold(5, sneak: false);
+    Assert.True(
+      driver.Control.Press(
+        scene.World.World,
+        scene.Player.Player,
+        Scene.Select(Cell, BlockFacing.UP),
+        sneak: true
+      )
+    );
 
-    Assert.Empty(driver.Channel.Sent);
-    Assert.Equal(0f, driver.Control.Progress);
+    AssemblyTakeOff sent = Assert.IsType<AssemblyTakeOff>(
+      Assert.Single(driver.Channel.Sent)
+    );
+    Assert.Equal((Cell.X, Cell.Y, Cell.Z), (sent.X, sent.Y, sent.Z));
   }
 
-  // Fails when the hold runs on after the button comes up while sneak is still held.
+  // Fails when the _pressed check is removed from Press, so each repeat of a held press sends the fix again.
   [Fact]
-  public void The_button_coming_up_cancels_the_hold_and_sends_nothing() {
+  public void Press_RepeatOfAHeldPressSendsOnce() {
     Scene scene = Joined();
     var driver = new Driver(
       scene,
       Scene.Select(Ground, BlockFacing.UP)
     ).Start();
 
-    driver.Hold(0.5, sneak: true);
-    Assert.True(driver.Control.Progress > 0f);
-    driver.Up(5, sneak: true);
+    driver.Hold(1.6, sneak: true);
 
-    Assert.Empty(driver.Channel.Sent);
-    Assert.Equal(0f, driver.Control.Progress);
+    Assert.IsType<AssemblyFix>(Assert.Single(driver.Channel.Sent));
+  }
+
+  // Fails when Frame with the button up does not end the press, so a second click after release sends nothing.
+  [Fact]
+  public void Press_AfterTheButtonCameUpSendsAgain() {
+    Scene scene = Joined();
+    var driver = new Driver(
+      scene,
+      Scene.Select(Ground, BlockFacing.UP)
+    ).Start();
+
+    driver.Click(sneak: true);
+    driver.Click(sneak: true);
+
+    Assert.Equal(2, driver.Channel.Sent.Count);
   }
 
   // Fails when a repeat of the held press steps again, or a press after the button came up does not.
@@ -178,7 +201,7 @@ public class HandAssemblyControlTests {
 
     driver.Hold(1.6, sneak: false);
     Assert.Equal([1], driver.Shown.Distinct());
-    driver.Up(0.1, sneak: false);
+    driver.Up(0.1);
     driver.Shown.Clear();
     driver.Hold(0.6, sneak: false);
 
@@ -216,11 +239,11 @@ public class HandAssemblyControlTests {
     IWorldAccessor world = scene.World.World;
     BlockSelection aim = Scene.Select(Ground, BlockFacing.UP);
 
-    Assert.False(control.Press(world, scene.Player.Player, null, false, null));
-    Assert.True(control.Press(world, scene.Player.Player, aim, false, null));
+    Assert.False(control.Press(world, scene.Player.Player, null, false));
+    Assert.True(control.Press(world, scene.Player.Player, aim, false));
     Assert.Equal(1, control.Index);
-    control.Release(null);
-    Assert.True(control.Press(world, scene.Player.Player, aim, false, null));
+    control.Release();
+    Assert.True(control.Press(world, scene.Player.Player, aim, false));
     Assert.Equal(2, control.Index);
   }
 }

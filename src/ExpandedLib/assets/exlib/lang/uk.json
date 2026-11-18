@@ -213,8 +213,8 @@
   "handassembly-hud-tookoff": "Знято: {0}; повернулося: {1}",
   "handassembly-hud-tookoff-bare": "Знято: {0}",
   "blockhelp-handassembly-step": "Наступне положення",
-  "blockhelp-handassembly-fix": "Утримувати, щоб закріпити деталь",
-  "blockhelp-handassembly-cap": "Утримувати, щоб надіти ковпак",
-  "blockhelp-handassembly-takeoff": "Утримувати, щоб зняти деталь",
+  "blockhelp-handassembly-fix": "Натиснути, щоб закріпити деталь",
+  "blockhelp-handassembly-cap": "Натиснути, щоб надіти ковпак",
+  "blockhelp-handassembly-takeoff": "Натиснути, щоб зняти деталь",
   "blockhelp-handassembly-capoff": "Зняти ковпак"
 }

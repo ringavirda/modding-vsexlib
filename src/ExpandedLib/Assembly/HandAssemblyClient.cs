@@ -39,9 +39,6 @@ internal sealed class HandAssemblyClient : IRenderer {
 
   private IClientPlayer? Player => _capi.World.Player;
 
-  private ICraftEffects? Effects =>
-    Player?.Entity is { } entity ? new EntityCraftEffects(entity) : null;
-
   private void OnAction(
     EnumEntityAction action,
     bool on,
@@ -50,7 +47,7 @@ internal sealed class HandAssemblyClient : IRenderer {
     if (action != EnumEntityAction.InWorldRightMouseDown || Player == null)
       return;
     if (!on) {
-      _control.Release(Effects);
+      _control.Release();
       return;
     }
 
@@ -59,8 +56,7 @@ internal sealed class HandAssemblyClient : IRenderer {
         _capi.World,
         Player,
         Player.CurrentBlockSelection,
-        Player.Entity.Controls.Sneak,
-        Effects
+        Player.Entity.Controls.Sneak
       )
     )
       handled = EnumHandling.PreventDefault;
@@ -88,12 +84,7 @@ internal sealed class HandAssemblyClient : IRenderer {
 
   private void Refresh() {
     IClientPlayer? player = Player;
-    _control.Refresh(
-      _capi.World,
-      player,
-      player?.CurrentBlockSelection,
-      Effects
-    );
+    _control.Refresh(_capi.World, player, player?.CurrentBlockSelection);
     Display();
   }
 
@@ -178,7 +169,7 @@ internal sealed class HandAssemblyClient : IRenderer {
   }
 
   private void Clear() {
-    _control.Release(Effects);
+    _control.Release();
     HideDisplay();
   }
 
@@ -191,12 +182,7 @@ internal sealed class HandAssemblyClient : IRenderer {
   public void OnRenderFrame(float deltaTime, EnumRenderStage stage) {
     if (Player?.Entity is not { } entity)
       return;
-    _control.Frame(
-      deltaTime,
-      _capi.Input.InWorldMouseButton.Right,
-      entity.Controls.Sneak,
-      Effects
-    );
+    _control.Frame(_capi.Input.InWorldMouseButton.Right);
     if (_control.CapFace != null)
       DrawCapGhost(entity);
     else
