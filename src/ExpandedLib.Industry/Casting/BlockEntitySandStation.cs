@@ -310,30 +310,14 @@ public class BlockEntitySandStation : ExBlockEntity, ILiquidMetalSink {
 
   #region Server tick: pull from the launder, cool
 
-  private int _probePulled;
-  private long _probeLastMs;
-
   private void OnServerTick(float dt) {
     if (Cell is not { } cell)
       return;
 
-    int probeCold = _coldBatches;
-    _probePulled = 0;
-    long probeNow = Environment.TickCount64;
-    long probeRealMs = _probeLastMs == 0 ? -1 : probeNow - _probeLastMs;
-    _probeLastMs = probeNow;
-    bool probeIntake = IntakeAllowed();
-
-    if (probeIntake)
+    if (IntakeAllowed())
       PullFromLaunder(cell);
 
     TimeFeed(cell, dt);
-    if (
-      (cell.CellAmount > 0 && cell.CellAmount < cell.MaxUnitCapacity)
-      || _probePulled > 0
-      || _coldBatches != probeCold
-    )
-      ProbeLog(cell, dt, probeRealMs, probeIntake, probeCold);
     cell.EnsureMetalStack(Api.World);
     cell.UpdateThermal(Api.World);
     OnStationTick(dt);
@@ -349,7 +333,6 @@ public class BlockEntitySandStation : ExBlockEntity, ILiquidMetalSink {
   }
 
   private void NoteFeed(int amountBefore) {
-    int probeCold = _coldBatches;
     if (Spec is { } spec)
       _coldBatches = SandStationLogic.ColdShut(
         _coldBatches,
@@ -358,63 +341,9 @@ public class BlockEntitySandStation : ExBlockEntity, ILiquidMetalSink {
         spec.UnitsPerPiece,
         Batches(spec)
       );
-    if (_coldBatches != probeCold || _feedGap > 1.5f)
-      Api.Logger.Notification(
-        "[coldshut] {0} feed before {1} gap {2:0.000} cold {3}->{4} replay {5}",
-        Pos,
-        amountBefore,
-        _feedGap,
-        probeCold,
-        _coldBatches,
-        FastForward.Replaying
-      );
     _feedGap = 0f;
     _fedThisTick = true;
   }
-
-  private void ProbeLog(
-    BEBehaviorMoltenCell cell,
-    float dt,
-    long realMs,
-    bool intake,
-    int coldBefore
-  ) {
-    var faces = new StringBuilder();
-    foreach (LaunderFace face in LaunderFaces) {
-      BlockPos at = Pos.AddCopy(face.Offset.X, face.Offset.Y, face.Offset.Z)
-        .Add(face.Facing);
-      faces.Append(' ').Append(face.Facing.Code).Append('@').Append(at);
-      faces.Append(ProbeCell(at));
-      faces.Append(" up").Append(ProbeCell(at.AddCopy(face.Facing)));
-    }
-    Api.Logger.Notification(
-      "[coldshut] {0} tick {1} dt {2:0.000} realms {3} replay {4} cursor {5:0.00000} now {6:0.00000} frozen {7} intake {8} pulled {9} amount {10}/{11} gap {12:0.000} cold {13}->{14} temp {15:0}{16}",
-      Pos,
-      _probeTicks++,
-      dt,
-      realMs,
-      FastForward.Replaying,
-      FastForward.CursorHours,
-      Api.World.Calendar.TotalHours,
-      FastForward.IsFrozen(Api.World, Pos),
-      intake,
-      _probePulled,
-      cell.CellAmount,
-      cell.MaxUnitCapacity,
-      _feedGap,
-      coldBefore,
-      _coldBatches,
-      cell.CellTemperature,
-      faces
-    );
-  }
-
-  private long _probeTicks;
-
-  private string ProbeCell(BlockPos at) =>
-    Api.World.BlockAccessor.GetBlockEntity(at) is IMoltenCell c
-      ? $"[{c.CellAmount} sol {c.Solidified} seal {c.Sealed} t {c.CellTemperature:0}]"
-      : "[none]";
 
   private void PullFromLaunder(BEBehaviorMoltenCell cell) {
     foreach (LaunderFace face in LaunderFaces)
@@ -445,7 +374,6 @@ public class BlockEntitySandStation : ExBlockEntity, ILiquidMetalSink {
     if (accepted <= 0)
       return;
     src.DrainMetal(accepted);
-    _probePulled += accepted;
     NoteFeed(before);
     _fillTemperature = cell.CellTemperature;
     OnMetalMoved(accepted, cell.CellMetalType, cell.CellTemperature);
