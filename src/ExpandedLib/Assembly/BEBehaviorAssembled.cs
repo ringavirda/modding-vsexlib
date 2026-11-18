@@ -7,16 +7,18 @@ using Vintagestory.API.MathTools;
 
 namespace ExpandedLib.Assembling;
 
-/// <summary>Holds what hand assembly records on a placed part: whether it is fixed, the fasteners each joint spent, and the cap fitted to each face with the fasteners its joint spent. Absent records read as not fixed, with no fasteners and no caps.</summary>
+/// <summary>Holds what hand assembly records on a placed part: whether it is fixed, the fasteners each joint spent, which joints were made in creative and are owed nothing, and the cap fitted to each face with the fasteners its joint spent. Absent records read as not fixed, with no fasteners, no free joints and no caps.</summary>
 [BlockEntityBehaviorRegister]
 public class BEBehaviorAssembled(BlockEntity blockentity)
   : BlockEntityBehavior(blockentity) {
   private const string FixedKey = "asmFixed";
   private const string JointKey = "asmFast";
+  private const string FreeKey = "asmFree";
   private const string CapKey = "asmCap";
   private const string CapFastenerKey = "asmCapFast";
 
   private readonly Dictionary<string, ItemStack> _fasteners = [];
+  private readonly HashSet<string> _free = [];
   private readonly Dictionary<string, ItemStack> _caps = [];
   private readonly Dictionary<string, ItemStack> _capFasteners = [];
 
@@ -28,11 +30,30 @@ public class BEBehaviorAssembled(BlockEntity blockentity)
   public ItemStack? FastenerAt(BlockFacing face) =>
     _fasteners.GetValueOrDefault(FaceKey(face));
 
-  /// <summary>Records the fasteners the joint on <paramref name="face"/> spent.</summary>
+  /// <summary>Records the fasteners the joint on <paramref name="face"/> spent. Records only: the caller marks the block entity dirty.</summary>
   /// <param name="face">The arm of this part the joint is on.</param>
-  /// <param name="stack">The spent fasteners, or null to clear the record.</param>
+  /// <param name="stack">The spent fasteners, or null to clear the record. Either way the joint's free mark is cleared: a joint holding a record, or cleared of one, is not owed nothing.</param>
   public void SetFastener(BlockFacing face, ItemStack? stack) =>
     Set(FaceKey(face), stack);
+
+  /// <summary>Whether the joint on <paramref name="face"/> was made in creative, spent nothing and is owed nothing, so a take-off returns no fasteners for it.</summary>
+  /// <param name="face">The arm of this part the joint is on.</param>
+  public bool FreeAt(BlockFacing face) => _free.Contains(FaceKey(face));
+
+  /// <summary>Marks the joint on <paramref name="face"/> as owed nothing, or clears the mark. Records only: the caller marks the block entity dirty.</summary>
+  /// <param name="face">The arm of this part the joint is on.</param>
+  /// <param name="free">Whether the joint is owed nothing.</param>
+  public void SetFree(BlockFacing face, bool free) =>
+    SetFreeKey(FaceKey(face), free);
+
+  /// <summary>Whether the one joint of a part that is not a network node was made in creative and is owed nothing. Setting a record on <see cref="Joint"/> clears it.</summary>
+  public bool JointFree {
+    get => _free.Contains(JointKey);
+    set => SetFreeKey(JointKey, value);
+  }
+
+  /// <summary>Whether any joint of this part is owed nothing.</summary>
+  internal bool HasFree => _free.Count > 0;
 
   /// <summary>The fasteners the one joint of a part that is not a network node spent; null when it spent none.</summary>
   public ItemStack? Joint {
@@ -85,7 +106,15 @@ public class BEBehaviorAssembled(BlockEntity blockentity)
 
   private static string FaceKey(BlockFacing face) => JointKey + face.Code;
 
+  private void SetFreeKey(string key, bool free) {
+    if (free)
+      _free.Add(key);
+    else
+      _free.Remove(key);
+  }
+
   private void Set(string key, ItemStack? stack) {
+    _free.Remove(key);
     if (stack == null)
       _fasteners.Remove(key);
     else
@@ -99,6 +128,8 @@ public class BEBehaviorAssembled(BlockEntity blockentity)
       tree.SetBool(FixedKey, true);
     foreach ((string key, ItemStack stack) in _fasteners)
       tree.SetItemstack(key, stack.Clone());
+    foreach (string key in _free)
+      tree.SetBool(FreeKey + key[JointKey.Length..], true);
     foreach ((string code, ItemStack stack) in _caps)
       tree.SetItemstack(CapKey + code, stack.Clone());
     foreach ((string code, ItemStack stack) in _capFasteners)
@@ -113,7 +144,10 @@ public class BEBehaviorAssembled(BlockEntity blockentity)
     base.FromTreeAttributes(tree, worldAccessForResolve);
     Fixed = tree.GetBool(FixedKey);
     _fasteners.Clear();
+    _free.Clear();
     foreach (string key in FaceKeys()) {
+      if (tree.GetBool(FreeKey + key[JointKey.Length..]))
+        _free.Add(key);
       ItemStack? stack = tree.GetItemstack(key);
       if (stack == null)
         continue;

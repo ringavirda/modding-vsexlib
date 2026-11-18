@@ -30,6 +30,9 @@ internal static class HandAssemblyServer {
   // Blocks added to the player's picking range.
   private const float RangeSlack = 1f;
 
+  [System.ThreadStatic]
+  private static bool _keepRecords;
+
   /// <summary>Fixes the candidate <paramref name="fix"/> names.</summary>
   /// <param name="world">The server world.</param>
   /// <param name="player">The sending player.</param>
@@ -131,11 +134,21 @@ internal static class HandAssemblyServer {
       toolSlot.Itemstack.Collectible.DamageItem(world, player.Entity, toolSlot);
     }
 
-    Place(world, player, candidate, selection, cell, placed, spent, spec);
+    Place(
+      world,
+      player,
+      candidate,
+      selection,
+      cell,
+      placed,
+      spent,
+      creative,
+      spec
+    );
     return null;
   }
 
-  /// <summary>Takes the fixed piece at the packet's position off; a block that is not a network node counts as fixed whatever its record holds, and one with no record returns only itself: it and the fasteners of every joint it was part of go to the player, and the cell clears.</summary>
+  /// <summary>Takes the fixed piece at the packet's position off; a block that is not a network node counts as fixed whatever its record holds, and one with no record returns only itself. In survival the piece and the fasteners of every joint it was part of (<see cref="TakeOffReturns"/>) go to the player, what the pack cannot hold spawns at the player's feet, and the records of those joints clear. In creative nothing returns and no record is lost: the records the piece holds move onto the neighbours across their joints, and the records the neighbours hold toward the cell stay.</summary>
   /// <param name="world">The server world.</param>
   /// <param name="player">The sending player; the tool is read from the active hotbar slot.</param>
   /// <param name="take">The packet; nothing in it is trusted but the position; the dimension is the player's own.</param>
@@ -178,29 +191,23 @@ internal static class HandAssemblyServer {
       return Refusal(Fixed);
 
     var returned = new List<ItemStack>();
-    if (record != null) {
-      returned.AddRange(record.Spent.Select(s => s.Clone()));
-      returned.AddRange(record.Caps.Select(s => s.Clone()));
-      returned.AddRange(record.CapSpent.Select(s => s.Clone()));
-    }
-    foreach (BlockFacing face in BlockFacing.ALLFACES) {
-      BEBehaviorAssembled? neighbour = BEBehaviorAssembled.At(
-        accessor,
-        cell.AddCopy(face)
-      );
-      if (neighbour?.FastenerAt(face.Opposite) is not { } joint)
-        continue;
-      returned.Add(joint.Clone());
-      neighbour.SetFastener(face.Opposite, null);
-      neighbour.Blockentity.MarkDirty();
+    if (creative)
+      KeepRecords(accessor, cell, record);
+    else {
+      returned.AddRange(TakeOffReturns(accessor, cell).Stacks);
+      ClearRecordsToward(accessor, cell);
+      bool givesPiece =
+        block is not BlockNetworkNode node || !node.IsCrackedAt(world, cell);
+      if (givesPiece)
+        returned.AddRange(block.GetDrops(world, cell, player) ?? []);
     }
 
-    bool givesPiece =
-      block is not BlockNetworkNode node || !node.IsCrackedAt(world, cell);
-    if (givesPiece)
-      returned.AddRange(block.GetDrops(world, cell, player) ?? []);
-
-    accessor.SetBlock(0, cell);
+    _keepRecords = creative;
+    try {
+      accessor.SetBlock(0, cell);
+    } finally {
+      _keepRecords = false;
+    }
     accessor.TriggerNeighbourBlockUpdate(cell);
 
     if (creative)
@@ -210,6 +217,73 @@ internal static class HandAssemblyServer {
       if (!player.InventoryManager.TryGiveItemstack(stack, true))
         world.SpawnItemEntity(stack, player.Entity.Pos.XYZ);
     return null;
+  }
+
+  /// <summary>The stacks a survival take-off of the piece at <paramref name="cell"/> gives besides the piece, and whether any joint of it is owed nothing.</summary>
+  /// <param name="accessor">The accessor to read the records from.</param>
+  /// <param name="cell">The position of the fixed piece.</param>
+  /// <returns>Stacks: clones of the fasteners its own joints spent, its caps and their fasteners, and the fasteners each neighbour holds for its joint toward the cell. AnyFree: whether the piece's own record or a neighbour's toward the cell marks a joint free, made in creative.</returns>
+  internal static (
+    IReadOnlyList<ItemStack> Stacks,
+    bool AnyFree
+  ) TakeOffReturns(IBlockAccessor accessor, BlockPos cell) {
+    var stacks = new List<ItemStack>();
+    bool anyFree = false;
+    if (BEBehaviorAssembled.At(accessor, cell) is { } record) {
+      stacks.AddRange(record.Spent.Select(s => s.Clone()));
+      stacks.AddRange(record.Caps.Select(s => s.Clone()));
+      stacks.AddRange(record.CapSpent.Select(s => s.Clone()));
+      anyFree = record.HasFree;
+    }
+    foreach (BlockFacing face in BlockFacing.ALLFACES) {
+      if (
+        BEBehaviorAssembled.At(accessor, cell.AddCopy(face))
+        is not { } neighbour
+      )
+        continue;
+      if (neighbour.FastenerAt(face.Opposite) is { } joint)
+        stacks.Add(joint.Clone());
+      anyFree |= neighbour.FreeAt(face.Opposite);
+    }
+    return (stacks, anyFree);
+  }
+
+  private static void KeepRecords(
+    IBlockAccessor accessor,
+    BlockPos cell,
+    BEBehaviorAssembled? record
+  ) {
+    if (record == null)
+      return;
+    BEBehaviorAssembled? only = null;
+    BlockFacing? onlyFace = null;
+    int carriers = 0;
+    foreach (BlockFacing face in BlockFacing.ALLFACES) {
+      if (BEBehaviorAssembled.At(accessor, cell.AddCopy(face)) is not { } n)
+        continue;
+      carriers++;
+      only = n;
+      onlyFace = face;
+      if (record.FastenerAt(face) is { } own)
+        Add(n, face.Opposite, own);
+    }
+    if (record.Joint is { } joint && carriers == 1 && only != null)
+      Add(only, onlyFace!.Opposite, joint);
+  }
+
+  private static void Add(
+    BEBehaviorAssembled holder,
+    BlockFacing face,
+    ItemStack stack
+  ) {
+    ItemStack kept = stack.Clone();
+    if (
+      holder.FastenerAt(face) is { } held
+      && held.Collectible == kept.Collectible
+    )
+      kept.StackSize += held.StackSize;
+    holder.SetFastener(face, kept);
+    holder.Blockentity.MarkDirty();
   }
 
   /// <summary>Fits the cap held in the main hand on the end <paramref name="fit"/> names, with the tool in the off hand: takes one cap and the fasteners of one joint, and wears the tool once.</summary>
@@ -370,16 +444,24 @@ internal static class HandAssemblyServer {
     );
   }
 
-  /// <summary>Clears the fastener each neighbour of <paramref name="cell"/> holds for its joint toward it; the fasteners are lost.</summary>
+  /// <summary>Clears the fastener each neighbour of <paramref name="cell"/> holds for its joint toward it, and its free mark; the fasteners are lost, so a caller that returns them reads them first. Does nothing while a creative take-off removes its piece, which keeps the neighbours' records.</summary>
   /// <param name="world">The accessor to read the neighbours from.</param>
   /// <param name="cell">The position of the piece that is gone.</param>
   internal static void ClearRecordsToward(IBlockAccessor world, BlockPos cell) {
+    if (_keepRecords)
+      return;
     foreach (BlockFacing face in BlockFacing.ALLFACES) {
       BEBehaviorAssembled? neighbour = BEBehaviorAssembled.At(
         world,
         cell.AddCopy(face)
       );
-      if (neighbour?.FastenerAt(face.Opposite) == null)
+      if (
+        neighbour == null
+        || (
+          neighbour.FastenerAt(face.Opposite) == null
+          && !neighbour.FreeAt(face.Opposite)
+        )
+      )
         continue;
       neighbour.SetFastener(face.Opposite, null);
       neighbour.Blockentity.MarkDirty();
@@ -443,6 +525,7 @@ internal static class HandAssemblyServer {
       cell,
       ExactlyOne(itemstack),
       null,
+      true,
       HandAssemblySpec.Of(part)!
     );
     return true;
@@ -540,6 +623,7 @@ internal static class HandAssemblyServer {
     BlockPos cell,
     ItemStack placed,
     ItemStack? spent,
+    bool free,
     HandAssemblySpec spec
   ) {
     if (candidate.Block is BlockNetworkNode)
@@ -562,7 +646,18 @@ internal static class HandAssemblyServer {
     if (record == null)
       return;
     record.Fixed = true;
-    if (spent != null) {
+    if (free) {
+      if (candidate.Block is not BlockNetworkNode) {
+        if (candidate.Joints > 0)
+          record.JointFree = true;
+      } else
+        foreach (
+          BlockFacing arm in candidate.Arms.Where(a =>
+            !candidate.OpenArms.Contains(a)
+          )
+        )
+          record.SetFree(arm, true);
+    } else if (spent != null) {
       if (candidate.Block is not BlockNetworkNode)
         record.Joint = spent;
       else

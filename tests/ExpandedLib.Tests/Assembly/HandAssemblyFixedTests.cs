@@ -421,18 +421,21 @@ public class HandAssemblyFixedTests {
     Assert.Equal(2, scene.Pieces);
   }
 
-  // Fails when a creative take-off of the earlier piece leaves the later piece's record, so its bolts come back in survival.
+  // Fails when a creative take-off of the earlier piece clears the later piece's record, so its bolts are lost.
   [Fact]
-  public void SurvivalTakeOff_CreativeTakeOffOfTheEarlierPieceDiscardsTheLaterPiecesBolts() {
+  public void SurvivalTakeOff_CreativeTakeOffOfTheEarlierPieceKeepsTheLaterPiecesBolts() {
     var scene = TwoPieces();
     scene.Player.GameMode = EnumGameMode.Creative;
     Assert.Null(scene.TakeOff(Cell));
     scene.Player.GameMode = EnumGameMode.Survival;
 
-    Assert.Null(scene.RecordAt(North).FastenerAt(BlockFacing.SOUTH));
+    Assert.Equal(
+      2,
+      scene.RecordAt(North).FastenerAt(BlockFacing.SOUTH)!.StackSize
+    );
     Assert.Null(scene.TakeOff(North));
 
-    Assert.Equal(8, scene.Carried);
+    Assert.Equal(10, scene.Carried);
     Assert.Equal(1, scene.Pieces);
   }
 

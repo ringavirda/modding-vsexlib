@@ -813,6 +813,10 @@ ExpandedLib.Assembling.AssemblyCandidate.Turn.init -> void
 ExpandedLib.Assembling.BEBehaviorAssembled
 ExpandedLib.Assembling.BEBehaviorAssembled.BEBehaviorAssembled(Vintagestory.API.Common.BlockEntity! blockentity) -> void
 ExpandedLib.Assembling.BEBehaviorAssembled.FastenerAt(Vintagestory.API.MathTools.BlockFacing! face) -> Vintagestory.API.Common.ItemStack?
+ExpandedLib.Assembling.BEBehaviorAssembled.FreeAt(Vintagestory.API.MathTools.BlockFacing! face) -> bool
+ExpandedLib.Assembling.BEBehaviorAssembled.JointFree.get -> bool
+ExpandedLib.Assembling.BEBehaviorAssembled.JointFree.set -> void
+ExpandedLib.Assembling.BEBehaviorAssembled.SetFree(Vintagestory.API.MathTools.BlockFacing! face, bool free) -> void
 ExpandedLib.Assembling.BEBehaviorAssembled.Fixed.get -> bool
 ExpandedLib.Assembling.BEBehaviorAssembled.Fixed.set -> void
 ExpandedLib.Assembling.BEBehaviorAssembled.Joint.get -> Vintagestory.API.Common.ItemStack?

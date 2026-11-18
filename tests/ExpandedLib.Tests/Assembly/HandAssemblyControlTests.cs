@@ -44,7 +44,7 @@ public class HandAssemblyControlTests {
     INetworkChannel INetworkChannel.RegisterMessageType<T>() => this;
   }
 
-  private sealed class Driver(Scene scene, BlockSelection aim) {
+  internal sealed class Driver(Scene scene, BlockSelection aim) {
     public SentPackets Channel { get; } = new();
     public List<string> Refusals { get; } = [];
     public HandAssemblyControl Control { get; private set; } = null!;

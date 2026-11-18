@@ -442,7 +442,7 @@ public abstract class BlockNetworkNode
       world.BlockAccessor.BreakBlock(pos, null);
   }
 
-  /// <summary>Removes this block's position from the network graph, then calls the base break logic. A fixed piece's own fasteners are lost with it, and the caps fitted to it drop.</summary>
+  /// <summary>Removes this block's position from the network graph, then calls the base break logic. A fixed piece's own fasteners are lost with it, and the caps fitted to it drop; the fasteners its neighbours hold toward it are lost through <see cref="OnBlockRemoved(IWorldAccessor, BlockPos)"/>. Only a take-off with the wrench returns them.</summary>
   public override void OnBlockBroken(
     IWorldAccessor world,
     BlockPos pos,
@@ -463,7 +463,7 @@ public abstract class BlockNetworkNode
     base.OnBlockBroken(world, pos, byPlayer, dropQuantityMultiplier);
   }
 
-  /// <summary>Clears the fastener records the neighbours hold toward this block's position; runs for a break, a burst and a take-off alike.</summary>
+  /// <summary>Clears the fastener records, and the free marks, the neighbours hold toward this block's position, and loses their fasteners; runs for a break, a burst and a take-off alike. A creative take-off of a fixed piece keeps them: it moves the piece's own records onto its neighbours first and removes the block with this clearing off.</summary>
   public override void OnBlockRemoved(IWorldAccessor world, BlockPos pos) {
     HandAssemblyServer.ClearRecordsToward(world.BlockAccessor, pos);
     base.OnBlockRemoved(world, pos);
