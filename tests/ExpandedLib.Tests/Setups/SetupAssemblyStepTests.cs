@@ -185,6 +185,21 @@ public class SetupAssemblyStepTests {
     Assert.Null(RecordAt(off, 0, 0, 0).CapAt(BlockFacing.WEST));
   }
 
+  // Fails when the step fits with the cap anywhere but the main hand: the server takes the fitted cap from the active slot the packet names.
+  [Fact]
+  public void CapStep_FitsWithTheCapInTheMainHand() {
+    using SetupScene scene = BuildInline(
+      "[" + WePipe + ", { \"cap\": { \"at\": [0, 0, 0], \"face\": \"e\" } }]"
+    );
+
+    Assert.Equal(
+      "setupasm:cap",
+      RecordAt(scene, 0, 0, 0)
+        .CapAt(BlockFacing.EAST)
+        ?.Collectible.Code.ToString()
+    );
+  }
+
   // Fails when a take-off step stages a fresh cap and fasteners before the server removes the fitted ones: the pack, holding one cap and one joint's bolts, is overdrawn.
   [Fact]
   public void CapStep_TakeOffDrawsNothingFromThePack() {
@@ -198,16 +213,17 @@ public class SetupAssemblyStepTests {
     Assert.Null(RecordAt(scene, 0, 0, 0).CapAt(BlockFacing.WEST));
   }
 
-  // Fails when the cap step wears the wrench only on a click the server took, or in creative: a refusal wears it as a fit does.
+  // Fails when the cap step's wear departs from the hands': a fit wears the wrench once, a refused fit not at all, a take-off once more.
   [Theory]
   [InlineData("fit", 1)]
-  [InlineData("refusal", 1)]
-  public void CapStep_WearsTheWrenchOnEveryClick(string click, int wear) {
-    string face = click == "fit" ? "w" : "e";
+  [InlineData("refusal", 0)]
+  [InlineData("take-off", 2)]
+  public void CapStep_WearsTheWrenchOnEachFitAndTakeOff(string click, int wear) {
+    string face = click == "refusal" ? "e" : "w";
     string fails =
-      click == "fit" ? "" : ", \"fails\": \"exlib-handassembly-capjoined\"";
+      click == "refusal" ? ", \"fails\": \"exlib-handassembly-capjoined\"" : "";
     string beside =
-      click == "fit"
+      click != "refusal"
         ? ""
         : "{ \"assemble\": { \"code\": \"setupasm:pipe-straight-we\", \"at\": [1, 0, 0], \"arms\": \"ew\" } },";
     string cap =
@@ -216,6 +232,8 @@ public class SetupAssemblyStepTests {
       + "\""
       + fails
       + " } }";
+    if (click == "take-off")
+      cap += "," + cap;
 
     int Uses(string last) {
       int uses = 0;

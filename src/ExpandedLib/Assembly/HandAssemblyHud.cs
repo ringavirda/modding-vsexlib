@@ -6,7 +6,7 @@ using Vintagestory.API.MathTools;
 
 namespace ExpandedLib.Assembling;
 
-/// <summary>The line shown while a part is held: which placement is shown, what it joins, what stays open and what fixing costs.</summary>
+/// <summary>The line shown while a part or a cap is held: which placement is shown, what it joins, what stays open and what fixing costs; or which cap goes on and what it costs.</summary>
 internal static class HandAssemblyHud {
   /// <summary>Builds the line, such as <c>3/4 Tee: joins Pipe (N), Pipe (S); open E | 2 Bolt bundle, 37 carried</c>.</summary>
   /// <param name="get">Translates a lang key with its arguments; <c>Lang.Get</c> in the game.</param>
@@ -50,6 +50,30 @@ internal static class HandAssemblyHud {
           )
         );
     if (cost > 0)
+      line.Append(" | ")
+        .Append(get(ExlibLang.HandassemblyHudCost, [cost, fastener, carried]));
+    return line.ToString();
+  }
+
+  /// <summary>Builds the line of an aimed cap, such as <c>Cap Cast iron pipe cap | 4 Bolt, 37 carried</c>.</summary>
+  /// <param name="get">Translates a lang key with its arguments; <c>Lang.Get</c> in the game.</param>
+  /// <param name="cap">The held cap's name.</param>
+  /// <param name="refusal">The line of the reason the aimed end takes no cap, shown in place of the cost; null when it takes one.</param>
+  /// <param name="cost">The fasteners fitting spends; 0 leaves the cost clause out.</param>
+  /// <param name="fastener">The fastener's name.</param>
+  /// <param name="carried">How many of the fastener the player carries.</param>
+  public static string CapLine(
+    Func<string, object[], string> get,
+    string cap,
+    string? refusal,
+    int cost,
+    string fastener,
+    int carried
+  ) {
+    var line = new StringBuilder(get(ExlibLang.HandassemblyHudCap, [cap]));
+    if (refusal != null)
+      line.Append(" | ").Append(refusal);
+    else if (cost > 0)
       line.Append(" | ")
         .Append(get(ExlibLang.HandassemblyHudCost, [cost, fastener, carried]));
     return line.ToString();

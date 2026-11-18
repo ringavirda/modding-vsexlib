@@ -22,7 +22,7 @@ public class HandAssemblyControlTests {
   private static readonly BlockPos North = Cell.AddCopy(BlockFacing.NORTH);
   private static readonly BlockPos East = Cell.AddCopy(BlockFacing.EAST);
 
-  private sealed class SentPackets : IClientNetworkChannel {
+  internal sealed class SentPackets : IClientNetworkChannel {
     public List<object> Sent { get; } = [];
 
     public string ChannelName => HandAssemblyModSystem.ChannelName;

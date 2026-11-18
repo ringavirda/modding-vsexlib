@@ -5,7 +5,7 @@ using Vintagestory.API.Server;
 
 namespace ExpandedLib.Assembling;
 
-/// <summary>Carries hand assembly's fixes and take-offs: the client sends an <c>AssemblyFix</c> or an <c>AssemblyTakeOff</c> on the <c>exlib:assembly</c> channel and the server places or takes off the part, or answers an <c>AssemblyResult</c>.</summary>
+/// <summary>Carries hand assembly's fixes, take-offs and cap fits: the client sends an <c>AssemblyFix</c>, an <c>AssemblyTakeOff</c> or an <c>AssemblyCap</c> on the <c>exlib:assembly</c> channel and the server places or takes off the part or fits the cap, or answers an <c>AssemblyResult</c>.</summary>
 [EditorBrowsable(EditorBrowsableState.Never)]
 public class HandAssemblyModSystem : ModSystem {
   internal const string ChannelName = "exlib:assembly";
@@ -19,6 +19,7 @@ public class HandAssemblyModSystem : ModSystem {
       .Network.RegisterChannel(ChannelName)
       .RegisterMessageType<AssemblyFix>()
       .RegisterMessageType<AssemblyTakeOff>()
+      .RegisterMessageType<AssemblyCap>()
       .RegisterMessageType<AssemblyResult>();
     var client = new HandAssemblyClient(api, channel);
     channel.SetMessageHandler<AssemblyResult>(client.ShowResult);
@@ -31,9 +32,11 @@ public class HandAssemblyModSystem : ModSystem {
       .Network.RegisterChannel(ChannelName)
       .RegisterMessageType<AssemblyFix>()
       .RegisterMessageType<AssemblyTakeOff>()
+      .RegisterMessageType<AssemblyCap>()
       .RegisterMessageType<AssemblyResult>()
       .SetMessageHandler<AssemblyFix>(OnFix)
-      .SetMessageHandler<AssemblyTakeOff>(OnTakeOff);
+      .SetMessageHandler<AssemblyTakeOff>(OnTakeOff)
+      .SetMessageHandler<AssemblyCap>(OnCap);
   }
 
   private void OnTakeOff(IServerPlayer player, AssemblyTakeOff take) {
@@ -41,6 +44,16 @@ public class HandAssemblyModSystem : ModSystem {
       _sapi!.World,
       player,
       take
+    );
+    if (refusal != null)
+      _serverChannel!.SendPacket(refusal, player);
+  }
+
+  private void OnCap(IServerPlayer player, AssemblyCap fit) {
+    AssemblyResult? refusal = HandAssemblyServer.FitCap(
+      _sapi!.World,
+      player,
+      fit
     );
     if (refusal != null)
       _serverChannel!.SendPacket(refusal, player);

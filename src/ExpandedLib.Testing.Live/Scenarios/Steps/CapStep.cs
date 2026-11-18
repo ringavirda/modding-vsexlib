@@ -6,9 +6,9 @@ using Vintagestory.API.MathTools;
 
 namespace ExpandedLib.Testing.Live;
 
-/// <summary><c>cap</c>: the scenario player clicks a crossing of a fixed piece with the wrench, fitting
-/// the def's cap from the off hand or taking off the cap the crossing carries, or expects the
-/// server's refusal named by <c>fails</c>.</summary>
+/// <summary><c>cap</c>: the scenario player fits the def's cap, held in the main hand with the wrench
+/// in the off hand, on an uncapped end of a fixed piece, or takes off the cap a capped end carries
+/// with a wrench click, or expects the server's refusal named by <c>fails</c>.</summary>
 internal sealed class CapStep : ScenarioStep {
   public override string Kind => "cap";
 

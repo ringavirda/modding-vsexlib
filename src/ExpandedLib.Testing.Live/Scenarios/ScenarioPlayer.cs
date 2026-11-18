@@ -449,8 +449,9 @@ internal sealed class ScenarioPlayer : IHandRelease {
     }
   }
 
-  /// <summary>Clicks the <paramref name="face"/> crossing of the fixed piece at <paramref name="at"/>
-  /// with the wrench (<see cref="HandAssemblyPlay.Cap"/>), then parks the player again.</summary>
+  /// <summary>Fits a cap on the <paramref name="face"/> end of the fixed piece at <paramref name="at"/>,
+  /// or takes off the cap it carries with the wrench (<see cref="HandAssemblyPlay.Cap"/>), then parks
+  /// the player again.</summary>
   /// <param name="ctx">The running case, whose pack the tool, cap and fasteners come from.</param>
   /// <param name="at">The absolute cell of the piece.</param>
   /// <param name="face">The crossing the click lands on.</param>

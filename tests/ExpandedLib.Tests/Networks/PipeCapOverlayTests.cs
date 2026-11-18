@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using ExpandedLib.Assembling;
@@ -147,5 +148,48 @@ public class PipeCapOverlayTests {
       ).Length
     );
     Assert.Equal(3, Builds());
+  }
+
+  // Fails when the cap ghost is not the piece's own cap overlay of the aimed end, uploaded: another end's overlay, or the piece's default mesh.
+  [Fact]
+  public void CapGesture_GhostIsTheCapOverlayOfTheAimedFace() {
+    var w = new TestWorld();
+    var pipe = (BlockPipe)Piece(w, [], "ns", "straight").Block;
+    var capi = Substitute.For<ICoreClientAPI>();
+    var asset = Substitute.For<IAsset>();
+    asset.ToObject<Shape>().Returns(new Shape());
+    capi.Assets.TryGet(Arg.Any<AssetLocation>(), Arg.Any<bool>())
+      .Returns(asset);
+    var tesselator = Substitute.For<ITesselatorAPI>();
+    capi.Tesselator.Returns(tesselator);
+    var meshes = new Dictionary<float, MeshData>();
+    tesselator
+      .When(t =>
+        t.TesselateShape(
+          Arg.Any<CollectibleObject>(),
+          Arg.Any<Shape>(),
+          out Arg.Any<MeshData>(),
+          Arg.Any<Vec3f>(),
+          Arg.Any<int?>(),
+          Arg.Any<string[]>()
+        )
+      )
+      .Do(call => {
+        var mesh = new MeshData(4, 6);
+        meshes[((Vec3f)call[3]).Y] = mesh;
+        call[2] = mesh;
+      });
+    var uploaded = new MultiTextureMeshRef([], []);
+    capi.Render.UploadMultiTextureMesh(Arg.Any<MeshData>()).Returns(uploaded);
+    capi.TesselatorManager.GetDefaultBlockMeshRef(Arg.Any<Block>())
+      .Returns(new MultiTextureMeshRef([], []));
+    using var ghost = new HandAssemblyCapGhost();
+
+    MultiTextureMeshRef? south = ghost.Of(capi, pipe, BlockFacing.SOUTH);
+
+    Assert.Same(uploaded, south);
+    capi.Render.Received(1).UploadMultiTextureMesh(meshes[180]);
+    Assert.Same(uploaded, ghost.Of(capi, pipe, BlockFacing.SOUTH));
+    capi.Render.Received(1).UploadMultiTextureMesh(Arg.Any<MeshData>());
   }
 }

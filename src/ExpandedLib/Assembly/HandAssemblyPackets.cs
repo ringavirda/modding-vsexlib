@@ -69,3 +69,30 @@ internal class AssemblyTakeOff {
   [ProtoMember(4)]
   public int Dimension;
 }
+
+/// <summary>Client to server: fit the cap held in the main hand on one open end of the fixed piece at a position. Carries the aim and what is held, nothing about cost.</summary>
+[ProtoContract]
+internal class AssemblyCap {
+  [ProtoMember(1)]
+  public int X;
+
+  [ProtoMember(2)]
+  public int Y;
+
+  [ProtoMember(3)]
+  public int Z;
+
+  [ProtoMember(4)]
+  public int Dimension;
+
+  /// <summary>Index into <c>BlockFacing.ALLFACES</c> of the end to cap.</summary>
+  [ProtoMember(5)]
+  public int Face;
+
+  /// <summary>The hotbar slot number holding the cap.</summary>
+  [ProtoMember(6)]
+  public int Slot;
+
+  [ProtoMember(7)]
+  public string CapCode = "";
+}

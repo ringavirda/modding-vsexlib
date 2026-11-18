@@ -200,6 +200,7 @@
   "handassembly-hud-nojoins": "joins nothing",
   "handassembly-hud-open": "open {0}",
   "handassembly-hud-cost": "{0} {1}, {2} carried",
+  "handassembly-hud-cap": "Cap {0}",
   "handassembly-hud-none": "No placement fits here.",
   "blockhelp-handassembly-step": "Next placement",
   "blockhelp-handassembly-fix": "Hold to fix the part"

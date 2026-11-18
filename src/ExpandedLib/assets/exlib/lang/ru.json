@@ -200,6 +200,7 @@
   "handassembly-hud-nojoins": "ничего не соединяет",
   "handassembly-hud-open": "открыто: {0}",
   "handassembly-hud-cost": "{0} {1}, в наличии {2}",
+  "handassembly-hud-cap": "Заглушка: {0}",
   "handassembly-hud-none": "Здесь ничего не подходит.",
   "blockhelp-handassembly-step": "Следующее положение",
   "blockhelp-handassembly-fix": "Удерживать, чтобы закрепить деталь"

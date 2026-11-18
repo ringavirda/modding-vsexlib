@@ -9,7 +9,7 @@ using Vintagestory.API.MathTools;
 
 namespace ExpandedLib.Assembling;
 
-/// <summary>The client's side of hand assembly: hands the right button and each frame to a <see cref="HandAssemblyControl"/>, and shows the ghost and the line of the placement it shows.</summary>
+/// <summary>The client's side of hand assembly: hands the right button and each frame to a <see cref="HandAssemblyControl"/>, and shows the ghost and the line of the placement or the cap it shows.</summary>
 internal sealed class HandAssemblyClient : IRenderer {
   private const int RecomputeMs = 100;
 
@@ -28,6 +28,7 @@ internal sealed class HandAssemblyClient : IRenderer {
   private readonly ICoreClientAPI _capi;
   private readonly HandAssemblyControl _control;
   private readonly HandAssemblyHudDialog _hud;
+  private readonly HandAssemblyCapGhost _capGhost = new();
   private readonly Matrixf _model = new();
 
   private bool _hudShown;
@@ -101,10 +102,29 @@ internal sealed class HandAssemblyClient : IRenderer {
   }
 
   private void Display() {
-    if (_control.Part == null || _control.Aim == null)
+    if (_control.CapFace != null)
+      RebuildCap();
+    else if (_control.Part == null || _control.Aim == null)
       HideDisplay();
     else
       Rebuild();
+  }
+
+  private void RebuildCap() {
+    HandAssemblySpec spec = _control.CapSpec!;
+    ItemStack? cap = Player?.InventoryManager.ActiveHotbarSlot.Itemstack;
+    ShowHud(
+      HandAssemblyHud.CapLine(
+        (key, args) => Lang.Get(key, args),
+        cap?.GetName() ?? "",
+        _control.CapRefusal is { } refusal
+          ? HandAssemblyServer.Line(null, refusal)
+          : null,
+        spec.PerJoint,
+        HandAssemblyServer.FastenerName(_capi.World, spec.Fastener),
+        ExCarried.Count(Player!, spec.Fastener)
+      )
+    );
   }
 
   private void Rebuild() {
@@ -173,7 +193,55 @@ internal sealed class HandAssemblyClient : IRenderer {
       entity.Controls.Sneak,
       Effects
     );
-    DrawGhost(entity);
+    if (_control.CapFace != null)
+      DrawCapGhost(entity);
+    else
+      DrawGhost(entity);
+  }
+
+  private void DrawCapGhost(EntityPlayer entity) {
+    if (
+      _control.CapAt is not { } cell
+      || _control.CapFace is not { } face
+      || _capGhost.Of(_capi, _capi.World.BlockAccessor.GetBlock(cell), face)
+        is not { } ghost
+    )
+      return;
+    DrawTinted(entity, cell, ghost);
+  }
+
+  private void DrawTinted(
+    EntityPlayer entity,
+    BlockPos cell,
+    MultiTextureMeshRef mesh
+  ) {
+    Vec3d camera = entity.CameraPos;
+    IRenderAPI render = _capi.Render;
+    IShaderProgram? previous = render.CurrentActiveShader;
+    previous?.Stop();
+    IStandardShaderProgram shader = render.PreparedStandardShader(
+      cell.X,
+      cell.Y,
+      cell.Z
+    );
+    shader.ViewMatrix = render.CameraMatrixOriginf;
+    shader.ProjectionMatrix = render.CurrentProjectionMatrix;
+    Tint(shader, cell.X - camera.X, cell.Y - camera.Y, cell.Z - camera.Z);
+    render.GlToggleBlend(true);
+    render.GLDepthMask(false);
+    render.RenderMultiTextureMesh(mesh, "tex");
+    render.GLDepthMask(true);
+    render.GlToggleBlend(false);
+    shader.Stop();
+    previous?.Use();
+  }
+
+  private void Tint(IStandardShaderProgram shader, double x, double y, double z) {
+    float fill = BaseAlpha + ((1f - BaseAlpha) * _control.Progress);
+    (float r, float g, float b) = _control.Short ? ShortTint : GhostTint;
+    shader.NormalShaded = 1;
+    shader.RgbaTint = new Vec4f(r, g, b, fill);
+    shader.ModelMatrix = _model.Identity().Translate(x, y, z).Values;
   }
 
   private void DrawGhost(EntityPlayer entity) {
@@ -204,11 +272,7 @@ internal sealed class HandAssemblyClient : IRenderer {
 
     DrawMarks(shader, shown, x, y, z);
 
-    float fill = BaseAlpha + ((1f - BaseAlpha) * _control.Progress);
-    (float r, float g, float b) = _control.Short ? ShortTint : GhostTint;
-    shader.NormalShaded = 1;
-    shader.RgbaTint = new Vec4f(r, g, b, fill);
-    shader.ModelMatrix = _model.Identity().Translate(x, y, z).Values;
+    Tint(shader, x, y, z);
     render.GlToggleBlend(true);
     render.GLDepthMask(false);
     render.RenderMultiTextureMesh(
@@ -264,6 +328,7 @@ internal sealed class HandAssemblyClient : IRenderer {
     _capi.Event.UnregisterRenderer(this, EnumRenderStage.Opaque);
     _markMesh?.Dispose();
     _white?.Dispose();
+    _capGhost.Dispose();
     _hud.Dispose();
   }
 }

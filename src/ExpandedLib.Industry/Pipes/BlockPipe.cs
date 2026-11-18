@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using ExpandedLib.Assembling;
 using ExpandedLib.Definitions;
 using ExpandedLib.Helpers;
 using ExpandedLib.Networks;
@@ -20,7 +21,8 @@ public partial class BlockPipe
   : BlockNetworkNode,
     IBurstablePipe,
     IThroughputLimitedPipe,
-    IExBlockDefProvider {
+    IExBlockDefProvider,
+    ICapOverlayMesh {
   public override string NetworkType => "pipe";
 
   #region Code-first definitions
@@ -354,6 +356,9 @@ public partial class BlockPipe
     _capMeshes[key] = meshes;
     return meshes;
   }
+
+  MeshData? ICapOverlayMesh.CapOverlay(ICoreClientAPI capi, BlockFacing face) =>
+    CapMeshes(capi, capi.Tesselator, [face]) is [var mesh] ? mesh : null;
 
   #endregion
 

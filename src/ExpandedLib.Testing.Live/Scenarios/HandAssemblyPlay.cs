@@ -154,10 +154,12 @@ internal static class HandAssemblyPlay {
     }
   }
 
-  /// <summary>Clicks the <paramref name="face"/> crossing of the fixed piece at <paramref name="at"/>
-  /// with its tool in the main hand and no sneak, as the wrench does: the crossing's cap is taken off,
-  /// or an uncapped one gets the def's cap from the off hand with the fasteners of one joint. The tool
-  /// and cap are drawn from the case's pack and what came back to the player goes to it.</summary>
+  /// <summary>Caps or uncaps the <paramref name="face"/> end of the fixed piece at <paramref name="at"/>:
+  /// an uncapped end gets the def's cap held in the main hand, with the tool in the off hand and the
+  /// fasteners of one joint, through <see cref="HandAssemblyServer.FitCap"/> as a finished sneak hold
+  /// sends it; a capped end is clicked with the tool in the main hand and no sneak, as the wrench
+  /// does, and its cap is taken off. The tool and cap are drawn from the case's pack and what came
+  /// back to the player goes to it.</summary>
   /// <param name="ctx">The running case, whose pack the tool, cap and fasteners come from.</param>
   /// <param name="world">The server world.</param>
   /// <param name="player">The player, in survival mode and standing in reach of the cell.</param>
@@ -186,15 +188,32 @@ internal static class HandAssemblyPlay {
     ItemSlot slot = player.InventoryManager.ActiveHotbarSlot;
     ItemSlot offhand = player.Entity.LeftHandItemSlot;
     string label = $"hand assembly cap of {block.Code}";
-    slot.Itemstack = PackLedger.Tool(ctx, label, spec.Tool);
-    if (!capped) {
-      offhand.Itemstack = PackLedger.Tool(ctx, label, spec.Cap);
+    ItemStack? wrench = PackLedger.Tool(ctx, label, spec.Tool);
+    if (capped)
+      slot.Itemstack = wrench;
+    else {
+      slot.Itemstack = PackLedger.Tool(ctx, label, spec.Cap);
+      offhand.Itemstack = wrench;
       Supply(ctx, world, player, spec, spec.PerJoint);
     }
     Dictionary<string, int> before = ExCarried.Totals(player);
     bool sneaking = player.Entity.Controls.Sneak;
     player.Entity.Controls.Sneak = false;
     try {
+      if (!capped)
+        return HandAssemblyServer.FitCap(
+          world,
+          player,
+          new AssemblyCap {
+            X = at.X,
+            Y = at.Y,
+            Z = at.Z,
+            Dimension = at.dimension,
+            Face = face.Index,
+            Slot = player.InventoryManager.ActiveHotbarSlotNumber,
+            CapCode = slot.Itemstack.Collectible.Code.ToString(),
+          }
+        );
       AssemblyResult? refused = HandAssemblyServer.Cap(
         world,
         player,

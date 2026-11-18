@@ -136,9 +136,10 @@ public sealed partial class SetupScene
       );
   }
 
-  /// <summary>The <c>cap</c> step: the player clicks the named crossing of a fixed piece with the
-  /// wrench in the main hand, fitting the def's cap from the off hand, or taking off the cap the
-  /// crossing carries; the step's <c>fails</c> names the refusal the server must answer.</summary>
+  /// <summary>The <c>cap</c> step: on an uncapped end of a fixed piece the player fits the def's cap
+  /// held in the main hand with the wrench in the off hand, as a finished sneak hold sends it; on a
+  /// capped end the player clicks it with the wrench in the main hand and takes the cap off. The
+  /// step's <c>fails</c> names the refusal the server must answer.</summary>
   private void CapStep(SetupStep step)
   {
     BlockPos at = At(step, "at");
@@ -155,13 +156,17 @@ public sealed partial class SetupScene
       != null;
     if (!capped && spec.Cap == null)
       throw Fail(step.Path, $"{block.Code} at {Describe(at)} declares no cap.");
+    ItemStack wrenchStack = ToolFor(step.Path, spec);
     ItemStack? cap = null;
-    if (!capped)
+    if (capped)
+      Player.Hold(wrenchStack);
+    else
+    {
       cap = ToolFor(step.Path, spec with { Tool = spec.Cap! });
-    Player.Hold(ToolFor(step.Path, spec));
-    Player.HoldOffHand(cap);
-    if (!capped)
+      Player.Hold(cap);
+      Player.HoldOffHand(wrenchStack);
       Supply(step.Path, spec, spec.PerJoint);
+    }
     Dictionary<string, int> before = ExCarried.Totals(Player.Player);
     bool sneaking = Player.Sneaking;
     Player.Sneaking = false;
@@ -171,19 +176,34 @@ public sealed partial class SetupScene
       refused = StandingBeside(
         at,
         () =>
-          HandAssemblyServer.Cap(
-            World.World,
-            Player.Player,
-            at,
-            new Vec3d(
-              0.5 + 0.5 * face.Normali.X,
-              0.5 + 0.5 * face.Normali.Y,
-              0.5 + 0.5 * face.Normali.Z
+          capped
+            ? HandAssemblyServer.Cap(
+              World.World,
+              Player.Player,
+              at,
+              new Vec3d(
+                0.5 + 0.5 * face.Normali.X,
+                0.5 + 0.5 * face.Normali.Y,
+                0.5 + 0.5 * face.Normali.Z
+              )
             )
-          )
+            : HandAssemblyServer.FitCap(
+              World.World,
+              Player.Player,
+              new AssemblyCap
+              {
+                X = at.X,
+                Y = at.Y,
+                Z = at.Z,
+                Dimension = at.dimension,
+                Face = face.Index,
+                Slot = Player.Player.InventoryManager.ActiveHotbarSlotNumber,
+                CapCode = cap!.Collectible.Code.ToString(),
+              }
+            )
       );
       ItemSlot wrench = Player.ActiveSlot;
-      if (!HandAssemblyGate.IsCreative(Player.Player))
+      if (capped && !HandAssemblyGate.IsCreative(Player.Player))
         wrench.Itemstack.Collectible.DamageItem(
           World.World,
           Player.Player.Entity,

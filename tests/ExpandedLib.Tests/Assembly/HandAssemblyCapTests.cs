@@ -14,11 +14,12 @@ using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
+using Vintagestory.API.Util;
 using Xunit;
 
 namespace ExpandedLib.Tests;
 
-/// <summary>A cap fitted to or taken off an open crossing of a fixed piece by the wrench click: what it checks, what it takes and returns, and what a fitted cap does to the piece's networks, break and take-off.</summary>
+/// <summary>A cap fitted to an open crossing of a fixed piece from the main hand with the wrench in the off hand, or taken off it by the wrench click: what it checks, what it takes and returns, and what a fitted cap does to the piece's networks, break and take-off.</summary>
 public class HandAssemblyCapTests {
   private static readonly BlockPos Cell = new(64, 16, 64, 0);
   private static readonly string[] Axis = ["ns", "we", "ud"];
@@ -41,14 +42,14 @@ public class HandAssemblyCapTests {
 
   #region Fitting
 
-  // Fails when the cap fitted is not taken from the off hand, or the fasteners of the def's joint are not spent.
+  // Fails when the cap fitted is not taken from the main hand, or the fasteners of the def's joint are not taken.
   [Fact]
-  public void Cap_FitSpendsCapAndJointFasteners() {
+  public void FitCap_SpendsCapAndJointFasteners() {
     var scene = CapScene.Standing(bolts: 10);
 
-    Assert.Null(scene.Click(BlockFacing.NORTH));
+    Assert.Null(scene.Fit(BlockFacing.NORTH));
 
-    Assert.Equal(1, scene.Player.OffHandSlot.StackSize);
+    Assert.Equal(1, scene.Player.ActiveSlot.StackSize);
     Assert.Equal(6, scene.Carried(scene.Bolt));
     Assert.Equal(
       "test:cap-cast",
@@ -58,12 +59,22 @@ public class HandAssemblyCapTests {
     Assert.Null(scene.Record.CapAt(BlockFacing.SOUTH));
   }
 
-  // Fails when the click takes the first arm it finds and not the crossing nearest the hit point.
+  // Fails when the fit wears the main hand's stack, or nothing, and not the wrench in the off hand.
   [Fact]
-  public void Cap_FitsTheCrossingNearestTheHit() {
+  public void FitCap_WearsTheOffHandWrench() {
     var scene = CapScene.Standing();
 
-    Assert.Null(scene.Click(BlockFacing.SOUTH));
+    Assert.Null(scene.Fit(BlockFacing.NORTH));
+
+    Assert.Equal(1, scene.Wear);
+  }
+
+  // Fails when the fit caps another arm than the face the packet names.
+  [Fact]
+  public void FitCap_FitsTheFaceThePacketNames() {
+    var scene = CapScene.Standing();
+
+    Assert.Null(scene.Fit(BlockFacing.SOUTH));
 
     Assert.NotNull(scene.Record.CapAt(BlockFacing.SOUTH));
     Assert.Null(scene.Record.CapAt(BlockFacing.NORTH));
@@ -71,21 +82,21 @@ public class HandAssemblyCapTests {
 
   // Fails when air beyond an end is read as closing it.
   [Fact]
-  public void Cap_FitsOnEndFacingAir() {
+  public void FitCap_FitsOnEndFacingAir() {
     var scene = CapScene.Standing();
 
-    Assert.Null(scene.Click(BlockFacing.NORTH));
+    Assert.Null(scene.Fit(BlockFacing.NORTH));
 
     Assert.NotNull(scene.Record.CapAt(BlockFacing.NORTH));
   }
 
   // Fails when the fasteners are spent as one, not as the def's perJoint, or the def's own fastener is not the one spent.
   [Fact]
-  public void Cap_PlatedFitSpendsTwoBoltBundles() {
-    var scene = CapScene.Standing(PlatedSpec, offHand: "plated");
+  public void FitCap_PlatedFitSpendsTwoBoltBundles() {
+    var scene = CapScene.Standing(PlatedSpec, cap: "plated");
     scene.Give(scene.Bundle, 5);
 
-    Assert.Null(scene.Click(BlockFacing.NORTH));
+    Assert.Null(scene.Fit(BlockFacing.NORTH));
 
     Assert.Equal(3, scene.Carried(scene.Bundle));
     Assert.Equal(2, scene.Record.CapFastenersAt(BlockFacing.NORTH)!.StackSize);
@@ -100,105 +111,38 @@ public class HandAssemblyCapTests {
   [InlineData("turned pipe")]
   [InlineData("filler host")]
   [InlineData("solid on top only")]
-  public void Cap_FitsBesideOccupiedNotSolid(string beside) {
+  public void FitCap_FitsBesideOccupiedNotSolid(string beside) {
     var scene = CapScene.Standing();
     scene.Beside(BlockFacing.NORTH, beside);
 
-    Assert.Null(scene.Click(BlockFacing.NORTH));
+    Assert.Null(scene.Fit(BlockFacing.NORTH));
 
     Assert.NotNull(scene.Record.CapAt(BlockFacing.NORTH));
   }
 
-  // Fails when the closing-block check is dropped.
+  // Fails when the check that the held stack is still the cap the packet names is dropped.
   [Fact]
-  public void Cap_RefusedBesideSolidFace() {
+  public void FitCap_RefusedWhenTheCapLeftTheSlot() {
     var scene = CapScene.Standing();
-    scene.Beside(BlockFacing.NORTH, "full block");
-
-    Assert.Equal(
-      HandAssemblyServer.CapClosed,
-      scene.Click(BlockFacing.NORTH)!.Code
-    );
-
-    scene.AssertNothingTaken();
-  }
-
-  // Fails when a face joined to the pipe beside it is capped.
-  [Fact]
-  public void Cap_RefusedOnJoinedFace() {
-    var scene = CapScene.Standing();
-    scene.Beside(BlockFacing.NORTH, "joined pipe");
-
-    Assert.Equal(
-      HandAssemblyServer.CapJoined,
-      scene.Click(BlockFacing.NORTH)!.Code
-    );
-
-    scene.AssertNothingTaken();
-  }
-
-  // Fails when any cap the player holds fits the def: a plated cap is offered to a cast def.
-  [Fact]
-  public void Cap_RefusesAnotherSetsCap() {
-    var scene = CapScene.Standing(offHand: "plated");
-
-    AssemblyResult refused = scene.Click(BlockFacing.NORTH)!;
-
-    Assert.Equal(HandAssemblyServer.NeedsTool, refused.Code);
-    scene.AssertNothingTaken();
-  }
-
-  // Fails when the fasteners the joint needs are not counted before the cap is taken.
-  [Fact]
-  public void Cap_RefusedWithoutEnoughFasteners() {
-    var scene = CapScene.Standing(bolts: 3);
-
-    Assert.Equal(
-      HandAssemblyServer.NeedsFasteners,
-      scene.Click(BlockFacing.NORTH)!.Code
-    );
-
-    Assert.Equal(2, scene.Player.OffHandSlot.StackSize);
-    Assert.Equal(3, scene.Carried(scene.Bolt));
-    Assert.Null(scene.Record.CapAt(BlockFacing.NORTH));
-  }
-
-  // Fails when the wrench in the main hand is not required.
-  [Fact]
-  public void Cap_RefusedWithoutTheWrenchInTheMainHand() {
-    var scene = CapScene.Standing();
+    AssemblyCap fit = scene.Packet(BlockFacing.NORTH);
+    ItemStack caps = scene.Player.ActiveSlot.Itemstack!;
     scene.Player.Hold(null);
 
-    Assert.Equal(
-      HandAssemblyServer.NeedsToolMain,
-      scene.Click(BlockFacing.NORTH)!.Code
-    );
+    Assert.Equal(HandAssemblyServer.PartMoved, scene.Fit(fit)!.Code);
 
-    scene.AssertNothingTaken();
-  }
-
-  // Fails when a piece that was never fixed takes a cap.
-  [Fact]
-  public void Cap_RefusedOnAPieceThatIsNotFixed() {
-    var scene = CapScene.Standing(fixedPiece: false);
-
-    Assert.Equal(
-      HandAssemblyServer.Fixed,
-      scene.Click(BlockFacing.NORTH)!.Code
-    );
-
+    scene.Player.Hold(caps);
     scene.AssertNothingTaken();
   }
 
   // Fails when the player's distance to the piece is not checked.
   [Fact]
-  public void Cap_RefusedBeyondThePickingRange() {
+  public void FitCap_RefusedBeyondThePickingRange() {
     var scene = CapScene.Standing();
     scene.Player.Entity.Pos.SetPos(Cell.X + 40, Cell.Y, Cell.Z);
 
     Assert.Equal(
       HandAssemblyServer.OutOfRange,
-      scene.Click(BlockFacing.NORTH)!.Code
+      scene.Fit(BlockFacing.NORTH)!.Code
     );
 
     scene.AssertNothingTaken();
@@ -206,7 +150,7 @@ public class HandAssemblyCapTests {
 
   // Fails when the land claim is not asked.
   [Fact]
-  public void Cap_RefusedInAClaimedCell() {
+  public void FitCap_RefusedInAClaimedCell() {
     var scene = CapScene.Standing();
     scene
       .World.World.Claims.TryAccess(
@@ -218,91 +162,257 @@ public class HandAssemblyCapTests {
 
     Assert.Equal(
       HandAssemblyServer.Claimed,
-      scene.Click(BlockFacing.NORTH)!.Code
+      scene.Fit(BlockFacing.NORTH)!.Code
     );
 
     scene.AssertNothingTaken();
   }
 
-  // Fails when an empty off hand is read as a cap offered, so the click is refused for want of a tool.
+  // Fails when a piece that was never fixed takes a cap.
   [Fact]
-  public void Cap_ClickWithNoCapInTheOffHandOffersNothing() {
-    var scene = CapScene.Standing(offHand: null);
+  public void FitCap_RefusedOnAPieceThatIsNotFixed() {
+    var scene = CapScene.Standing(fixedPiece: false);
 
     Assert.Equal(
-      HandAssemblyServer.Fixed,
-      scene.Click(BlockFacing.NORTH)!.Code
+      HandAssemblyServer.NotOffered,
+      scene.Fit(BlockFacing.NORTH)!.Code
     );
 
-    Assert.Null(scene.Record.CapAt(BlockFacing.NORTH));
+    scene.AssertNothingTaken();
   }
 
   // Fails when a def that declares no cap takes the cast cap the player holds.
   [Fact]
-  public void Cap_DefWithoutACapOffersNothing() {
+  public void FitCap_DefWithoutACapOffersNothing() {
     var scene = CapScene.Standing(NoCapSpec);
 
     Assert.Equal(
-      HandAssemblyServer.Fixed,
-      scene.Click(BlockFacing.NORTH)!.Code
+      HandAssemblyServer.NotOffered,
+      scene.Fit(BlockFacing.NORTH)!.Code
     );
 
     scene.AssertNothingTaken();
   }
 
-  // Fails when creative spends the cap or the fasteners, or asks for the wrench.
+  // Fails when a face that carries a cap already takes a second one.
   [Fact]
-  public void Cap_CreativeFitsWithoutSpendingOrTheWrench() {
+  public void FitCap_RefusedOnACappedFace() {
+    var scene = CapScene.Standing();
+    Assert.Null(scene.Fit(BlockFacing.NORTH));
+
+    Assert.Equal(
+      HandAssemblyServer.Occupied,
+      scene.Fit(BlockFacing.NORTH)!.Code
+    );
+
+    Assert.Equal(1, scene.Player.ActiveSlot.StackSize);
+    Assert.Equal(6, scene.Carried(scene.Bolt));
+  }
+
+  // Fails when the wrench in the off hand is not required: a wrench elsewhere in the hotbar fits nothing.
+  [Fact]
+  public void FitCap_RefusedWithoutTheWrenchInTheOffHand() {
+    var scene = CapScene.Standing();
+    scene.Player.HoldOffHand(null);
+    scene.Player.Hotbar[2].Itemstack = new ItemStack(scene.Wrench);
+
+    Assert.Equal(
+      HandAssemblyServer.NeedsTool,
+      scene.Fit(BlockFacing.NORTH)!.Code
+    );
+
+    scene.AssertNothingTaken();
+  }
+
+  // Fails when a face joined to the pipe beside it is capped.
+  [Fact]
+  public void FitCap_RefusedOnJoinedFace() {
+    var scene = CapScene.Standing();
+    scene.Beside(BlockFacing.NORTH, "joined pipe");
+
+    Assert.Equal(
+      HandAssemblyServer.CapJoined,
+      scene.Fit(BlockFacing.NORTH)!.Code
+    );
+
+    scene.AssertNothingTaken();
+  }
+
+  // Fails when the closing-block check is dropped.
+  [Fact]
+  public void FitCap_RefusedBesideSolidFace() {
+    var scene = CapScene.Standing();
+    scene.Beside(BlockFacing.NORTH, "full block");
+
+    Assert.Equal(
+      HandAssemblyServer.CapClosed,
+      scene.Fit(BlockFacing.NORTH)!.Code
+    );
+
+    scene.AssertNothingTaken();
+  }
+
+  // Fails when the fasteners the joint needs are not counted before the cap is taken.
+  [Fact]
+  public void FitCap_RefusedWithoutEnoughFasteners() {
+    var scene = CapScene.Standing(bolts: 3);
+
+    Assert.Equal(
+      HandAssemblyServer.NeedsFasteners,
+      scene.Fit(BlockFacing.NORTH)!.Code
+    );
+
+    Assert.Equal(2, scene.Player.ActiveSlot.StackSize);
+    Assert.Equal(3, scene.Carried(scene.Bolt));
+    Assert.Null(scene.Record.CapAt(BlockFacing.NORTH));
+    Assert.Equal(0, scene.Wear);
+  }
+
+  // Fails when creative takes the cap or the fasteners, wears the wrench, or asks for it.
+  [Fact]
+  public void FitCap_CreativeSpendsNothing() {
     var scene = CapScene.Standing(bolts: 0);
     scene.Player.GameMode = EnumGameMode.Creative;
-    scene.Player.Hold(null);
+    scene.Player.HoldOffHand(null);
 
-    Assert.Null(scene.Click(BlockFacing.NORTH));
+    Assert.Null(scene.Fit(BlockFacing.NORTH));
 
-    Assert.Equal(2, scene.Player.OffHandSlot.StackSize);
+    Assert.Equal(2, scene.Player.ActiveSlot.StackSize);
     Assert.NotNull(scene.Record.CapAt(BlockFacing.NORTH));
     Assert.Null(scene.Record.CapFastenersAt(BlockFacing.NORTH));
+    Assert.Equal(0, scene.Wear);
   }
 
-  // Fails when the wrench click through Rotate does not reach the cap, or the refusal is not told to the player.
+  // Fails when the wrench click fits the cap the off hand holds.
   [Fact]
-  public void Cap_TheWrenchClickFitsAndTellsARefusal() {
+  public void WrenchClick_NoLongerFits() {
     var scene = CapScene.Standing();
-    scene.Beside(BlockFacing.SOUTH, "full block");
-
-    scene.Rotate(BlockFacing.NORTH);
-    scene.Rotate(BlockFacing.SOUTH);
-
-    Assert.NotNull(scene.Record.CapAt(BlockFacing.NORTH));
-    Assert.Null(scene.Record.CapAt(BlockFacing.SOUTH));
-    Assert.Contains(
-      scene.Player.ServerPlayer!.ReceivedCalls(),
-      call =>
-        call.GetMethodInfo().Name == "SendIngameError"
-        && (string?)call.GetArguments()[0] == HandAssemblyServer.CapClosed
-    );
-  }
-
-  // Fails when a sneaking click fits a cap: sneak with the wrench is the take-off.
-  [Fact]
-  public void Cap_SneakingClickFitsNothing() {
-    var scene = CapScene.Standing();
-    scene.Player.Sneaking = true;
+    scene.Player.Hotbar[2].Itemstack = scene.Player.ActiveSlot.Itemstack;
+    scene.Player.Hold(new ItemStack(scene.Wrench));
+    scene.Player.HoldOffHand(scene.Player.Hotbar[2].Itemstack);
+    scene.Player.Hotbar[2].Itemstack = null;
 
     scene.Rotate(BlockFacing.NORTH);
 
     Assert.Null(scene.Record.CapAt(BlockFacing.NORTH));
+    Assert.Equal(2, scene.Player.OffHandSlot.StackSize);
+    Assert.Equal(10, scene.Carried(scene.Bolt));
+    Assert.Contains(
+      scene.Player.ServerPlayer!.ReceivedCalls(),
+      call =>
+        call.GetMethodInfo().Name == "SendIngameError"
+        && (string?)call.GetArguments()[0] == HandAssemblyServer.Fixed
+    );
+  }
+
+  #endregion
+
+  #region The cap gesture
+
+  private static BlockSelection Aim(BlockFacing face) =>
+    new() {
+      Position = Cell.Copy(),
+      Face = BlockFacing.UP,
+      HitPosition = Hit(face),
+    };
+
+  private static HandAssemblyControl Gesture(
+    CapScene scene,
+    BlockFacing face,
+    bool sneak,
+    double seconds,
+    HandAssemblyControlTests.SentPackets channel,
+    out bool taken
+  ) {
+    var control = new HandAssemblyControl(channel, (_, _) => { });
+    taken = control.Press(
+      scene.World.World,
+      scene.Player.Player,
+      Aim(face),
+      sneak,
+      null
+    );
+    for (int frame = 0; frame < seconds * 60; frame++)
+      control.Frame(1f / 60, true, sneak, null);
+    return control;
+  }
+
+  // Fails when a held cap aimed at a fixed piece's open end is not offered, so the sneak hold sends nothing.
+  [Fact]
+  public void CapGesture_HoldSendsAssemblyCapAndTheServerFits() {
+    var scene = CapScene.Standing(bolts: 10);
+    var channel = new HandAssemblyControlTests.SentPackets();
+
+    Gesture(scene, BlockFacing.NORTH, sneak: true, 6, channel, out bool taken);
+
+    Assert.True(taken);
+    AssemblyCap sent = Assert.IsType<AssemblyCap>(Assert.Single(channel.Sent));
+    AssemblyCap arrived = SerializerUtil.Deserialize<AssemblyCap>(
+      SerializerUtil.Serialize(sent)
+    );
+    Assert.Null(scene.Fit(arrived));
+    Assert.NotNull(scene.Record.CapAt(BlockFacing.NORTH));
+    Assert.Equal(6, scene.Carried(scene.Bolt));
+  }
+
+  // Fails when a press without sneak begins the cap hold, so the game's own use of the click is skipped.
+  [Fact]
+  public void CapGesture_PlainClickDoesNothing() {
+    var scene = CapScene.Standing();
+    var channel = new HandAssemblyControlTests.SentPackets();
+
+    Gesture(scene, BlockFacing.NORTH, sneak: false, 3, channel, out bool taken);
+
+    Assert.False(taken);
+    Assert.Empty(channel.Sent);
+    scene.AssertNothingTaken();
+  }
+
+  // Fails when the aim takes the nearest arm whatever it is beside, not the nearest that takes a cap.
+  [Fact]
+  public void CapGesture_AimsTheNearestOpenArm() {
+    var scene = CapScene.Standing();
+    scene.Beside(BlockFacing.NORTH, "full block");
+    var channel = new HandAssemblyControlTests.SentPackets();
+
+    HandAssemblyControl control = Gesture(
+      scene,
+      BlockFacing.NORTH,
+      sneak: false,
+      0,
+      channel,
+      out _
+    );
+
+    Assert.Equal(BlockFacing.SOUTH, control.CapFace);
+    Assert.Null(control.CapRefusal);
+    Assert.False(control.Short);
   }
 
   #endregion
 
   #region Taking off
 
+  // Fails when the wrench click through Rotate does not take off the cap of the end nearest the hit.
+  [Fact]
+  public void WrenchClick_TakesOffACap() {
+    var scene = CapScene.Standing(bolts: 10);
+    Assert.Null(scene.Fit(BlockFacing.NORTH));
+    Assert.Null(scene.Fit(BlockFacing.SOUTH));
+
+    scene.Rotate(BlockFacing.NORTH);
+
+    Assert.Null(scene.Record.CapAt(BlockFacing.NORTH));
+    Assert.NotNull(scene.Record.CapAt(BlockFacing.SOUTH));
+    Assert.Equal(1, scene.Carried(scene.CastCap));
+    Assert.Equal(6, scene.Carried(scene.Bolt));
+  }
+
   // Fails when taking a cap off does not give the cap back.
   [Fact]
   public void Cap_TakeOffReturnsCapAndFasteners() {
     var scene = CapScene.Standing(bolts: 10);
-    Assert.Null(scene.Click(BlockFacing.NORTH));
+    Assert.Null(scene.Fit(BlockFacing.NORTH));
     Assert.Equal(1, scene.Carried(scene.CastCap));
 
     Assert.Null(scene.Click(BlockFacing.NORTH));
@@ -317,12 +427,26 @@ public class HandAssemblyCapTests {
   [Fact]
   public void Cap_TakeOffReturnsTheFastenersItCarried() {
     var scene = CapScene.Standing(bolts: 10);
-    Assert.Null(scene.Click(BlockFacing.NORTH));
+    Assert.Null(scene.Fit(BlockFacing.NORTH));
     Assert.Equal(6, scene.Carried(scene.Bolt));
 
     Assert.Null(scene.Click(BlockFacing.NORTH));
 
     Assert.Equal(10, scene.Carried(scene.Bolt));
+  }
+
+  // Fails when a click on an end with no cap is not answered as a fixed piece.
+  [Fact]
+  public void Cap_ClickOnAnUncappedEndAnswersFixed() {
+    var scene = CapScene.Standing();
+    Assert.Null(scene.Fit(BlockFacing.SOUTH));
+
+    Assert.Equal(
+      HandAssemblyServer.Fixed,
+      scene.Click(BlockFacing.NORTH)!.Code
+    );
+
+    Assert.NotNull(scene.Record.CapAt(BlockFacing.SOUTH));
   }
 
   // Fails when the fit does not mark the cell for redraw, so a client draws no cap until the chunk is sent again.
@@ -331,7 +455,7 @@ public class HandAssemblyCapTests {
     var scene = CapScene.Standing();
     scene.World.TakeRedrawMark(Cell);
 
-    Assert.Null(scene.Click(BlockFacing.NORTH));
+    Assert.Null(scene.Fit(BlockFacing.NORTH));
 
     Assert.True(scene.World.TakeRedrawMark(Cell));
   }
@@ -340,7 +464,7 @@ public class HandAssemblyCapTests {
   [Fact]
   public void Cap_TakeOffMarksTheCellForRedraw() {
     var scene = CapScene.Standing();
-    Assert.Null(scene.Click(BlockFacing.NORTH));
+    Assert.Null(scene.Fit(BlockFacing.NORTH));
     scene.World.TakeRedrawMark(Cell);
 
     Assert.Null(scene.Click(BlockFacing.NORTH));
@@ -354,7 +478,7 @@ public class HandAssemblyCapTests {
     var scene = CapScene.Lumped(bolts: 10);
     BlockNetwork? before = scene.World.NetworkAt(Cell);
 
-    Assert.Null(scene.Click(BlockFacing.UP));
+    Assert.Null(scene.Fit(BlockFacing.UP));
 
     BlockNetwork? after = scene.World.NetworkAt(Cell);
     Assert.NotNull(after);
@@ -362,12 +486,12 @@ public class HandAssemblyCapTests {
     Assert.Contains(Cell, after.Nodes);
   }
 
-  // Fails when a take-off needs the cap in the off hand, or is refused to a player with a full pack instead of dropping at the feet.
+  // Fails when a take-off needs a cap held, or is refused to a player with a full pack instead of dropping at the feet.
   [Fact]
   public void Cap_TakeOffWithAFullPackDropsAtTheFeet() {
     var scene = CapScene.Standing(bolts: 4);
-    Assert.Null(scene.Click(BlockFacing.NORTH));
-    scene.Player.HoldOffHand(null);
+    Assert.Null(scene.Fit(BlockFacing.NORTH));
+    scene.Player.Hold(null);
     scene.FillPack();
 
     Assert.Null(scene.Click(BlockFacing.NORTH));
@@ -380,7 +504,7 @@ public class HandAssemblyCapTests {
   [Fact]
   public void Cap_CreativeTakeOffReturnsNothing() {
     var scene = CapScene.Standing(bolts: 10);
-    Assert.Null(scene.Click(BlockFacing.NORTH));
+    Assert.Null(scene.Fit(BlockFacing.NORTH));
     scene.Player.GameMode = EnumGameMode.Creative;
 
     Assert.Null(scene.Click(BlockFacing.NORTH));
@@ -400,7 +524,7 @@ public class HandAssemblyCapTests {
       3
     );
 
-    scene.Rotate(BlockFacing.UP);
+    Assert.Null(scene.Fit(BlockFacing.UP));
     Assert.Equal(ExlibValues.LitresPerPipe, scene.Ticked(), 3);
     BlockPos above = scene.JoinAbove();
     Assert.NotSame(scene.World.NetworkAt(Cell), scene.World.NetworkAt(above));
@@ -411,18 +535,21 @@ public class HandAssemblyCapTests {
 
   #endregion
 
-  #region The scenario player's click
+  #region The scenario player's step
 
-  // Fails when the live run wears the wrench only on a click the server took: a refusal wears it as well, and creative never does.
+  // Fails when the live run's wear departs from the hands': a fit wears the wrench once, a refused fit and creative not at all, a take-off once.
   [Theory]
   [InlineData("fit", 1)]
-  [InlineData("refusal", 1)]
+  [InlineData("refusal", 0)]
   [InlineData("creative", 0)]
-  public void Cap_PlayWearsTheWrenchOnEveryClickOutsideCreative(
+  [InlineData("take-off", 2)]
+  public void Cap_PlayWearsTheWrenchOnEachFitAndTakeOffOutsideCreative(
     string click,
     int wear
   ) {
     var scene = CapScene.Standing();
+    scene.Player.Hold(null);
+    scene.Player.HoldOffHand(null);
     if (click == "refusal")
       scene.Beside(BlockFacing.NORTH, "full block");
     if (click == "creative")
@@ -439,18 +566,28 @@ public class HandAssemblyCapTests {
       _ => { },
       "case.json"
     );
+    AssemblyResult? Play() =>
+      HandAssemblyPlay.Cap(
+        ctx,
+        scene.World.World,
+        scene.Player.Player,
+        Cell,
+        BlockFacing.NORTH
+      );
 
-    AssemblyResult? refused = HandAssemblyPlay.Cap(
-      ctx,
-      scene.World.World,
-      scene.Player.Player,
-      Cell,
-      BlockFacing.NORTH
-    );
+    AssemblyResult? refused = Play();
+    if (click == "take-off")
+      refused = Play();
 
     Assert.Equal(
       click == "refusal" ? HandAssemblyServer.CapClosed : null,
       refused?.Code
+    );
+    Assert.Equal(
+      click == "take-off" ? null
+        : click is "fit" or "creative" ? "test:cap-cast"
+        : null,
+      scene.Record.CapAt(BlockFacing.NORTH)?.Collectible.Code.ToString()
     );
     Assert.Equal(wear, scene.Wear);
   }
@@ -463,7 +600,7 @@ public class HandAssemblyCapTests {
   [Fact]
   public void Cap_BreakLosesFasteners() {
     var scene = CapScene.Standing(bolts: 10);
-    Assert.Null(scene.Click(BlockFacing.NORTH));
+    Assert.Null(scene.Fit(BlockFacing.NORTH));
 
     scene.World.Accessor.BreakBlock(Cell, null);
 
@@ -478,7 +615,7 @@ public class HandAssemblyCapTests {
   [Fact]
   public void Cap_BreakDropsTheCapWithThePiece() {
     var scene = CapScene.Standing(bolts: 10);
-    Assert.Null(scene.Click(BlockFacing.NORTH));
+    Assert.Null(scene.Fit(BlockFacing.NORTH));
 
     scene.World.Accessor.BreakBlock(Cell, null);
 
@@ -489,7 +626,7 @@ public class HandAssemblyCapTests {
   [Fact]
   public void Cap_CreativeBreakDropsNoCap() {
     var scene = CapScene.Standing(bolts: 10);
-    Assert.Null(scene.Click(BlockFacing.NORTH));
+    Assert.Null(scene.Fit(BlockFacing.NORTH));
     scene.Player.GameMode = EnumGameMode.Creative;
 
     scene.World.Accessor.BreakBlock(Cell, scene.Player.Player);
@@ -504,8 +641,8 @@ public class HandAssemblyCapTests {
   [Fact]
   public void Cap_PieceTakeOffReturnsItsCaps() {
     var scene = CapScene.Standing(bolts: 10);
-    Assert.Null(scene.Click(BlockFacing.NORTH));
-    scene.Player.HoldOffHand(null);
+    Assert.Null(scene.Fit(BlockFacing.NORTH));
+    scene.Player.Hold(null);
     int before = scene.Carried(scene.CastCap);
 
     Assert.Null(scene.TakeOffPiece());
@@ -517,7 +654,7 @@ public class HandAssemblyCapTests {
   [Fact]
   public void Cap_PieceTakeOffReturnsTheCapFasteners() {
     var scene = CapScene.Standing(bolts: 10);
-    Assert.Null(scene.Click(BlockFacing.NORTH));
+    Assert.Null(scene.Fit(BlockFacing.NORTH));
     Assert.Equal(6, scene.Carried(scene.Bolt));
 
     Assert.Null(scene.TakeOffPiece());
@@ -532,7 +669,7 @@ public class HandAssemblyCapTests {
     private readonly LumpedNode? _lumped;
     private int _nextId = 200;
 
-    private CapScene(TestWorld world, string spec, string? offHand, int bolts) {
+    private CapScene(TestWorld world, string spec, string? cap, int bolts) {
       World = world;
       Player = world.Player();
       Player.StandAt(Cell, BlockFacing.SOUTH);
@@ -547,16 +684,14 @@ public class HandAssemblyCapTests {
       Bundle = world.RegisterItem("test:bolt-bundle");
       CastCap = world.RegisterItem("test:cap-cast");
       PlatedCap = world.RegisterItem("test:cap-plated");
-      Player.Hold(new ItemStack(Wrench));
+      Player.Hold(
+        cap == "plated"
+          ? new ItemStack(PlatedCap, 2)
+          : new ItemStack(CastCap, 2)
+      );
       Player.Hotbar[1].Itemstack =
         bolts > 0 ? new ItemStack(Bolt, bolts) : null;
-      Player.HoldOffHand(
-        offHand switch {
-          "plated" => new ItemStack(PlatedCap, 2),
-          null => null,
-          _ => new ItemStack(CastCap, 2),
-        }
-      );
+      Player.HoldOffHand(new ItemStack(Wrench));
       Player.Player.InventoryManager.Inventories["backpack-test"] =
         TestInventory.Of(world, 4, "backpack-test");
       Spec = spec;
@@ -575,7 +710,7 @@ public class HandAssemblyCapTests {
 
     public static CapScene Standing(
       string spec = CastSpec,
-      string? offHand = "cast",
+      string cap = "cast",
       int bolts = 10,
       bool fixedPiece = true
     ) {
@@ -585,7 +720,7 @@ public class HandAssemblyCapTests {
         Cell.AddCopy(BlockFacing.DOWN),
         TestBlocks.Configure(new Block(), "game:rock", 5)
       );
-      var scene = new CapScene(world, spec, offHand, bolts);
+      var scene = new CapScene(world, spec, cap, bolts);
       TestNetworkBlock[] family = TestNetworkBlock.Family(
         "test",
         "test:node",
@@ -649,7 +784,33 @@ public class HandAssemblyCapTests {
         )
       );
 
+    public AssemblyCap Packet(BlockFacing face) =>
+      new() {
+        X = Cell.X,
+        Y = Cell.Y,
+        Z = Cell.Z,
+        Dimension = Cell.dimension,
+        Face = face.Index,
+        Slot = Player.ActiveNumber,
+        CapCode =
+          Player.ActiveSlot.Itemstack?.Collectible.Code.ToString() ?? "",
+      };
+
+    public AssemblyResult? Fit(BlockFacing face) => Fit(Packet(face));
+
+    public AssemblyResult? Fit(AssemblyCap fit) =>
+      HandAssemblyServer.FitCap(World.World, Player.Player, fit);
+
+    /// <summary>Takes the wrench into the main hand, moving what the main hand held to hotbar slot 2.</summary>
+    private void WrenchInHand() {
+      if (Player.ActiveSlot.Itemstack?.Item == Wrench)
+        return;
+      Player.Hotbar[2].Itemstack = Player.ActiveSlot.Itemstack;
+      Player.Hold(new ItemStack(Wrench));
+    }
+
     public AssemblyResult? Click(BlockFacing face) {
+      WrenchInHand();
       Player.Sneaking = false;
       return HandAssemblyServer.Cap(
         World.World,
@@ -659,7 +820,8 @@ public class HandAssemblyCapTests {
       );
     }
 
-    public void Rotate(BlockFacing face) =>
+    public void Rotate(BlockFacing face) {
+      WrenchInHand();
       ((BlockNetworkNode)World.GetBlock(Cell)).Rotate(
         Player.Entity,
         new BlockSelection {
@@ -669,6 +831,7 @@ public class HandAssemblyCapTests {
         },
         1
       );
+    }
 
     public AssemblyResult? TakeOffPiece() {
       Player.Hold(new ItemStack(Wrench));
@@ -708,16 +871,11 @@ public class HandAssemblyCapTests {
     }
 
     public void AssertNothingTaken() {
-      Assert.Equal(2, Player.OffHandSlot.StackSize);
+      Assert.Equal(2, Player.ActiveSlot.StackSize);
       Assert.Equal(10, Carried(Bolt));
       Assert.Null(Record.CapAt(BlockFacing.NORTH));
       Assert.Null(Record.CapFastenersAt(BlockFacing.NORTH));
-      Assert.Equal(
-        100,
-        Wrench.GetRemainingDurability(
-          Player.ActiveSlot.Itemstack ?? new ItemStack(Wrench)
-        )
-      );
+      Assert.Equal(0, Wear);
     }
 
     public void Beside(BlockFacing face, string kind) {
