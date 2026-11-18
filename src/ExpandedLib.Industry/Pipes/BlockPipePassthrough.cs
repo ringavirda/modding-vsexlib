@@ -23,9 +23,13 @@ public partial class BlockPipePassthrough : BlockPipe, IChimneyVentable {
     domain == "exlib" ? [] : Passthroughs(domain, tier: null);
 
   /// <summary>The passthrough + passthrough-bend blocktypes of one <paramref name="tier"/> under
-  /// <paramref name="domain"/>.</summary>
+  /// <paramref name="domain"/>. A tiered call draws them with the domain's own
+  /// <c>pipe/{tier}/passthrough</c> and <c>pipe/{tier}/passthroughbend</c> shapes, which the domain
+  /// must ship; a tierless call draws them with <see cref="PassthroughShape"/> and
+  /// <see cref="PassthroughBendShape"/> from exlib's own asset tree.</summary>
   /// <param name="sheet">The sheet texture this tier's pipe is made of; defaults to vanilla's
-  /// corroded sheet.</param>
+  /// corroded sheet. It overrides the <c>normal4</c> key, which a shape without that key
+  /// ignores.</param>
   public static IEnumerable<ExBlockDef> Passthroughs(
     string domain,
     string? tier,
@@ -40,11 +44,12 @@ public partial class BlockPipePassthrough : BlockPipe, IChimneyVentable {
   /// only.</summary>
   private const string DefaultSheet = "game:block/metal/corroded/normal4";
 
-  /// <summary>The brick shell both passthrough blocktypes are drawn with, in exlib's own asset tree,
-  /// shared by every tier.</summary>
+  /// <summary>The brick shell a tierless passthrough is drawn with, in exlib's own asset tree; a
+  /// tiered one is drawn with its domain's <c>pipe/{tier}/passthrough</c>.</summary>
   private const string PassthroughShape = "exlib:pipe/passthrough";
 
-  /// <summary>The bend counterpart of <see cref="PassthroughShape"/>, shared the same way.</summary>
+  /// <summary>The bend counterpart of <see cref="PassthroughShape"/> for a tierless passthrough
+  /// bend; a tiered one is drawn with its domain's <c>pipe/{tier}/passthroughbend</c>.</summary>
   private const string PassthroughBendShape = "exlib:pipe/passthroughbend";
 
   private static readonly string[] Bricks =
@@ -110,8 +115,9 @@ public partial class BlockPipePassthrough : BlockPipe, IChimneyVentable {
     string domain,
     string? tier,
     string sheet
-  ) =>
-    Brick(
+  ) {
+    string s = ShapeOf(domain, tier, "passthrough", PassthroughShape);
+    return Brick(
         domain,
         tier,
         sheet,
@@ -123,16 +129,24 @@ public partial class BlockPipePassthrough : BlockPipe, IChimneyVentable {
       .VariantGroup("brick", Bricks)
       .VariantGroup("orientation", "ns", "we", "ud")
       .NetworkOriented()
-      .ShapeByType("*-passthrough-*-ns", PassthroughShape, rotateY: 0)
-      .ShapeByType("*-passthrough-*-we", PassthroughShape, rotateY: 90)
-      .ShapeByType("*-passthrough-*-ud", PassthroughShape, rotateX: 90);
+      .ShapeByType("*-passthrough-*-ns", s, rotateY: 0)
+      .ShapeByType("*-passthrough-*-we", s, rotateY: 90)
+      .ShapeByType("*-passthrough-*-ud", s, rotateX: 90);
+  }
+
+  private static string ShapeOf(
+    string domain,
+    string? tier,
+    string leaf,
+    string shared
+  ) => tier == null ? shared : $"{domain}:" + BlockPipe.Asset(tier, leaf);
 
   private static ExBlockDef PassthroughBend(
     string domain,
     string? tier,
     string sheet
   ) {
-    const string s = PassthroughBendShape;
+    string s = ShapeOf(domain, tier, "passthroughbend", PassthroughBendShape);
     return Brick(
         domain,
         tier,

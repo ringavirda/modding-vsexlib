@@ -102,15 +102,15 @@
   ],
   "shapebytype": {
     "*-passthrough-*-ns": {
-      "base": "exlib:pipe/passthrough",
+      "base": "platedpipes:pipe/plated/passthrough",
       "rotateY": 0
     },
     "*-passthrough-*-we": {
-      "base": "exlib:pipe/passthrough",
+      "base": "platedpipes:pipe/plated/passthrough",
       "rotateY": 90
     },
     "*-passthrough-*-ud": {
-      "base": "exlib:pipe/passthrough",
+      "base": "platedpipes:pipe/plated/passthrough",
       "rotateX": 90
     }
   }
