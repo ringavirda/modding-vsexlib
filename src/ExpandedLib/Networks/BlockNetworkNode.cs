@@ -616,7 +616,7 @@ public abstract class BlockNetworkNode
   #endregion
 
   #region Interaction help
-  /// <summary>Appends the wrench rotate hint to the placed-block help when the block can be rotated here. A fixed hand-assembled piece lists its take-off, and the cap take-off when the end nearest the aim carries a cap, in place of the rotate hint.</summary>
+  /// <summary>Appends the wrench rotate hint to the placed-block help when the block can be rotated here. A fixed hand-assembled piece lists its take-off, and the cap take-off once, on the right button, when a wrench is in the player's main hand and the end nearest the aim carries a cap, in place of the rotate hint.</summary>
   public override WorldInteraction[] GetPlacedBlockInteractionHelp(
     IWorldAccessor world,
     BlockSelection selection,
@@ -643,7 +643,10 @@ public abstract class BlockNetworkNode
         },
       ];
       if (
-        !WrenchFixed(world, selection.Position, selection)
+        forPlayer.InventoryManager.ActiveHotbarSlot.Itemstack?.Collectible?.Code?.Path.Contains(
+          "wrench"
+        ) == true
+        && !WrenchFixed(world, selection.Position, selection)
         && HandAssemblyServer.CappedEnd(
           accessor,
           this,
@@ -652,20 +655,13 @@ public abstract class BlockNetworkNode
           selection.HitPosition ?? new Vec3d(0.5, 0.5, 0.5)
         ) != null
       )
-        foreach (
-          EnumMouseButton button in new[]
-          {
-            EnumMouseButton.Left,
-            EnumMouseButton.Right,
+        fixedHelp.Add(
+          new WorldInteraction {
+            ActionLangCode = ExlibLang.BlockhelpHandassemblyCapoff,
+            MouseButton = EnumMouseButton.Right,
+            Itemstacks = ExItems.WrenchStacks(world),
           }
-        )
-          fixedHelp.Add(
-            new WorldInteraction {
-              ActionLangCode = ExlibLang.BlockhelpHandassemblyCapoff,
-              MouseButton = button,
-              Itemstacks = ExItems.WrenchStacks(world),
-            }
-          );
+        );
       return [.. fixedHelp];
     }
 

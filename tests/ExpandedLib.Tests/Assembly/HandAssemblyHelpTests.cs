@@ -15,7 +15,7 @@ using Xunit;
 
 namespace ExpandedLib.Tests;
 
-/// <summary>The interaction help of hand assembly: the held part's fixing line shows the tool, a fixed piece lists its take-off and a capped end its cap take-off but no rotate, and the HUD's lines carry no gesture words.</summary>
+/// <summary>The interaction help of hand assembly: the held part's fixing line shows the tool, a fixed piece lists its take-off and a capped end its cap take-off once with the wrench in hand but no rotate, and the HUD's lines carry no gesture words.</summary>
 public class HandAssemblyHelpTests {
   private static readonly BlockPos Cell = new(64, 16, 64, 0);
   private static readonly string[] Axis = ["ns", "we", "ud"];
@@ -96,22 +96,53 @@ public class HandAssemblyHelpTests {
   public void PlacedHelp_CapOffOnlyAtACappedEnd() {
     var scene = Scene.Standing(fixedPiece: true);
     scene.Record.SetCap(BlockFacing.NORTH, new ItemStack(scene.Cap), null);
+    scene.Player.Hold(new ItemStack(scene.Wrench));
 
     WorldInteraction[] north = scene
       .Help(BlockFacing.NORTH)
       .Where(w => w.ActionLangCode == ExlibLang.BlockhelpHandassemblyCapoff)
       .ToArray();
 
-    Assert.Equal(
-      [EnumMouseButton.Left, EnumMouseButton.Right],
-      north.Select(w => w.MouseButton).Order()
-    );
-    Assert.All(
-      north,
-      w => Assert.Equal(scene.Wrench, Assert.Single(w.Itemstacks).Collectible)
-    );
+    WorldInteraction capOff = Assert.Single(north);
+    Assert.Equal(EnumMouseButton.Right, capOff.MouseButton);
+    Assert.Equal(scene.Wrench, Assert.Single(capOff.Itemstacks).Collectible);
     Assert.DoesNotContain(
       scene.Help(BlockFacing.SOUTH),
+      w => w.ActionLangCode == ExlibLang.BlockhelpHandassemblyCapoff
+    );
+  }
+
+  // Fails when the cap take-off is listed once per mouse button, so twice for a piece with two capped ends and the wrench in hand.
+  [Fact]
+  public void PlacedHelp_NoLineIsListedTwice() {
+    var scene = Scene.Standing(fixedPiece: true);
+    scene.Record.SetCap(BlockFacing.NORTH, new ItemStack(scene.Cap), null);
+    scene.Record.SetCap(BlockFacing.SOUTH, new ItemStack(scene.Cap), null);
+    scene.Player.Hold(new ItemStack(scene.Wrench));
+
+    foreach (BlockFacing aim in new[] { BlockFacing.NORTH, BlockFacing.SOUTH })
+      Assert.Equal(
+        1,
+        scene
+          .Help(aim)
+          .Count(w => w.ActionLangCode == ExlibLang.BlockhelpHandassemblyCapoff)
+      );
+    WorldInteraction[] help = scene.Help(BlockFacing.NORTH);
+    Assert.Equal(
+      help.Length,
+      help.Select(w => (w.ActionLangCode, w.MouseButton)).Distinct().Count()
+    );
+  }
+
+  // Fails when the wrench-held check is removed, so a pipe in the main hand still lists the cap take-off.
+  [Fact]
+  public void PlacedHelp_NoCapOffWithoutTheWrenchInHand() {
+    var scene = Scene.Standing(fixedPiece: true);
+    scene.Record.SetCap(BlockFacing.NORTH, new ItemStack(scene.Cap), null);
+    scene.Player.Hold(new ItemStack(scene.Cap));
+
+    Assert.DoesNotContain(
+      scene.Help(BlockFacing.NORTH),
       w => w.ActionLangCode == ExlibLang.BlockhelpHandassemblyCapoff
     );
   }
