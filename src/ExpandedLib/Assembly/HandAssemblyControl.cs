@@ -49,6 +49,30 @@ internal sealed class HandAssemblyControl {
   /// <summary>The held part's assembly spec; null when no part is held.</summary>
   public HandAssemblySpec? Spec { get; private set; }
 
+  /// <summary>The HUD line of the fixed piece the wrench in the main hand is aimed at and would take off: what a survival take-off gives besides the piece, read from the records the block entities hold.</summary>
+  /// <param name="world">The world read.</param>
+  /// <param name="player">The local player; creative says nothing comes back.</param>
+  /// <param name="get">Translates a lang key with its arguments; <c>Lang.Get</c> in the game.</param>
+  /// <returns>The line; null when no fixed piece is aimed with the wrench.</returns>
+  public string? TakeOffLine(
+    IWorldAccessor world,
+    IPlayer? player,
+    System.Func<string, object[], string> get
+  ) {
+    if (_takeOff == null || player == null)
+      return null;
+    IBlockAccessor accessor = world.BlockAccessor;
+    (IReadOnlyList<ItemStack> stacks, bool anyFree) =
+      HandAssemblyServer.TakeOffReturns(accessor, _takeOff);
+    return HandAssemblyHud.TakeOffLine(
+      get,
+      accessor.GetBlock(_takeOff).GetPlacedBlockName(world, _takeOff),
+      HandAssemblyServer.Grouped(stacks),
+      anyFree,
+      HandAssemblyGate.IsCreative(player)
+    );
+  }
+
   /// <summary>The fixed piece a cap held in the main hand is aimed at; null otherwise.</summary>
   public BlockPos? CapAt { get; private set; }
 

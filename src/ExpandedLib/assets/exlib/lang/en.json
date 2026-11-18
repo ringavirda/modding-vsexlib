@@ -205,6 +205,13 @@
   "handassembly-hud-cost": "{0} {1}, {2} carried",
   "handassembly-hud-cap": "Cap {0}",
   "handassembly-hud-none": "No placement fits here.",
+  "handassembly-hud-takeoff": "Take off {0} and {1}",
+  "handassembly-hud-takeoff-bare": "Take off {0}",
+  "handassembly-hud-takeoff-free": "Take off {0}, no fasteners: fixed in creative",
+  "handassembly-hud-takeoff-creative": "Take off {0}: nothing comes back in creative",
+  "handassembly-hud-stack": "{0} {1}",
+  "handassembly-hud-tookoff": "Took off {0}: {1} came back",
+  "handassembly-hud-tookoff-bare": "Took off {0}",
   "blockhelp-handassembly-step": "Next placement",
   "blockhelp-handassembly-fix": "Hold to fix the part",
   "blockhelp-handassembly-cap": "Hold to fit the cap"

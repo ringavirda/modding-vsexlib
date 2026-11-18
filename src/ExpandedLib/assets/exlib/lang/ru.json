@@ -205,6 +205,13 @@
   "handassembly-hud-cost": "{0} {1}, в наличии {2}",
   "handassembly-hud-cap": "Заглушка: {0}",
   "handassembly-hud-none": "Здесь ничего не подходит.",
+  "handassembly-hud-takeoff": "Снять {0} и {1}",
+  "handassembly-hud-takeoff-bare": "Снять {0}",
+  "handassembly-hud-takeoff-free": "Снять {0}, без крепежа: закреплено в творческом режиме",
+  "handassembly-hud-takeoff-creative": "Снять {0}: в творческом режиме ничего не возвращается",
+  "handassembly-hud-stack": "{0} {1}",
+  "handassembly-hud-tookoff": "Снято: {0}; вернулось: {1}",
+  "handassembly-hud-tookoff-bare": "Снято: {0}",
   "blockhelp-handassembly-step": "Следующее положение",
   "blockhelp-handassembly-fix": "Удерживать, чтобы закрепить деталь",
   "blockhelp-handassembly-cap": "Удерживать, чтобы надеть заглушку"

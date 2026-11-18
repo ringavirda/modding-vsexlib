@@ -205,6 +205,13 @@
   "handassembly-hud-cost": "{0} {1}, є {2}",
   "handassembly-hud-cap": "Ковпак: {0}",
   "handassembly-hud-none": "Тут нічого не підходить.",
+  "handassembly-hud-takeoff": "Зняти {0} і {1}",
+  "handassembly-hud-takeoff-bare": "Зняти {0}",
+  "handassembly-hud-takeoff-free": "Зняти {0}, без кріплення: закріплено у творчому режимі",
+  "handassembly-hud-takeoff-creative": "Зняти {0}: у творчому режимі нічого не повертається",
+  "handassembly-hud-stack": "{0} {1}",
+  "handassembly-hud-tookoff": "Знято: {0}; повернулося: {1}",
+  "handassembly-hud-tookoff-bare": "Знято: {0}",
   "blockhelp-handassembly-step": "Наступне положення",
   "blockhelp-handassembly-fix": "Утримувати, щоб закріпити деталь",
   "blockhelp-handassembly-cap": "Утримувати, щоб надіти ковпак"

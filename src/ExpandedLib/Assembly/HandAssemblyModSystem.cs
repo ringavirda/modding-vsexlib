@@ -43,10 +43,13 @@ public class HandAssemblyModSystem : ModSystem {
     AssemblyResult? refusal = HandAssemblyServer.TakeOff(
       _sapi!.World,
       player,
-      take
+      take,
+      out AssemblyResult? done
     );
     if (refusal != null)
       _serverChannel!.SendPacket(refusal, player);
+    else if (done != null)
+      _serverChannel!.SendPacket(done, player);
   }
 
   private void OnCap(IServerPlayer player, AssemblyCap fit) {

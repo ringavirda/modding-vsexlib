@@ -44,6 +44,23 @@ internal static class HandAssemblyServer {
     IPlayer player,
     AssemblyFix fix
   ) {
+    AssemblyResult? refusal = FixPart(world, player, fix);
+    if (refusal != null)
+      HandAssemblyLog.Refused(
+        world,
+        player,
+        refusal,
+        player.InventoryManager.ActiveHotbarSlot.Itemstack?.Collectible.Code,
+        new BlockPos(fix.X, fix.Y, fix.Z, player.Entity.Pos.Dimension)
+      );
+    return refusal;
+  }
+
+  private static AssemblyResult? FixPart(
+    IWorldAccessor world,
+    IPlayer player,
+    AssemblyFix fix
+  ) {
     ItemSlot partSlot = player.InventoryManager.ActiveHotbarSlot;
     if (
       player.InventoryManager.ActiveHotbarSlotNumber != fix.Slot
@@ -146,6 +163,16 @@ internal static class HandAssemblyServer {
       creative,
       spec
     );
+    HandAssemblyLog.Write(
+      world,
+      player,
+      "fix",
+      candidate.Block.Code,
+      cell,
+      candidate.Block is BlockNetworkNode ? Joined(candidate) : [],
+      [],
+      spent == null ? [] : [spent]
+    );
     return null;
   }
 
@@ -158,7 +185,46 @@ internal static class HandAssemblyServer {
     IWorldAccessor world,
     IPlayer player,
     AssemblyTakeOff take
+  ) => TakeOff(world, player, take, out _);
+
+  /// <summary>Takes the fixed piece off as <see cref="TakeOff(IWorldAccessor, IPlayer, AssemblyTakeOff)"/> does, and builds the answer that names what came back.</summary>
+  /// <param name="world">The server world.</param>
+  /// <param name="player">The sending player; the tool is read from the active hotbar slot.</param>
+  /// <param name="take">The packet; nothing in it is trusted but the position; the dimension is the player's own.</param>
+  /// <param name="done">The answer to send when the piece was taken off, in the player's language: <c>tookoff</c> naming the stacks that came back, or <c>tookoff-bare</c> when none did, as in creative or when every joint was free; null when the take-off was refused.</param>
+  /// <returns>Null when the piece was taken off; otherwise the refusal to send, with nothing changed.</returns>
+  public static AssemblyResult? TakeOff(
+    IWorldAccessor world,
+    IPlayer player,
+    AssemblyTakeOff take,
+    out AssemblyResult? done
   ) {
+    AssemblyResult? refusal = TakeOffPiece(world, player, take, out done);
+    if (refusal != null) {
+      var cell = new BlockPos(
+        take.X,
+        take.Y,
+        take.Z,
+        player.Entity.Pos.Dimension
+      );
+      HandAssemblyLog.Refused(
+        world,
+        player,
+        refusal,
+        world.BlockAccessor.GetBlock(cell).Code,
+        cell
+      );
+    }
+    return refusal;
+  }
+
+  private static AssemblyResult? TakeOffPiece(
+    IWorldAccessor world,
+    IPlayer player,
+    AssemblyTakeOff take,
+    out AssemblyResult? done
+  ) {
+    done = null;
     IBlockAccessor accessor = world.BlockAccessor;
     var cell = new BlockPos(
       take.X,
@@ -192,10 +258,13 @@ internal static class HandAssemblyServer {
       return Refusal(Fixed);
 
     var returned = new List<ItemStack>();
+    IReadOnlyList<ItemStack> back = [];
+    IReadOnlyList<BlockFacing> joints = JointFaces(accessor, cell);
     if (creative)
       KeepRecords(accessor, cell, record);
     else {
-      returned.AddRange(TakeOffReturns(accessor, cell).Stacks);
+      back = TakeOffReturns(accessor, cell).Stacks;
+      returned.AddRange(back);
       ClearRecordsToward(accessor, cell);
       bool givesPiece =
         block is not BlockNetworkNode node || !node.IsCrackedAt(world, cell);
@@ -211,6 +280,8 @@ internal static class HandAssemblyServer {
     }
     accessor.TriggerNeighbourBlockUpdate(cell);
 
+    HandAssemblyLog.Write(world, player, "takeoff", block.Code, cell, joints, back, []);
+    done = TookOff(player, block, back);
     if (creative)
       return null;
     toolSlot.Itemstack.Collectible.DamageItem(world, player.Entity, toolSlot);
@@ -218,6 +289,114 @@ internal static class HandAssemblyServer {
       if (!player.InventoryManager.TryGiveItemstack(stack, true))
         world.SpawnItemEntity(stack, player.Entity.Pos.XYZ);
     return null;
+  }
+
+  private static AssemblyResult TookOff(
+    IPlayer player,
+    Block block,
+    IReadOnlyList<ItemStack> back
+  ) {
+    string? lang = LanguageOf(player);
+    string piece = NameKey(block.Code, EnumItemClass.Block, lang);
+    return back.Count == 0
+      ? new AssemblyResult {
+        Code = "tookoff-bare",
+        Args = [piece],
+        Done = true,
+      }
+      : new AssemblyResult {
+        Code = "tookoff",
+        Args = [
+          piece,
+          HandAssemblyHud.Stacks(
+            (key, args) =>
+              lang == null ? Lang.Get(key, args) : Lang.GetL(lang, key, args),
+            Grouped(back, lang)
+          ),
+        ],
+        Done = true,
+      };
+  }
+
+  /// <summary>The stacks grouped by item, in the order each item first appears.</summary>
+  /// <param name="stacks">The stacks to group.</param>
+  /// <param name="langCode">The language of the names; the current one when null.</param>
+  /// <returns>Each item's name and the sum of its stack sizes.</returns>
+  internal static IReadOnlyList<(string Name, int Count)> Grouped(
+    IEnumerable<ItemStack> stacks,
+    string? langCode = null
+  ) =>
+    [
+      .. stacks
+        .GroupBy(s => s.Collectible.Code.ToString())
+        .Select(g => (
+          NameKey(g.First().Collectible.Code, g.First().Class, langCode),
+          g.Sum(s => s.StackSize)
+        )),
+    ];
+
+  /// <summary>The faces of the piece at <paramref name="cell"/> that carry a joint: its own record holds a fastener or a free mark there, or the neighbour across it holds one toward the cell.</summary>
+  internal static IReadOnlyList<BlockFacing> JointFaces(
+    IBlockAccessor accessor,
+    BlockPos cell
+  ) {
+    BEBehaviorAssembled? own = BEBehaviorAssembled.At(accessor, cell);
+    var faces = new List<BlockFacing>();
+    foreach (BlockFacing face in BlockFacing.ALLFACES) {
+      BEBehaviorAssembled? across = BEBehaviorAssembled.At(
+        accessor,
+        cell.AddCopy(face)
+      );
+      if (
+        (own != null && (own.FastenerAt(face) != null || own.FreeAt(face)))
+        || (
+          across != null
+          && (
+            across.FastenerAt(face.Opposite) != null
+            || across.FreeAt(face.Opposite)
+          )
+        )
+      )
+        faces.Add(face);
+    }
+    return faces;
+  }
+
+  /// <summary>Writes the debug line of a fixed piece a player breaks or a burst removes, with the fasteners lost: its own joints', its fitted caps' and those its neighbours hold toward it, and the caps too when the player is in creative, where none drops.</summary>
+  /// <param name="world">The server world.</param>
+  /// <param name="player">The breaking player; null for a break with none.</param>
+  /// <param name="block">The piece.</param>
+  /// <param name="cell">The piece's position.</param>
+  /// <param name="record">The piece's record, read before the break clears the records toward it.</param>
+  internal static void LogBreak(
+    IWorldAccessor world,
+    IPlayer? player,
+    Block block,
+    BlockPos cell,
+    BEBehaviorAssembled record
+  ) {
+    IBlockAccessor accessor = world.BlockAccessor;
+    IEnumerable<ItemStack> lost = [.. record.Spent, .. record.CapSpent];
+    if (player != null && HandAssemblyGate.IsCreative(player))
+      lost = [.. lost, .. record.Caps];
+    foreach (BlockFacing face in BlockFacing.ALLFACES)
+      if (
+        BEBehaviorAssembled.At(accessor, cell.AddCopy(face))?.FastenerAt(
+          face.Opposite
+        )
+        is { } toward
+      )
+        lost = [.. lost, toward];
+    HandAssemblyLog.Write(
+      world,
+      player,
+      "break",
+      block.Code,
+      cell,
+      JointFaces(accessor, cell),
+      [],
+      lost
+    );
   }
 
   /// <summary>The stacks a survival take-off of the piece at <paramref name="cell"/> gives besides the piece, and whether any joint of it is owed nothing.</summary>
@@ -297,6 +476,25 @@ internal static class HandAssemblyServer {
     IPlayer player,
     AssemblyCap fit
   ) {
+    AssemblyResult? refusal = FitCapOn(world, player, fit);
+    if (refusal != null) {
+      var cell = new BlockPos(fit.X, fit.Y, fit.Z, player.Entity.Pos.Dimension);
+      HandAssemblyLog.Refused(
+        world,
+        player,
+        refusal,
+        world.BlockAccessor.GetBlock(cell).Code,
+        cell
+      );
+    }
+    return refusal;
+  }
+
+  private static AssemblyResult? FitCapOn(
+    IWorldAccessor world,
+    IPlayer player,
+    AssemblyCap fit
+  ) {
     ItemSlot capSlot = player.InventoryManager.ActiveHotbarSlot;
     if (
       player.InventoryManager.ActiveHotbarSlotNumber != fit.Slot
@@ -361,6 +559,16 @@ internal static class HandAssemblyServer {
     record.SetCap(face, cap, spent);
     record.Blockentity.MarkDirty(true);
     RebuildNetworks(world, node, cell);
+    HandAssemblyLog.Write(
+      world,
+      player,
+      "capfit",
+      node.Code,
+      cell,
+      [face],
+      [],
+      spent == null ? [] : [spent]
+    );
     return null;
   }
 
@@ -371,6 +579,24 @@ internal static class HandAssemblyServer {
   /// <param name="hit">The hit point inside the cell, each axis in 0 to 1; the end whose face centre is nearest is the one served.</param>
   /// <returns>Null when a cap was taken off; otherwise the refusal to send, with nothing changed. An end with no cap answers <see cref="Fixed"/>, whatever the off hand holds.</returns>
   internal static AssemblyResult? Cap(
+    IWorldAccessor world,
+    IPlayer player,
+    BlockPos cell,
+    Vec3d hit
+  ) {
+    AssemblyResult? refusal = TakeCap(world, player, cell, hit);
+    if (refusal != null)
+      HandAssemblyLog.Refused(
+        world,
+        player,
+        refusal,
+        world.BlockAccessor.GetBlock(cell).Code,
+        cell
+      );
+    return refusal;
+  }
+
+  private static AssemblyResult? TakeCap(
     IWorldAccessor world,
     IPlayer player,
     BlockPos cell,
@@ -420,6 +646,16 @@ internal static class HandAssemblyServer {
     record.SetCap(face, null, null);
     record.Blockentity.MarkDirty(true);
     RebuildNetworks(world, node, cell);
+    HandAssemblyLog.Write(
+      world,
+      player,
+      "captakeoff",
+      node.Code,
+      cell,
+      [face],
+      creative ? [] : returned.OfType<ItemStack>(),
+      []
+    );
     if (creative)
       return null;
     foreach (ItemStack? stack in returned)
@@ -616,6 +852,9 @@ internal static class HandAssemblyServer {
     return one;
   }
 
+  private static IEnumerable<BlockFacing> Joined(AssemblyCandidate candidate) =>
+    candidate.Arms.Where(a => !candidate.OpenArms.Contains(a));
+
   private static void Place(
     IWorldAccessor world,
     IPlayer player,
@@ -652,21 +891,13 @@ internal static class HandAssemblyServer {
         if (candidate.Joints > 0)
           record.JointFree = true;
       } else
-        foreach (
-          BlockFacing arm in candidate.Arms.Where(a =>
-            !candidate.OpenArms.Contains(a)
-          )
-        )
+        foreach (BlockFacing arm in Joined(candidate))
           record.SetFree(arm, true);
     } else if (spent != null) {
       if (candidate.Block is not BlockNetworkNode)
         record.Joint = spent;
       else
-        foreach (
-          BlockFacing arm in candidate.Arms.Where(a =>
-            !candidate.OpenArms.Contains(a)
-          )
-        ) {
+        foreach (BlockFacing arm in Joined(candidate)) {
           ItemStack joint = spent.Clone();
           joint.StackSize = spec.PerJoint;
           record.SetFastener(arm, joint);

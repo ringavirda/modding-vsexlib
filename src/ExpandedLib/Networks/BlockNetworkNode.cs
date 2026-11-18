@@ -449,12 +449,13 @@ public abstract class BlockNetworkNode
     IPlayer byPlayer,
     float dropQuantityMultiplier = 1
   ) {
-    if (
-      BEBehaviorAssembled.At(world.BlockAccessor, pos) is { } record
-      && byPlayer?.WorldData.CurrentGameMode != EnumGameMode.Creative
-    )
-      foreach (ItemStack cap in record.Caps)
-        world.SpawnItemEntity(cap.Clone(), pos.ToVec3d().Add(0.5, 0.5, 0.5));
+    if (BEBehaviorAssembled.At(world.BlockAccessor, pos) is { } record) {
+      if (world.Side == EnumAppSide.Server && record.Fixed)
+        HandAssemblyServer.LogBreak(world, byPlayer, this, pos, record);
+      if (byPlayer?.WorldData.CurrentGameMode != EnumGameMode.Creative)
+        foreach (ItemStack cap in record.Caps)
+          world.SpawnItemEntity(cap.Clone(), pos.ToVec3d().Add(0.5, 0.5, 0.5));
+    }
 
     world
       .Api.ModLoader.GetModSystem<BlockNetworkModSystem>()

@@ -42,7 +42,7 @@ internal class AssemblyFix {
   public string CandidateCode = "";
 }
 
-/// <summary>Server to client: a fix was refused and nothing was taken.</summary>
+/// <summary>Server to client: a fix, take-off or cap was refused and nothing changed, or (<see cref="Done"/>) a take-off was done and the answer names what came back.</summary>
 [ProtoContract]
 internal class AssemblyResult {
   /// <summary>The placement failure code; its line is <c>game:placefailure-</c> and the code.</summary>
@@ -52,6 +52,10 @@ internal class AssemblyResult {
   /// <summary>The arguments the line formats.</summary>
   [ProtoMember(2)]
   public string[] Args = [];
+
+  /// <summary>Whether the answer reports a success: <see cref="Code"/> is then the suffix of an <c>exlib:handassembly-hud-</c> key and not a placement failure.</summary>
+  [ProtoMember(3)]
+  public bool Done;
 }
 
 /// <summary>Client to server: take the fixed piece at a position off. Carries the position only; the held tool and the sneak are read on the server.</summary>

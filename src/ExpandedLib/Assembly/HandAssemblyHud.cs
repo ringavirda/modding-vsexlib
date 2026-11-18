@@ -79,6 +79,37 @@ internal static class HandAssemblyHud {
     return line.ToString();
   }
 
+  /// <summary>Builds the line of an aimed fixed piece the wrench would take off, such as <c>Take off Pipe and 2 Bolt, 1 Cap</c>.</summary>
+  /// <param name="get">Translates a lang key with its arguments; <c>Lang.Get</c> in the game.</param>
+  /// <param name="piece">The aimed piece's name.</param>
+  /// <param name="returns">What a survival take-off gives besides the piece, grouped by item as in <see cref="Stacks"/>; empty for none.</param>
+  /// <param name="anyFree">Whether a joint of the piece was made in creative and is owed nothing.</param>
+  /// <param name="creative">Whether the player is in creative, where a take-off returns nothing; this wins over the other arguments.</param>
+  public static string TakeOffLine(
+    Func<string, object[], string> get,
+    string piece,
+    IReadOnlyList<(string Name, int Count)> returns,
+    bool anyFree,
+    bool creative
+  ) =>
+    creative ? get(ExlibLang.HandassemblyHudTakeoffCreative, [piece])
+    : returns.Count > 0
+      ? get(ExlibLang.HandassemblyHudTakeoff, [piece, Stacks(get, returns)])
+    : anyFree ? get(ExlibLang.HandassemblyHudTakeoffFree, [piece])
+    : get(ExlibLang.HandassemblyHudTakeoffBare, [piece]);
+
+  /// <summary>Joins the stacks into one phrase, such as <c>2 Bolt, 1 Cap</c>.</summary>
+  /// <param name="get">Translates a lang key with its arguments; <c>Lang.Get</c> in the game.</param>
+  /// <param name="stacks">Each item's name and how many of it, in the order shown.</param>
+  public static string Stacks(
+    Func<string, object[], string> get,
+    IEnumerable<(string Name, int Count)> stacks
+  ) =>
+    string.Join(
+      ", ",
+      stacks.Select(s => get(ExlibLang.HandassemblyHudStack, [s.Count, s.Name]))
+    );
+
   /// <summary>Height of one line of the HUD's text, in unscaled GUI px.</summary>
   internal const double LineHeight = 24;
 

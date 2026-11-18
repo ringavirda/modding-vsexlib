@@ -74,9 +74,17 @@ internal sealed class HandAssemblyClient : IRenderer {
       Lang.Get("game:placefailure-" + code, args)
     );
 
-  /// <summary>Shows a refusal the server sent.</summary>
-  public void ShowResult(AssemblyResult result) =>
-    Show(result.Code, result.Args);
+  /// <summary>Shows what the server answered: the line of a take-off it did, or a refusal.</summary>
+  public void ShowResult(AssemblyResult result) {
+    if (result.Done)
+      _capi.TriggerIngameDiscovery(
+        this,
+        result.Code,
+        Lang.Get("exlib:handassembly-hud-" + result.Code, result.Args)
+      );
+    else
+      Show(result.Code, result.Args);
+  }
 
   private void Refresh() {
     IClientPlayer? player = Player;
@@ -92,6 +100,11 @@ internal sealed class HandAssemblyClient : IRenderer {
   private void Display() {
     if (_control.CapFace != null)
       RebuildCap();
+    else if (
+      _control.TakeOffLine(_capi.World, Player, (key, args) => Lang.Get(key, args))
+      is { } takeOff
+    )
+      ShowHud(takeOff);
     else if (_control.Part == null || _control.Aim == null)
       HideDisplay();
     else
