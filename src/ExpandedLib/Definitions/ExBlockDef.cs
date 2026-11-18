@@ -565,7 +565,7 @@ public sealed class ExBlockDef : IExDef {
   /// <param name="tool">Item code of the tool held in the off hand, wildcards allowed.</param>
   /// <param name="fastener">Item code of the fastener a joint spends.</param>
   /// <param name="perJoint">Count of <paramref name="fastener"/> items one joint spends, at least 1.</param>
-  /// <param name="cap">Item code of the cap held in the off hand to close an open crossing of the part, wildcards allowed; null, the default, when the part takes no cap.</param>
+  /// <param name="cap">Item code of the cap held in the main hand, with the tool in the off hand, to close an open crossing of the part, wildcards allowed; null, the default, when the part takes no cap.</param>
   /// <exception cref="ArgumentOutOfRangeException"><paramref name="perJoint"/> is below 1.</exception>
   public ExBlockDef HandAssembly(
     string tool,

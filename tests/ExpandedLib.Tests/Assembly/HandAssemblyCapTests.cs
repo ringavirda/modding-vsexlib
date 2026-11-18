@@ -312,7 +312,7 @@ public class HandAssemblyCapTests {
 
   // Fails when the wrench click fits the cap the off hand holds.
   [Fact]
-  public void WrenchClick_NoLongerFits() {
+  public void WrenchClick_DoesNotFitTheOffHandCap() {
     var scene = CapScene.Standing();
     scene.Player.Hotbar[2].Itemstack = scene.Player.ActiveSlot.Itemstack;
     scene.Player.Hold(new ItemStack(scene.Wrench));
