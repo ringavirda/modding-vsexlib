@@ -851,6 +851,7 @@ ExpandedLib.Assembling.HandAssemblyTarget.Joinable.get -> bool
 ExpandedLib.Assembling.HandAssemblyTarget.Joinable.init -> void
 ExpandedLib.Assembling.IHandAssemblyPart
 ExpandedLib.Assembling.IHandAssemblyPart.Allows(Vintagestory.API.Common.IWorldAccessor! world, Vintagestory.API.MathTools.BlockPos! pos, Vintagestory.API.Common.Block! candidate, out string? failureCode) -> bool
+ExpandedLib.Assembling.IHandAssemblyPart.CandidateRank(Vintagestory.API.Common.IWorldAccessor! world, Vintagestory.API.Common.BlockSelection! selection, Vintagestory.API.Common.Block! candidate) -> int
 const ExpandedLib.Assembling.HandAssemblySpec.AttributeKey = "handAssembly" -> string!
 static ExpandedLib.Assembling.HandAssemblyCandidates.JointsMade(Vintagestory.API.Common.IBlockAccessor! world, Vintagestory.API.MathTools.BlockPos! cell, Vintagestory.API.Common.Block! candidate) -> int
 static ExpandedLib.Assembling.HandAssemblyCandidates.Of(Vintagestory.API.Common.IWorldAccessor! world, Vintagestory.API.Common.IPlayer! player, Vintagestory.API.Common.Block! part, Vintagestory.API.Common.BlockSelection! selection) -> System.Collections.Generic.IReadOnlyList<ExpandedLib.Assembling.AssemblyCandidate!>!

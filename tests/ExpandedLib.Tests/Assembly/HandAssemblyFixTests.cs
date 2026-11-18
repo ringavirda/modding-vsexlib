@@ -38,6 +38,31 @@ public class HandAssemblyFixTests {
     scene.AssertNothingTaken(10);
   }
 
+  // Fails when a part that filtered every placement does not give its own reason to the player.
+  [Fact]
+  public void A_part_that_refuses_every_placement_gives_its_reason() {
+    var scene = Scene.Standing(["we"], refusing: "we", refusalCode: "wall");
+    scene.Bolts(10);
+
+    AssemblyResult? result = scene.Fix("we", Ground, BlockFacing.UP);
+
+    Assert.Equal("wall", result!.Code);
+    scene.AssertNothingTaken(10);
+  }
+
+  // Fails when the part's reason is given for a placement that arms had already ruled out.
+  [Fact]
+  public void A_part_that_would_refuse_a_placement_the_arms_ruled_out_gives_not_offered() {
+    var scene = Scene.Standing(["we"], refusing: "we", refusalCode: "wall");
+    scene.Pipe(North, "ns");
+    scene.Bolts(10);
+
+    AssemblyResult? result = scene.Fix("we", North, BlockFacing.SOUTH);
+
+    Assert.Equal(HandAssemblyServer.NotOffered, result!.Code);
+    scene.AssertNothingTaken(10);
+  }
+
   // Fails when the joints are paid per piece instead of per joint made.
   [Fact]
   public void A_fix_pays_per_joint_it_makes_and_records_each_joint_on_its_face() {

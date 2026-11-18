@@ -409,7 +409,10 @@ public class MetalFamilyEmitterTests {
     };
 
     Dictionary<string, int> flags = Emit(m)
-      .ToDictionary(d => Registered(d).Single(), d => (int)d.ToJson()["storageFlags"]!);
+      .ToDictionary(
+        d => Registered(d).Single(),
+        d => (int)d.ToJson()["storageFlags"]!
+      );
 
     Assert.Equal(261, flags["metalbit-foo"]);
     Assert.Equal(5, flags["ingot-foo"]);

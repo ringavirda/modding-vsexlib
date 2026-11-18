@@ -17,4 +17,16 @@ public interface IHandAssemblyPart {
     Block candidate,
     out string? failureCode
   );
+
+  /// <summary>Where <paramref name="candidate"/> stands in the list of placements offered at the aim; lower ranks are offered first.</summary>
+  /// <remarks>The candidates are stable-sorted by the sum of this rank over the block and its behaviours that implement the interface, so equal ranks keep the order the look gives them. The default ranks every candidate 0 and changes nothing.</remarks>
+  /// <param name="world">The world the part is placed in.</param>
+  /// <param name="selection">The block the player aims at.</param>
+  /// <param name="candidate">The variant that would stand there.</param>
+  /// <returns>The rank; negative values come before the default.</returns>
+  int CandidateRank(
+    IWorldAccessor world,
+    BlockSelection selection,
+    Block candidate
+  ) => 0;
 }

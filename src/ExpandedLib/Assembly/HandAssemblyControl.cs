@@ -83,7 +83,7 @@ internal sealed class HandAssemblyControl {
   /// <summary>The refusal code of <see cref="CapFace"/> when the end takes no cap (capped, joined or closed); null when it does.</summary>
   public string? CapRefusal { get; private set; }
 
-  /// <summary>The refusal code of the aimed cell while a part is held and a cap stands in it; null otherwise.</summary>
+  /// <summary>The refusal code of the aimed cell while a part is held: a cap standing in it, or the part's own reason when its refinement filtered every placement; null otherwise.</summary>
   public string? Refusal { get; private set; }
 
   /// <summary>Whether the tool or the fasteners for the shown placement or the aimed cap are missing, or the aimed end takes no cap.</summary>
@@ -145,6 +145,13 @@ internal sealed class HandAssemblyControl {
         _target = $"{target.Cell}|{target.Anchor.Code}";
         if (HandAssemblyCaps.InTheWay(accessor, target.Cell) != null)
           Refusal = HandAssemblyServer.CapInWay;
+        else if (_candidates.Count == 0)
+          Refusal = HandAssemblyCandidates.EmptyRefusal(
+            world,
+            player,
+            part,
+            selection
+          );
       }
     } else if (selection != null && AimCap(world, main, selection)) {
       _target = $"{CapKey}|{CapAt}|{CapFace!.Code}";

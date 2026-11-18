@@ -108,9 +108,55 @@ public class HandAssemblyCandidatesTests {
     Assert.Equal(["w", "n", "e", "s"], Tokens(offered));
   }
 
+  // Fails when the part's rank is not applied, leaving the order the look gives.
+  [Fact]
+  public void A_part_that_ranks_a_candidate_first_has_it_offered_first() {
+    var scene = Scene.Standing(["ud", "ns", "we"], ranking: "ud");
+    scene.Player.Looking(BlockFacing.EAST);
+
+    var offered = scene.Offer(Ground, BlockFacing.UP);
+
+    Assert.Equal(["ud", "we", "ns"], Tokens(offered));
+  }
+
   #endregion
 
   #region What is offered
+
+  // Fails when a network node's variant code is built with the vanilla CodeWithVariant, which cuts a hyphenated base code.
+  [Fact]
+  public void A_network_node_with_a_hyphenated_base_code_offers_its_variants() {
+    var scene = Scene.Standing(["ns", "we"], baseCode: "castiron-beam");
+
+    var offered = scene.Offer(Ground, BlockFacing.UP);
+
+    Assert.Equal(["ns", "we"], Tokens(offered).OrderBy(t => t));
+  }
+
+  // Fails when a turned network node's variant code is built with the vanilla CodeWithVariants.
+  [Fact]
+  public void A_turned_network_node_with_a_hyphenated_base_code_offers_its_turns() {
+    var scene = Scene.Standing(["ns"], turns: true, baseCode: "castiron-beam");
+
+    var offered = scene.Offer(Ground, BlockFacing.UP);
+
+    Assert.Equal(4, offered.Count);
+    Assert.All(offered, c => Assert.NotNull(c.Turn));
+  }
+
+  // Fails when an orientable block's variant code is built with the vanilla CodeWithVariant.
+  [Fact]
+  public void An_orientable_block_with_a_hyphenated_base_code_offers_its_facings() {
+    var scene = Scene.Standing(
+      ["n", "e", "s", "w"],
+      orientable: true,
+      baseCode: "castiron-bracket"
+    );
+
+    var offered = scene.Offer(Ground, BlockFacing.UP);
+
+    Assert.Equal(["e", "n", "s", "w"], Tokens(offered).OrderBy(t => t));
+  }
 
   // Fails when a refused crossing rejects the box's one candidate instead of leaving that arm open.
   [Fact]
@@ -273,7 +319,9 @@ public class HandAssemblyCandidatesTests {
       bool turns = false,
       bool orientable = false,
       string? refusing = null,
-      bool keepsOpen = false
+      bool keepsOpen = false,
+      string baseCode = "pipe",
+      string? ranking = null
     ) {
       var world = new TestWorld();
       world.Place(Ground, TestBlocks.Configure(new Block(), "game:rock", 5));
@@ -282,7 +330,16 @@ public class HandAssemblyCandidatesTests {
       return new Scene(
         world,
         player,
-        new Pipes(world, tokens, turns, orientable, refusing, keepsOpen)
+        new Pipes(
+          world,
+          tokens,
+          turns,
+          orientable,
+          refusing,
+          keepsOpen,
+          baseCode,
+          ranking
+        )
       );
     }
 
@@ -332,6 +389,8 @@ public class HandAssemblyCandidatesTests {
     private readonly string[] _tokens;
     private readonly string? _refusing;
     private readonly bool _keepsOpen;
+    private readonly string _baseCode;
+    private readonly string? _ranking;
     private readonly Dictionary<(string, string?), Block> _variants = [];
     private int _nextId = 100;
 
@@ -341,12 +400,16 @@ public class HandAssemblyCandidatesTests {
       bool turns,
       bool orientable,
       string? refusing,
-      bool keepsOpen
+      bool keepsOpen,
+      string baseCode,
+      string? ranking
     ) {
       _world = world;
       _tokens = tokens;
       _refusing = refusing;
       _keepsOpen = keepsOpen;
+      _baseCode = baseCode;
+      _ranking = ranking;
 
       foreach (string token in tokens)
         foreach (string? turn in turns ? TurnLetters : [null]) {
@@ -381,7 +444,7 @@ public class HandAssemblyCandidatesTests {
     private Block Chair(string token) =>
       TestBlocks.Configure(
         new Block(),
-        $"test:chair-{token}",
+        $"test:{_baseCode}-{token}",
         _nextId++,
         ("side", token)
       );
@@ -397,8 +460,8 @@ public class HandAssemblyCandidatesTests {
           ? [("orientation", token)]
           : [("orientation", token), ("turn", turn)];
       return TestBlocks.Configure(
-        new PipeNode(token, family, _tokens, _refusing, _keepsOpen),
-        code ?? $"test:pipe-{token}" + (turn == null ? "" : $"-{turn}"),
+        new PipeNode(token, family, _tokens, _refusing, _keepsOpen, _ranking),
+        code ?? $"test:{_baseCode}-{token}" + (turn == null ? "" : $"-{turn}"),
         _nextId++,
         variants
       );
@@ -409,19 +472,22 @@ public class HandAssemblyCandidatesTests {
     private readonly string _family;
     private readonly string? _refusing;
     private readonly bool _keepsOpen;
+    private readonly string? _ranking;
 
     public PipeNode(
       string token,
       string family,
       string[] tokens,
       string? refusing,
-      bool keepsOpen
+      bool keepsOpen,
+      string? ranking
     ) {
       Type = "mixed";
       Orientation = token;
       _family = family;
       _refusing = refusing;
       _keepsOpen = keepsOpen;
+      _ranking = ranking;
       AllowedOrientations = new() { ["mixed"] = tokens };
     }
 
@@ -447,6 +513,12 @@ public class HandAssemblyCandidatesTests {
       }
       return true;
     }
+
+    public int CandidateRank(
+      IWorldAccessor world,
+      BlockSelection selection,
+      Block candidate
+    ) => candidate is PipeNode node && node.Orientation == _ranking ? -1 : 0;
   }
 }
 
