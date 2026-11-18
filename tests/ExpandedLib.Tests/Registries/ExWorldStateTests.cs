@@ -28,6 +28,8 @@ public class ExWorldStateTests {
       "the game's own clip names, constants of the game that no world changes",
     ["ExpandedLib.Blocks.PersistScan._cache"] =
       "per-type binders, a pure function of the loaded types",
+    ["ExpandedLib.Assembling.HandAssemblyServer._keepRecords"] =
+      "a thread's flag set for one SetBlock of a creative take-off and cleared in its finally",
     ["ExpandedLib.Catalogues.BayOccupancyLoader.RootKeys"] = SchemaKeys,
     ["ExpandedLib.Catalogues.BayOccupancyLoader.ItemKeys"] = SchemaKeys,
     ["ExpandedLib.Catalogues.ProcessJobLoader.RootKeys"] = SchemaKeys,
