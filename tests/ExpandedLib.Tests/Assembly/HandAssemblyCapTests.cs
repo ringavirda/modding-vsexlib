@@ -1,3 +1,5 @@
+using System;
+using System.Collections.Generic;
 using System.Linq;
 using ExpandedLib.Assembling;
 using ExpandedLib.Blocks;
@@ -48,7 +50,7 @@ public class HandAssemblyCapTests {
   public void CapHeldHelp_NamesTheGesture() {
     var scene = CapScene.Standing();
 
-    int attached = CollectibleBehaviorCapHelp.Attach(scene.World.Api);
+    int attached = CollectibleBehaviorCapHelp.AttachTo(scene.World.Api);
 
     Assert.Equal(1, attached);
     var handling = EnumHandling.PassThrough;
@@ -63,6 +65,77 @@ public class HandAssemblyCapTests {
     Assert.Equal("shift", help.HotKeyCode);
     Assert.Equal(scene.Wrench, Assert.Single(help.Itemstacks).Collectible);
     Assert.Empty(scene.Bolt.CollectibleBehaviors);
+  }
+
+  // Fails when Attach on the client appends nothing, so the held help never shows.
+  [Fact]
+  public void ClientAttach_GivesTheCapItsHelp() {
+    var scene = CapScene.Standing();
+
+    int attached = CollectibleBehaviorCapHelp.Attach(scene.World.ClientApi);
+
+    Assert.Equal(1, attached);
+    Assert.Single(
+      scene.CastCap.CollectibleBehaviors.OfType<CollectibleBehaviorCapHelp>()
+    );
+  }
+
+  // Fails when Attach puts the client-only help on a server item, whose type packet then names a behaviour class no registry holds.
+  [Fact]
+  public void ServerAttach_LeavesEveryBehaviourWithAClassName() {
+    var scene = CapScene.Standing();
+    CollectibleObject[] corpus =
+    [
+      .. Premise.NotEmpty(
+        scene
+          .World.World.Items.Where(i => i?.Code != null)
+          .Cast<CollectibleObject>()
+          .Concat(scene.World.World.Blocks.Where(b => b is { Id: not 0 })),
+        "items and blocks of the cap scene"
+      ),
+    ];
+    Assert.Contains(scene.CastCap, corpus);
+    HashSet<Type> registered =
+    [
+      .. corpus
+        .SelectMany(c => c.CollectibleBehaviors)
+        .Select(b => b.GetType()),
+    ];
+    var registry = Substitute.For<IClassRegistryAPI>();
+    registry
+      .GetCollectibleBehaviorClassName(default!)
+      .ReturnsForAnyArgs(ci =>
+        registered.Contains(ci.Arg<Type>()) ? "named" : null
+      );
+    registry
+      .GetBlockBehaviorClassName(default!)
+      .ReturnsForAnyArgs(ci =>
+        registered.Contains(ci.Arg<Type>()) ? "named" : null
+      );
+
+    CollectibleBehaviorCapHelp.Attach(scene.World.Api);
+
+    string[] unnamed =
+    [
+      .. corpus
+        .SelectMany(c =>
+          c.CollectibleBehaviors.Select(b => (Code: c.Code.ToString(), B: b))
+        )
+        .Where(e =>
+          (
+            e.B is BlockBehavior
+              ? registry.GetBlockBehaviorClassName(e.B.GetType())
+              : registry.GetCollectibleBehaviorClassName(e.B.GetType())
+          ) == null
+        )
+        .Select(e => $"{e.Code}: {e.B.GetType().FullName}")
+        .Distinct()
+        .Order(),
+    ];
+    Assert.True(
+      unnamed.Length == 0,
+      "Behaviours with no registered class name:\n" + string.Join("\n", unnamed)
+    );
   }
 
   #endregion

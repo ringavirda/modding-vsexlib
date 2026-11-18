@@ -28,9 +28,14 @@ internal sealed class CollectibleBehaviorCapHelp(
       },
     ];
 
-  /// <summary>Gives every item named as a cap by a loaded block's hand assembly spec a <see cref="CollectibleBehaviorCapHelp"/> listing the tools of the specs that name it. Run once the blocks and items are registered, from <c>AssetsFinalize</c>.</summary>
+  /// <summary>Gives every item named as a cap by a loaded block's hand assembly spec a <see cref="CollectibleBehaviorCapHelp"/> listing the tools of the specs that name it. Run once the blocks and items are registered, from <c>AssetsFinalize</c>. The help is client-only and has no registered class name, so the server appends nothing: its item packets would name an unregistered behaviour class, and the client adds the help to its own items.</summary>
+  /// <returns>How many items gained the behaviour; 0 on the server.</returns>
+  internal static int Attach(ICoreAPI api) =>
+    api.Side == EnumAppSide.Client ? AttachTo(api) : 0;
+
+  /// <summary>Appends the behaviour to every cap item of <paramref name="api"/>'s world whatever the side.</summary>
   /// <returns>How many items gained the behaviour.</returns>
-  internal static int Attach(ICoreAPI api) {
+  internal static int AttachTo(ICoreAPI api) {
     List<HandAssemblySpec> specs =
     [
       .. api
