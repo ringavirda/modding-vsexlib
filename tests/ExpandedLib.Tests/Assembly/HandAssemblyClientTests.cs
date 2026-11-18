@@ -165,6 +165,20 @@ public class HandAssemblyClientTests {
     );
   }
 
+  // Fails when the CapRefusal check is removed from the cap ghost decision.
+  [Theory]
+  [InlineData(HandAssemblyServer.Occupied)]
+  [InlineData(HandAssemblyServer.CapJoined)]
+  [InlineData(HandAssemblyServer.CapClosed)]
+  [InlineData(HandAssemblyServer.CapNoRoom)]
+  public void CapGhost_IsNotDrawnForARefusedEnd(string refusal) =>
+    Assert.False(HandAssemblyClient.ShowsCapGhost(refusal));
+
+  // Fails when an end that takes a cap draws no ghost.
+  [Fact]
+  public void CapGhost_IsDrawnForAnEndWithNoRefusal() =>
+    Assert.True(HandAssemblyClient.ShowsCapGhost(null));
+
   #endregion
 
   #region The marks

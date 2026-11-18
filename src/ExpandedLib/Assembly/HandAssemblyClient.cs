@@ -199,9 +199,14 @@ internal sealed class HandAssemblyClient : IRenderer {
   internal static int GhostColor(int blockColor, bool isShort) =>
     isShort ? ProjectionColors.Refused : ProjectionColors.Of(blockColor);
 
+  /// <summary>Whether a cap ghost is drawn: only for an end that takes a cap, so one whose refusal is not the cost shows none.</summary>
+  /// <param name="capRefusal">The aimed end's refusal, <see cref="HandAssemblyControl.CapRefusal"/>; null when it takes a cap.</param>
+  internal static bool ShowsCapGhost(string? capRefusal) => capRefusal == null;
+
   private void DrawCapGhost(EntityPlayer entity) {
     if (
-      _control.CapAt is not { } cell
+      !ShowsCapGhost(_control.CapRefusal)
+      || _control.CapAt is not { } cell
       || _control.CapFace is not { } face
       || _capGhost.Of(_capi, _capi.World.BlockAccessor.GetBlock(cell), face)
         is not { } ghost
