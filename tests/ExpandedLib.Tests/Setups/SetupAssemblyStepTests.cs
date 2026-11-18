@@ -255,6 +255,7 @@ public class SetupAssemblyStepTests {
               Code = plain.Code,
               ItemId = plain.ItemId,
               Durability = 100,
+              StorageFlags = plain.StorageFlags,
             }
           );
         }
