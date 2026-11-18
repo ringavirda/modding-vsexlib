@@ -302,6 +302,142 @@ public class HandAssemblyFixedTests {
 
   #endregion
 
+  #region Survival take-off
+
+  // Fails when a piece fixed onto another records no bolts of its own joint (Place drops SetFastener).
+  [Fact]
+  public void SurvivalTakeOff_LaterPieceReturnsItsJointBolts() {
+    var scene = TwoPieces();
+    Assert.Equal(
+      2,
+      scene.RecordAt(North).FastenerAt(BlockFacing.SOUTH)!.StackSize
+    );
+    Assert.Null(scene.RecordAt(Cell).FastenerAt(BlockFacing.NORTH));
+
+    Assert.Null(scene.TakeOff(North));
+
+    Assert.Equal(10, scene.Carried);
+    Assert.Equal(1, scene.Pieces);
+    Assert.Null(scene.TakeOff(Cell));
+    Assert.Equal(10, scene.Carried);
+    Assert.Equal(2, scene.Pieces);
+  }
+
+  // Fails when the take-off returns only the piece's own record, so the earlier piece gives back no bolts the later one holds toward it.
+  [Fact]
+  public void SurvivalTakeOff_EarlierPieceReturnsTheNeighboursRecord() {
+    var scene = TwoPieces();
+
+    Assert.Null(scene.TakeOff(Cell));
+
+    Assert.Equal(10, scene.Carried);
+    Assert.Equal(1, scene.Pieces);
+  }
+
+  // Fails when the neighbour's record is left after the earlier piece returns it, so the later piece returns it again.
+  [Fact]
+  public void SurvivalTakeOff_JointBoltsReturnOnce() {
+    var scene = TwoPieces();
+
+    Assert.Null(scene.TakeOff(Cell));
+    Assert.Null(scene.RecordAt(North).FastenerAt(BlockFacing.SOUTH));
+    Assert.Null(scene.TakeOff(North));
+
+    Assert.Equal(10, scene.Carried);
+    Assert.Equal(2, scene.Pieces);
+  }
+
+  // Fails when the joint record is not written to the tree or not read back, in either removal order.
+  [Theory]
+  [InlineData(false)]
+  [InlineData(true)]
+  public void SurvivalTakeOff_RecordsSurviveReload(bool earlierFirst) {
+    var scene = TwoPieces();
+    scene.World.Reload(Cell);
+    scene.World.Reload(North);
+    Assert.Equal(
+      2,
+      scene.RecordAt(North).FastenerAt(BlockFacing.SOUTH)!.StackSize
+    );
+
+    Assert.Null(scene.TakeOff(earlierFirst ? Cell : North));
+    Assert.Null(scene.TakeOff(earlierFirst ? North : Cell));
+
+    Assert.Equal(10, scene.Carried);
+    Assert.Equal(2, scene.Pieces);
+  }
+
+  // Fails when a piece fixed onto one that was placed plainly records no bolts of its own, or the plain piece returns some.
+  [Fact]
+  public void SurvivalTakeOff_PieceFixedOntoAPlainPieceReturnsItsBolts() {
+    var scene = new TakeOffScene(Scene.Standing(["ns"]));
+    scene.Bolts(10);
+    scene.Parts = 1;
+    scene.Pipe(Cell, "ns");
+    Assert.Null(scene.Fix("ns", Cell, BlockFacing.NORTH));
+    Assert.Equal(8, scene.Carried);
+    scene.Player.Sneaking = true;
+
+    Assert.Null(scene.TakeOff(North));
+
+    Assert.Equal(10, scene.Carried);
+    Assert.Equal(1, scene.Pieces);
+  }
+
+  // Fails when a piece fixed in survival onto one fixed in creative records no bolts of its own.
+  [Fact]
+  public void SurvivalTakeOff_PieceFixedOntoACreativePieceReturnsItsBolts() {
+    var scene = new TakeOffScene(Scene.Standing(["ns"]));
+    scene.Bolts(10);
+    scene.Parts = 2;
+    scene.Player.GameMode = EnumGameMode.Creative;
+    Assert.Null(scene.Fix("ns", Ground, BlockFacing.UP));
+    scene.Player.GameMode = EnumGameMode.Survival;
+    Assert.Null(scene.Fix("ns", Cell, BlockFacing.NORTH));
+    Assert.Equal(8, scene.Carried);
+
+    Assert.Null(scene.TakeOff(North));
+
+    Assert.Equal(10, scene.Carried);
+    Assert.Equal(1, scene.Pieces);
+  }
+
+  // Fails when a piece fixed in creative, or one joining nothing, returns bolts it never spent.
+  [Fact]
+  public void SurvivalTakeOff_CreativeFixedPieceAndAPieceJoiningNothingReturnNoBolts() {
+    var scene = new TakeOffScene(Scene.Standing(["ns"]));
+    scene.Bolts(10);
+    scene.Parts = 2;
+    scene.Player.GameMode = EnumGameMode.Creative;
+    Assert.Null(scene.Fix("ns", Ground, BlockFacing.UP));
+    Assert.Null(scene.Fix("ns", Cell, BlockFacing.NORTH));
+    scene.Player.GameMode = EnumGameMode.Survival;
+    Assert.Equal(10, scene.Carried);
+
+    Assert.Null(scene.TakeOff(Cell));
+    Assert.Null(scene.TakeOff(North));
+
+    Assert.Equal(10, scene.Carried);
+    Assert.Equal(2, scene.Pieces);
+  }
+
+  // Fails when a creative take-off of the earlier piece leaves the later piece's record, so its bolts come back in survival.
+  [Fact]
+  public void SurvivalTakeOff_CreativeTakeOffOfTheEarlierPieceDiscardsTheLaterPiecesBolts() {
+    var scene = TwoPieces();
+    scene.Player.GameMode = EnumGameMode.Creative;
+    Assert.Null(scene.TakeOff(Cell));
+    scene.Player.GameMode = EnumGameMode.Survival;
+
+    Assert.Null(scene.RecordAt(North).FastenerAt(BlockFacing.SOUTH));
+    Assert.Null(scene.TakeOff(North));
+
+    Assert.Equal(8, scene.Carried);
+    Assert.Equal(1, scene.Pieces);
+  }
+
+  #endregion
+
   #region Breaking and saving
 
   // Fails when breaking a fixed piece returns its fasteners, or leaves its neighbour's record toward it.
@@ -483,6 +619,8 @@ public class HandAssemblyFixedTests {
     }
 
     public void Bolts(int count) => inner.Bolts(count);
+
+    public void Pipe(BlockPos pos, string token) => inner.Pipe(pos, token);
 
     public AssemblyResult? Fix(
       string token,
