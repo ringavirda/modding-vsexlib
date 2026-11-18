@@ -262,10 +262,9 @@ public sealed class TestPlayer {
 
   /// <summary>Puts <paramref name="stack"/> in <see cref="OffHandSlot"/>, or empties it for <c>null</c>.</summary>
   /// <exception cref="ArgumentException">The game's off-hand slot refuses the stack (its storage flags
-  /// lack Offhand) and its exact code is not in a mod's <see cref="OffHandRule.FileName"/>; the slot
-  /// is left as it was.</exception>
+  /// lack Offhand); the slot is left as it was.</exception>
   public void HoldOffHand(ItemStack? stack) {
-    if (SetupOffHand.Refusal(stack, OffHandRule.Allowed) is { } refusal)
+    if (SetupOffHand.Refusal(stack) is { } refusal)
       throw new ArgumentException(refusal, nameof(stack));
     OffHandSlot.Itemstack = stack;
   }

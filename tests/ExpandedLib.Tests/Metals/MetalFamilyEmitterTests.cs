@@ -398,6 +398,24 @@ public class MetalFamilyEmitterTests {
   }
 
   [Fact]
+  public void Only_the_named_forms_take_the_off_hand_bit() {
+    // Fails when OffHandForms is ignored (no form gains 256) or applied to every form (the ingot gains it too).
+    MetalDef m = new() {
+      Code = "foo",
+      MoltenItem = "mymod:ingot-foo",
+      GenerateItemFamily = true,
+      ItemForms = ["ingot", "bits"],
+      OffHandForms = ["bits"],
+    };
+
+    Dictionary<string, int> flags = Emit(m)
+      .ToDictionary(d => Registered(d).Single(), d => (int)d.ToJson()["storageFlags"]!);
+
+    Assert.Equal(261, flags["metalbit-foo"]);
+    Assert.Equal(5, flags["ingot-foo"]);
+  }
+
+  [Fact]
   public void Each_resource_form_carries_a_metal_group_its_loaded_item_reads() {
     // Fails when the metal variant group is dropped: Variant["metal"] is null and vanilla's anvil lookups throw.
     MetalDef m = new() {
