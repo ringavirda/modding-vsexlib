@@ -1,6 +1,8 @@
 using System.Collections.Generic;
 using System.Linq;
+using ExpandedLib.Assembling;
 using ExpandedLib.Definitions;
+using ExpandedLib.Helpers;
 using ExpandedLib.Structures;
 using ExpandedLib.Testing;
 using Newtonsoft.Json.Linq;
@@ -91,6 +93,19 @@ public class MultiblockConnectorsTests {
     var outline = scene.Machine.IncompleteOutline();
 
     Assert.Equal([scene.Rig.Cell(0, 0, 1)], outline.Select(c => c.At));
+  }
+
+  // Fails when the build outline, the hand-assembly ghost or the course preview colour a refusal differently.
+  [Fact]
+  public void Projection_OutlineAndGhostShareTheRefusedRed() {
+    Scene scene = Scene.WithNode("s");
+    scene.Completes();
+
+    int red = Assert.Single(scene.Machine.IncompleteOutline()).Color;
+
+    Assert.Equal(ColorUtil.ColorFromRgba(215, 94, 94, 0x60), red);
+    Assert.Equal(red, HandAssemblyClient.GhostColor(0, true));
+    Assert.Equal(red, ExCoursePreview.DefaultRefuseColor);
   }
 
   #endregion

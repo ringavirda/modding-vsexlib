@@ -16,20 +16,10 @@ namespace ExpandedLib.Helpers;
 /// as the client.</remarks>
 public sealed class ExCoursePreview {
   /// <summary>The default tint of the cells the click would change: green, translucent (ARGB).</summary>
-  public static readonly int DefaultChangeColor = ColorUtil.ColorFromRgba(
-    94,
-    215,
-    94,
-    0x60
-  );
+  public static readonly int DefaultChangeColor = ProjectionColors.Joined;
 
   /// <summary>The default tint of the cells that refuse the click: red, translucent (ARGB).</summary>
-  public static readonly int DefaultRefuseColor = ColorUtil.ColorFromRgba(
-    215,
-    94,
-    94,
-    0x60
-  );
+  public static readonly int DefaultRefuseColor = ProjectionColors.Refused;
 
   private readonly ICoreClientAPI _capi;
   private readonly int _slotId;

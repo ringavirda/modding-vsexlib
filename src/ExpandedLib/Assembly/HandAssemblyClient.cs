@@ -13,18 +13,6 @@ namespace ExpandedLib.Assembling;
 internal sealed class HandAssemblyClient : IRenderer {
   private const int RecomputeMs = 100;
 
-  private const float BaseAlpha = 0.55f;
-  private static readonly (float R, float G, float B) GhostTint = (
-    0.8f,
-    1f,
-    0.8f
-  );
-  private static readonly (float R, float G, float B) ShortTint = (
-    1f,
-    0.35f,
-    0.35f
-  );
-
   private readonly ICoreClientAPI _capi;
   private readonly HandAssemblyControl _control;
   private readonly HandAssemblyHudDialog _hud;
@@ -199,6 +187,12 @@ internal sealed class HandAssemblyClient : IRenderer {
       DrawGhost(entity);
   }
 
+  /// <summary>The colour of the ghost: red when <paramref name="isShort"/>, else <paramref name="blockColor"/> at the projection's alpha.</summary>
+  /// <param name="blockColor">The shown block's colour as <c>Block.GetColor</c> returns it.</param>
+  /// <param name="isShort">True when the tool or the fasteners fall short, <see cref="HandAssemblyControl.Short"/>.</param>
+  internal static int GhostColor(int blockColor, bool isShort) =>
+    isShort ? ProjectionColors.Refused : ProjectionColors.Of(blockColor);
+
   private void DrawCapGhost(EntityPlayer entity) {
     if (
       _control.CapAt is not { } cell
@@ -207,18 +201,38 @@ internal sealed class HandAssemblyClient : IRenderer {
         is not { } ghost
     )
       return;
-    DrawTinted(entity, cell, ghost);
+    Block piece = _capi.World.BlockAccessor.GetBlock(cell);
+    Vec3d camera = entity.CameraPos;
+    IShaderProgram? previous = _capi.Render.CurrentActiveShader;
+    previous?.Stop();
+    IStandardShaderProgram shader = Begin(cell);
+    DrawProjected(
+      shader,
+      ghost,
+      GhostColor(piece.GetColor(_capi, cell), _control.Short),
+      cell.X - camera.X,
+      cell.Y - camera.Y,
+      cell.Z - camera.Z
+    );
+    shader.Stop();
+    previous?.Use();
   }
 
-  private void DrawTinted(
-    EntityPlayer entity,
-    BlockPos cell,
-    MultiTextureMeshRef mesh
-  ) {
-    Vec3d camera = entity.CameraPos;
+  private LoadedTexture White() {
+    if (_white == null) {
+      _white = new LoadedTexture(_capi) { Width = 1, Height = 1 };
+      _capi.Render.LoadOrUpdateTextureFromRgba(
+        [ColorUtil.WhiteArgb],
+        false,
+        0,
+        ref _white
+      );
+    }
+    return _white;
+  }
+
+  private IStandardShaderProgram Begin(BlockPos cell) {
     IRenderAPI render = _capi.Render;
-    IShaderProgram? previous = render.CurrentActiveShader;
-    previous?.Stop();
     IStandardShaderProgram shader = render.PreparedStandardShader(
       cell.X,
       cell.Y,
@@ -226,22 +240,32 @@ internal sealed class HandAssemblyClient : IRenderer {
     );
     shader.ViewMatrix = render.CameraMatrixOriginf;
     shader.ProjectionMatrix = render.CurrentProjectionMatrix;
-    Tint(shader, cell.X - camera.X, cell.Y - camera.Y, cell.Z - camera.Z);
-    render.GlToggleBlend(true);
-    render.GLDepthMask(false);
-    render.RenderMultiTextureMesh(mesh, "tex");
-    render.GLDepthMask(true);
-    render.GlToggleBlend(false);
-    shader.Stop();
-    previous?.Use();
+    shader.RgbaLightIn = new Vec4f(1, 1, 1, 1);
+    shader.RgbaAmbientIn = new Vec3f(1, 1, 1);
+    shader.AlphaTest = 0.05f;
+    return shader;
   }
 
-  private void Tint(IStandardShaderProgram shader, double x, double y, double z) {
-    float fill = BaseAlpha + ((1f - BaseAlpha) * _control.Progress);
-    (float r, float g, float b) = _control.Short ? ShortTint : GhostTint;
+  private void DrawProjected(
+    IStandardShaderProgram shader,
+    MultiTextureMeshRef mesh,
+    int color,
+    double x,
+    double y,
+    double z
+  ) {
+    IRenderAPI render = _capi.Render;
     shader.NormalShaded = 1;
-    shader.RgbaTint = new Vec4f(r, g, b, fill);
+    shader.RgbaTint = ProjectionColors.Tint(color);
     shader.ModelMatrix = _model.Identity().Translate(x, y, z).Values;
+    render.GlToggleBlend(true);
+    render.GLDepthMask(false);
+    foreach (MeshRef part in mesh.meshrefs) {
+      shader.BindTexture2D("tex", White().TextureId, 0);
+      render.RenderMesh(part);
+    }
+    render.GLDepthMask(true);
+    render.GlToggleBlend(false);
   }
 
   private void DrawGhost(EntityPlayer entity) {
@@ -259,28 +283,19 @@ internal sealed class HandAssemblyClient : IRenderer {
     double x = cell.X - camera.X;
     double y = cell.Y - camera.Y;
     double z = cell.Z - camera.Z;
-    IRenderAPI render = _capi.Render;
-    IShaderProgram? previous = render.CurrentActiveShader;
+    IShaderProgram? previous = _capi.Render.CurrentActiveShader;
     previous?.Stop();
-    IStandardShaderProgram shader = render.PreparedStandardShader(
-      cell.X,
-      cell.Y,
-      cell.Z
-    );
-    shader.ViewMatrix = render.CameraMatrixOriginf;
-    shader.ProjectionMatrix = render.CurrentProjectionMatrix;
+    IStandardShaderProgram shader = Begin(cell);
 
     DrawMarks(shader, shown, x, y, z);
-
-    Tint(shader, x, y, z);
-    render.GlToggleBlend(true);
-    render.GLDepthMask(false);
-    render.RenderMultiTextureMesh(
+    DrawProjected(
+      shader,
       _capi.TesselatorManager.GetDefaultBlockMeshRef(shown.Block),
-      "tex"
+      GhostColor(shown.Block.GetColor(_capi, cell), _control.Short),
+      x,
+      y,
+      z
     );
-    render.GLDepthMask(true);
-    render.GlToggleBlend(false);
 
     shader.Stop();
     previous?.Use();
@@ -298,18 +313,8 @@ internal sealed class HandAssemblyClient : IRenderer {
     _markMesh ??= render.UploadMesh(
       CubeMeshUtil.GetCube(0.5f, 0.5f, 0.5f, new Vec3f())
     );
-    if (_white == null) {
-      _white = new LoadedTexture(_capi) { Width = 1, Height = 1 };
-      render.LoadOrUpdateTextureFromRgba(
-        [ColorUtil.WhiteArgb],
-        false,
-        0,
-        ref _white
-      );
-    }
-
     shader.NormalShaded = 0;
-    render.BindTexture2d(_white.TextureId);
+    render.BindTexture2d(White().TextureId);
     render.GlDisableCullFace();
     foreach (BlockFacing arm in shown.Arms) {
       Cuboidf box = HandAssemblyMarks.Box(arm);

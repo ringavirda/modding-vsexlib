@@ -496,14 +496,13 @@ public abstract class BlockEntityMultiblockStructure
 
   private int OutlineColor(MissingCell cell) {
     if (cell.Actual.Id != 0)
-      return ColorUtil.ColorFromRgba(215, 94, 94, 0x60);
+      return ProjectionColors.Refused;
 
     Block[] matches = Api.World.SearchBlocks(cell.Wanted);
     if (matches.Length == 0)
-      return ColorUtil.ColorFromRgba(94, 94, 215, 0x60);
+      return ProjectionColors.Unknown;
 
-    return (matches[0].GetColor(Api as ICoreClientAPI, Pos) & 0xFFFFFF)
-      | (0x60 << 24);
+    return ProjectionColors.Of(matches[0].GetColor(Api as ICoreClientAPI, Pos));
   }
 
   private static readonly AssetLocation AirCode = new("game:air");

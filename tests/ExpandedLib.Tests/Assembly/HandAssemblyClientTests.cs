@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using ExpandedLib.Assembling;
 using ExpandedLib.Catalogues;
+using ExpandedLib.Helpers;
 using ExpandedLib.Machines;
 using Vintagestory.API.MathTools;
 using Xunit;
@@ -280,6 +281,48 @@ public class HandAssemblyClientTests {
 
     Assert.Null(stepper.Step());
     Assert.Null(stepper.Shown);
+  }
+
+  #endregion
+
+  #region The projection colour
+
+  // Fails when the ghost is tinted a fixed colour instead of the block's, or keeps another alpha.
+  [Fact]
+  public void Projection_GhostTakesTheBlocksOwnColourAt0x60() {
+    Assert.Equal(
+      ColorUtil.ColorFromRgba(10, 20, 30, 0x60),
+      HandAssemblyClient.GhostColor(
+        ColorUtil.ColorFromRgba(10, 20, 30, 255),
+        false
+      )
+    );
+  }
+
+  // Fails when the tint reads the colour bytes in another order than the highlight does.
+  [Fact]
+  public void Projection_TintReadsTheHighlightByteOrder() {
+    Vec4f t = ProjectionColors.Tint(ColorUtil.ColorFromRgba(10, 20, 30, 0x60));
+
+    Assert.Equal(10 / 255f, t.R, 4);
+    Assert.Equal(20 / 255f, t.G, 4);
+    Assert.Equal(30 / 255f, t.B, 4);
+    Assert.Equal(0x60 / 255f, t.A, 4);
+  }
+
+  // Fails when a short placement keeps the block's colour instead of the refused red.
+  [Fact]
+  public void Projection_ShortGhostIsRefused() {
+    int block = ColorUtil.ColorFromRgba(71, 68, 69, 255);
+
+    Assert.Equal(
+      ProjectionColors.Refused,
+      HandAssemblyClient.GhostColor(block, true)
+    );
+    Assert.NotEqual(
+      ProjectionColors.Refused,
+      HandAssemblyClient.GhostColor(block, false)
+    );
   }
 
   #endregion
