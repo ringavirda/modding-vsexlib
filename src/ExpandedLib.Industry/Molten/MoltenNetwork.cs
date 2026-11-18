@@ -448,7 +448,7 @@ public class MoltenNetwork(BlockNetworkModSystem system) : BlockNetwork(system) 
   /// <paramref name="downhillOnly"/> makes the edge one-way from <paramref name="a"/>.</summary>
   /// <param name="share">What <see cref="ShareSpare"/> allotted the receiver of a level giver pushing
   /// on to several arms, or null; the nearer cell then gives, whichever holds more now, at most this
-  /// and keeping its skin.</param>
+  /// and keeping its skin, even when the two are level or closer than the flow gap.</param>
   private static void FlowEdge(
     (BlockPos Pos, IMoltenCell Cell) a,
     (BlockPos Pos, IMoltenCell Cell) b,
@@ -478,7 +478,7 @@ public class MoltenNetwork(BlockNetworkModSystem system) : BlockNetwork(system) 
     }
 
     var diff = Math.Abs(a.Cell.CellAmount - b.Cell.CellAmount);
-    if (diff == 0)
+    if (diff == 0 && share is null)
       return;
 
     if (
@@ -507,7 +507,7 @@ public class MoltenNetwork(BlockNetworkModSystem system) : BlockNetwork(system) 
     bool whole = drain || downhillOnly;
     if (rules is MoltenFlowRules r) {
       // The floor is on the gap, never on the halved step.
-      if (!drain && diff < r.MinFlowGap)
+      if (!drain && share is null && diff < r.MinFlowGap)
         return;
       whole |=
         r.Conveys

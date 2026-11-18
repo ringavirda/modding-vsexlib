@@ -307,6 +307,39 @@ public class MoltenLevelRunTests {
     );
   }
 
+  // Fails when a tee's arm that the first arm's push has left level with the tee gets nothing of its
+  // part: the second arm stays at 60 and the tee at 60.
+  [Fact]
+  public void A_tee_gives_an_arm_its_part_when_the_first_arm_has_levelled_it() {
+    var w = new TestWorld();
+    w.RegisterNetwork("molten", sys => new MoltenNetwork(sys));
+    var tee = new Cell { MaxUnitCapacity = 200 };
+    var west = new Cell { MaxUnitCapacity = 200 };
+    var north = new Cell { MaxUnitCapacity = 200 };
+    var source = new Cell { IsFlowSource = true, MaxUnitCapacity = 200 };
+    (BlockPos Pos, Cell Cell)[] cells =
+    [
+      (new BlockPos(2, 0, 0), source),
+      (new BlockPos(1, 0, 0), tee),
+      (new BlockPos(0, 0, 0), west),
+      (new BlockPos(1, 0, -1), north),
+    ];
+    foreach (var (pos, cell) in cells) {
+      w.Place(pos, Cross, cell);
+      w.Attach(cell);
+      w.AddNode(pos, "molten");
+    }
+    tee.PushMetalRaw(110, Iron, 1500f, null!);
+    west.PushMetalRaw(60, Iron, 1500f, null!);
+    north.PushMetalRaw(60, Iron, 1500f, null!);
+    w.Tick();
+    // The tee's last 10 levels with the source after the arms take their parts.
+    Assert.Equal(
+      [110, 110, 5, 5],
+      new[] { west, north, tee, source }.Select(c => c.CellAmount)
+    );
+  }
+
   // Fails when cells at one distance from the start hand over all but the skin in place of half.
   [Fact]
   public void Two_cells_at_one_distance_level_by_half() {
