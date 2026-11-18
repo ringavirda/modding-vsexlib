@@ -130,6 +130,23 @@ public class HandAssemblyControlTests {
     Assert.Empty(driver.Refusals);
   }
 
+  // Fails when the hold runs on after sneak is let go while the button stays down.
+  [Fact]
+  public void Letting_go_of_sneak_cancels_the_hold_and_sends_nothing() {
+    Scene scene = Joined();
+    var driver = new Driver(
+      scene,
+      Scene.Select(Ground, BlockFacing.UP)
+    ).Start();
+
+    driver.Hold(0.5, sneak: true);
+    Assert.True(driver.Control.Progress > 0f);
+    driver.Hold(5, sneak: false);
+
+    Assert.Empty(driver.Channel.Sent);
+    Assert.Equal(0f, driver.Control.Progress);
+  }
+
   // Fails when the hold runs on after the button comes up while sneak is still held.
   [Fact]
   public void The_button_coming_up_cancels_the_hold_and_sends_nothing() {
