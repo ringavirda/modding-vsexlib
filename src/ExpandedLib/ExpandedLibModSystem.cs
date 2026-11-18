@@ -74,6 +74,7 @@ public class ExpandedLibModSystem : ModSystem {
         Machines.RecipeDiagram.HideStationRecipes(api.World)
       );
 #endif
+    Assembling.CollectibleBehaviorCapHelp.Attach(api);
     ItemViewsPass.Run(api);
   }
 

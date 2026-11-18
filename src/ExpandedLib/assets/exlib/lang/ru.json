@@ -203,5 +203,6 @@
   "handassembly-hud-cap": "Заглушка: {0}",
   "handassembly-hud-none": "Здесь ничего не подходит.",
   "blockhelp-handassembly-step": "Следующее положение",
-  "blockhelp-handassembly-fix": "Удерживать, чтобы закрепить деталь"
+  "blockhelp-handassembly-fix": "Удерживать, чтобы закрепить деталь",
+  "blockhelp-handassembly-cap": "Удерживать, чтобы надеть заглушку"
 }

@@ -10,6 +10,7 @@ using ExpandedLib.Testing;
 using ExpandedLib.Testing.Live;
 using Newtonsoft.Json.Linq;
 using NSubstitute;
+using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
 using Vintagestory.API.Datastructures;
@@ -39,6 +40,32 @@ public class HandAssemblyCapTests {
       0.5 + 0.5 * face.Normali.Y,
       0.5 + 0.5 * face.Normali.Z
     );
+
+  #region Held help
+
+  // Fails when the cap item is not given the behaviour, or its help drops the sneak-hold gesture or the off-hand tool.
+  [Fact]
+  public void CapHeldHelp_NamesTheGesture() {
+    var scene = CapScene.Standing();
+
+    int attached = CollectibleBehaviorCapHelp.Attach(scene.World.Api);
+
+    Assert.Equal(1, attached);
+    var handling = EnumHandling.PassThrough;
+    WorldInteraction help = Assert.Single(
+      scene
+        .CastCap.CollectibleBehaviors.OfType<CollectibleBehaviorCapHelp>()
+        .Single()
+        .GetHeldInteractionHelp(scene.Player.ActiveSlot, ref handling)
+    );
+    Assert.Equal(ExlibLang.BlockhelpHandassemblyCap, help.ActionLangCode);
+    Assert.Equal(EnumMouseButton.Right, help.MouseButton);
+    Assert.Equal("shift", help.HotKeyCode);
+    Assert.Equal(scene.Wrench, Assert.Single(help.Itemstacks).Collectible);
+    Assert.Empty(scene.Bolt.CollectibleBehaviors);
+  }
+
+  #endregion
 
   #region Fitting
 
