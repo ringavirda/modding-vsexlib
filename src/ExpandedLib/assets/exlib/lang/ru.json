@@ -130,6 +130,7 @@
   "game:placefailure-exlib-handassembly-needstoolmain": "Нужен {0} в руке.",
   "game:placefailure-exlib-handassembly-capclosed": "Закрыто блоком рядом.",
   "game:placefailure-exlib-handassembly-capnoroom": "Нет места для заглушки.",
+  "game:placefailure-exlib-handassembly-capinway": "Мешает заглушка.",
   "game:placefailure-exlib-handassembly-capjoined": "Эта грань соединена с блоком рядом.",
   "pipe-info-empty": "Пусто",
   "pipe-info-flow": "Пропускная способность: {0} {1} при {2}",

@@ -83,6 +83,9 @@ internal sealed class HandAssemblyControl {
   /// <summary>The refusal code of <see cref="CapFace"/> when the end takes no cap (capped, joined or closed); null when it does.</summary>
   public string? CapRefusal { get; private set; }
 
+  /// <summary>The refusal code of the aimed cell while a part is held and a cap stands in it; null otherwise.</summary>
+  public string? Refusal { get; private set; }
+
   /// <summary>Whether the tool or the fasteners for the shown placement or the aimed cap are missing, or the aimed end takes no cap.</summary>
   public bool Short { get; private set; }
 
@@ -116,6 +119,7 @@ internal sealed class HandAssemblyControl {
     CapFace = null;
     CapSpec = null;
     CapRefusal = null;
+    Refusal = null;
     _candidates = [];
     if (player?.Entity == null)
       return;
@@ -139,6 +143,8 @@ internal sealed class HandAssemblyControl {
           part
         );
         _target = $"{target.Cell}|{target.Anchor.Code}";
+        if (HandAssemblyCaps.InTheWay(accessor, target.Cell) != null)
+          Refusal = HandAssemblyServer.CapInWay;
       }
     } else if (selection != null && AimCap(world, main, selection)) {
       _target = $"{CapKey}|{CapAt}|{CapFace!.Code}";
@@ -204,6 +210,10 @@ internal sealed class HandAssemblyControl {
   public void Release() => _pressed = false;
 
   private void SendFix(IWorldAccessor world, IPlayer player) {
+    if (Refusal != null) {
+      _refuse(Refusal, []);
+      return;
+    }
     if (Shown is not { } shown || Spec == null)
       return;
     if (Short) {

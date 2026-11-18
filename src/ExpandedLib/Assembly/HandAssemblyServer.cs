@@ -28,6 +28,7 @@ internal static class HandAssemblyServer {
   internal const string CapClosed = "exlib-handassembly-capclosed";
   internal const string CapJoined = "exlib-handassembly-capjoined";
   internal const string CapNoRoom = "exlib-handassembly-capnoroom";
+  internal const string CapInWay = "exlib-handassembly-capinway";
 
   // Blocks added to the player's picking range.
   private const float RangeSlack = 1f;
@@ -105,6 +106,8 @@ internal static class HandAssemblyServer {
       return Refusal(NotOffered);
     if (!world.BlockAccessor.GetBlock(cell).IsReplacableBy(requested))
       return Refusal(Occupied);
+    if (HandAssemblyCaps.InTheWay(world.BlockAccessor, cell) != null)
+      return Refusal(CapInWay);
 
     AssemblyCandidate? candidate = HandAssemblyCandidates
       .Of(world, player, part, selection)

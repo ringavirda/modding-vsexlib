@@ -24,7 +24,7 @@ public static class HandAssemblyCandidates {
   /// <param name="player">The placing player; its position and look order the list.</param>
   /// <param name="part">The held block.</param>
   /// <param name="selection">The block the player aims at.</param>
-  /// <returns>The offered placements; empty when none is.</returns>
+  /// <returns>The offered placements; empty when none is, or when a fixed piece beside the target cell carries a cap toward it.</returns>
   public static IReadOnlyList<AssemblyCandidate> Of(
     IWorldAccessor world,
     IPlayer player,
@@ -36,6 +36,8 @@ public static class HandAssemblyCandidates {
       selection,
       part
     );
+    if (HandAssemblyCaps.InTheWay(world.BlockAccessor, target.Cell) != null)
+      return [];
     var placeSelection = new BlockSelection {
       Position = target.Cell.Copy(),
       Face = selection.Face,

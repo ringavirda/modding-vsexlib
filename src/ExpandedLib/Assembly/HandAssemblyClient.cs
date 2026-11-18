@@ -127,7 +127,11 @@ internal sealed class HandAssemblyClient : IRenderer {
     BlockSelection? aim = _control.Aim;
     HandAssemblySpec? spec = _control.Spec;
     if (shown == null || aim == null || spec == null) {
-      ShowHud(Lang.Get(ExlibLang.HandassemblyHudNone));
+      ShowHud(
+        _control.Refusal is { } refusal
+          ? HandAssemblyServer.Line(null, refusal)
+          : Lang.Get(ExlibLang.HandassemblyHudNone)
+      );
       return;
     }
 

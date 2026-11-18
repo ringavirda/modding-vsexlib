@@ -707,6 +707,26 @@ public class HandAssemblyFixTests {
         )
       );
 
+    public BEBehaviorAssembled CappedPipe(
+      BlockPos pos,
+      string token,
+      BlockFacing capFace
+    ) {
+      Block block = TestBlocks.Configure(
+        new AsmPipe(token, [token], null, null),
+        $"test:capped-{token}",
+        _nextId++,
+        ("orientation", token)
+      );
+      block.Attributes = new JsonObject(JToken.Parse(SpecJson));
+      var entity = new BlockEntityAssembled();
+      var record = new BEBehaviorAssembled(entity) { Fixed = true };
+      entity.Behaviors.Add(record);
+      record.SetCap(capFace, new ItemStack(CapItem), null);
+      _world.Place(pos, block, entity);
+      return record;
+    }
+
     public void Bolts(int count) =>
       Player.Hotbar[1].Itemstack = new ItemStack(Bolt, count);
 

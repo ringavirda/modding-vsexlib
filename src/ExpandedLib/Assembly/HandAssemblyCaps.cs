@@ -35,6 +35,19 @@ internal static class HandAssemblyCaps {
       )
       .FirstOrDefault();
 
+  /// <summary>The face of <paramref name="cell"/> toward a piece whose cap stands in it: the first neighbour face whose block's record holds a cap on the face toward <paramref name="cell"/>.</summary>
+  /// <param name="accessor">Reads the neighbours' records.</param>
+  /// <param name="cell">The cell a piece would be placed in.</param>
+  /// <returns>Null when no neighbour caps its end toward the cell.</returns>
+  internal static BlockFacing? InTheWay(
+    IBlockAccessor accessor,
+    BlockPos cell
+  ) =>
+    BlockFacing.ALLFACES.FirstOrDefault(face =>
+      BEBehaviorAssembled.At(accessor, cell.AddCopy(face))?.CapAt(face.Opposite)
+      != null
+    );
+
   /// <summary>Why the end <paramref name="face"/> of a fixed piece takes no cap: it carries one already, it is joined to the piece beside it, the block beside it closes it, or the cell in front of it is not clear for the cap.</summary>
   /// <param name="world">The world read; its network system names the joined faces.</param>
   /// <param name="node">The piece's block.</param>
