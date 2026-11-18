@@ -334,6 +334,8 @@ public class TestPlayerInteractTests {
   public void A_modified_active_slot_keeps_a_hot_stack_with_tongs() {
     var (world, _, player) = Stand();
     Item tongs = world.RegisterItem("game:tongs");
+    tongs.StorageFlags =
+      EnumItemStorageFlags.General | EnumItemStorageFlags.Offhand;
     tongs.Attributes = new Vintagestory.API.Datastructures.JsonObject(
       Newtonsoft.Json.Linq.JToken.Parse("{ heatResistant: true }")
     );
@@ -369,7 +371,10 @@ public class TestPlayerInteractTests {
   public void The_off_hand_is_the_inventory_managers_off_hand_slot()
   {
     var (world, _, player) = Stand();
-    var stack = new ItemStack(world.RegisterItem("game:stick"));
+    Item stick = world.RegisterItem("game:stick");
+    stick.StorageFlags =
+      EnumItemStorageFlags.General | EnumItemStorageFlags.Offhand;
+    var stack = new ItemStack(stick);
 
     player.HoldOffHand(stack);
 

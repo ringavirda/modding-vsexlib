@@ -573,7 +573,11 @@ public class HandAssemblyFixTests {
       _held = held;
       Wrench = world.RegisterItem("test:wrench-iron");
       Wrench.Durability = 100;
+      Wrench.StorageFlags =
+        EnumItemStorageFlags.General | EnumItemStorageFlags.Offhand;
       Hammer = world.RegisterItem("test:hammer-iron");
+      Hammer.StorageFlags =
+        EnumItemStorageFlags.General | EnumItemStorageFlags.Offhand;
       Bolt = world.RegisterItem("test:bolt");
       player.HoldOffHand(new ItemStack(Wrench));
       player.Hold(new ItemStack(held));

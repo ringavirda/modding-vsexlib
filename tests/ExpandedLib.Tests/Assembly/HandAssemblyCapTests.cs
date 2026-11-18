@@ -314,6 +314,8 @@ public class HandAssemblyCapTests {
   [Fact]
   public void WrenchClick_DoesNotFitTheOffHandCap() {
     var scene = CapScene.Standing();
+    scene.CastCap.StorageFlags =
+      EnumItemStorageFlags.General | EnumItemStorageFlags.Offhand;
     scene.Player.Hotbar[2].Itemstack = scene.Player.ActiveSlot.Itemstack;
     scene.Player.Hold(new ItemStack(scene.Wrench));
     scene.Player.HoldOffHand(scene.Player.Hotbar[2].Itemstack);
@@ -705,6 +707,8 @@ public class HandAssemblyCapTests {
         Code = new AssetLocation("test:wrench-iron"),
         ItemId = 900,
         Durability = 100,
+        StorageFlags =
+          EnumItemStorageFlags.General | EnumItemStorageFlags.Offhand,
       };
       world.Register(Wrench);
       Bolt = world.RegisterItem("test:bolt");

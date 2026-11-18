@@ -151,6 +151,8 @@ public class TestPlayerSelectTests {
   public void Select_OfATooHotStack_KeepsItWithHeatResistantOffHand() {
     var (world, player, _) = Stand();
     Item tongs = world.RegisterItem("game:tongs");
+    tongs.StorageFlags =
+      EnumItemStorageFlags.General | EnumItemStorageFlags.Offhand;
     tongs.Attributes = new JsonObject(JToken.Parse("{ heatResistant: true }"));
     player.HoldOffHand(new ItemStack(tongs));
     ItemStack hot = Heated(world, "game:ingot-iron", 900f);
@@ -182,6 +184,8 @@ public class TestPlayerSelectTests {
     var (world, player, _) = Stand();
     Item hammer = world.RegisterItem("game:hammer-copper");
     hammer.Tool = EnumTool.Hammer;
+    hammer.StorageFlags =
+      EnumItemStorageFlags.General | EnumItemStorageFlags.Offhand;
 
     player.HoldOffHand(new ItemStack(hammer));
 

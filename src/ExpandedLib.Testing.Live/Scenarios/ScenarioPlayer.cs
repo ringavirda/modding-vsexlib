@@ -654,7 +654,7 @@ internal sealed class ScenarioPlayer : IHandRelease {
     Hold(Player.Entity.Controls, keys);
     Player.Entity.BlockSelection = selection;
     Player.InventoryManager.ActiveHotbarSlot.Itemstack = stack;
-    Player.InventoryManager.OffhandHotbarSlot.Itemstack = offHand;
+    LiveOffHand.Put(Player.InventoryManager.OffhandHotbarSlot, offHand);
     int before = _server.BlockAccessor.GetBlock(selection.Position).Id;
     if (ClientClick.PlacesFirst(_server, Player, selection, out var put)) {
       _server.TriggerNeighbourBlocksUpdate(put!.Position);
@@ -695,7 +695,7 @@ internal sealed class ScenarioPlayer : IHandRelease {
     Hold(Player.Entity.Controls, keys);
     ItemSlot slot = Player.InventoryManager.ActiveHotbarSlot;
     slot.Itemstack = stack;
-    Player.InventoryManager.OffhandHotbarSlot.Itemstack = offHand;
+    LiveOffHand.Put(Player.InventoryManager.OffhandHotbarSlot, offHand);
     EnumHandHandling handling = EnumHandHandling.NotHandled;
     if (slot.Empty)
       return handling;
@@ -945,8 +945,10 @@ internal sealed class ScenarioPlayer : IHandRelease {
   }
 
   /// <summary>Puts <paramref name="stack"/> in the off-hand slot, or empties it for null.</summary>
+  /// <exception cref="StepFailure">The game's off-hand slot refuses the stack and its code is not
+  /// listed in a mod's off-hand allow list.</exception>
   public void HoldOffhand(ItemStack? stack) =>
-    Player.Entity.LeftHandItemSlot.Itemstack = stack;
+    LiveOffHand.Put(Player.Entity.LeftHandItemSlot, stack);
 
   /// <summary>What the off-hand slot holds, or null.</summary>
   public ItemStack? Offhand => Player.Entity.LeftHandItemSlot.Itemstack;

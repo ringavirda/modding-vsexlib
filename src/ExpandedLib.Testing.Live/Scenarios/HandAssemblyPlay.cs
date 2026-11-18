@@ -52,10 +52,9 @@ internal static class HandAssemblyPlay {
     ItemSlot slot = player.InventoryManager.ActiveHotbarSlot;
     ItemSlot offhand = player.Entity.LeftHandItemSlot;
     slot.Itemstack = new ItemStack(part);
-    offhand.Itemstack = PackLedger.Tool(
-      ctx,
-      $"hand assembly of {part.Code}",
-      spec.Tool
+    LiveOffHand.Put(
+      offhand,
+      PackLedger.Tool(ctx, $"hand assembly of {part.Code}", spec.Tool)
     );
     try {
       BlockPos aimed = Aimed(world, part, at, face);
@@ -193,7 +192,7 @@ internal static class HandAssemblyPlay {
       slot.Itemstack = wrench;
     else {
       slot.Itemstack = PackLedger.Tool(ctx, label, spec.Cap);
-      offhand.Itemstack = wrench;
+      LiveOffHand.Put(offhand, wrench);
       Supply(ctx, world, player, spec, spec.PerJoint);
     }
     Dictionary<string, int> before = ExCarried.Totals(player);

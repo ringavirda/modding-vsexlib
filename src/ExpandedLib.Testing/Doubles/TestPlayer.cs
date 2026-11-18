@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using ExpandedLib.Blocks;
+using ExpandedLib.Scenarios;
 using NSubstitute;
 using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
@@ -260,7 +261,14 @@ public sealed class TestPlayer {
   }
 
   /// <summary>Puts <paramref name="stack"/> in <see cref="OffHandSlot"/>, or empties it for <c>null</c>.</summary>
-  public void HoldOffHand(ItemStack? stack) => OffHandSlot.Itemstack = stack;
+  /// <exception cref="ArgumentException">The game's off-hand slot refuses the stack (its storage flags
+  /// lack Offhand) and its exact code is not in a mod's <see cref="OffHandRule.FileName"/>; the slot
+  /// is left as it was.</exception>
+  public void HoldOffHand(ItemStack? stack) {
+    if (SetupOffHand.Refusal(stack, OffHandRule.Allowed) is { } refusal)
+      throw new ArgumentException(refusal, nameof(stack));
+    OffHandSlot.Itemstack = stack;
+  }
 
   /// <summary>The window of <paramref name="entity"/> as this player works it; see
   /// <see cref="TestWindow"/>.</summary>
