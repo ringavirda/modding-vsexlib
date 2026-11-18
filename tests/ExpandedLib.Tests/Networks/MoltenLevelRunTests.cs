@@ -245,15 +245,13 @@ public class MoltenLevelRunTests {
     var w = new TestWorld();
     w.RegisterNetwork("molten", sys => new MoltenNetwork(sys));
     var conveying = new MoltenFlowRules(100, 0, true, false);
-    var tee = new Cell
-    {
+    var tee = new Cell {
       MaxUnitCapacity = 200,
       FlowRules = south == "conveying south" ? conveying : null,
     };
     var west = new Cell { MaxUnitCapacity = westRoom };
     var north = new Cell { MaxUnitCapacity = 100 };
-    var southCell = new Cell
-    {
+    var southCell = new Cell {
       MaxUnitCapacity = south == "fuller south" ? 200 : 100,
       Sealed = south == "sealed south",
       Solidified = south == "solid south",
