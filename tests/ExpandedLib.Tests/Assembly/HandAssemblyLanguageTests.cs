@@ -43,7 +43,7 @@ public class HandAssemblyLanguageTests : IDisposable {
     AssemblyResult? result = scene.Fix("ns", Ground, BlockFacing.UP);
 
     Assert.Equal(HandAssemblyServer.NeedsTool, result!.Code);
-    Assert.Equal("uk:test:item-wrench-iron", result.Args[0]);
+    Assert.Equal("uk:exlib:handassembly-tool-wrench", result.Args[0]);
   }
 
   // Fails when the gate words its line with the server's language.

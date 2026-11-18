@@ -74,7 +74,7 @@ internal static class HandAssemblyServer {
     bool creative = HandAssemblyGate.IsCreative(player);
     ItemSlot toolSlot = player.Entity.LeftHandItemSlot;
     if (!creative && !HoldsTool(toolSlot, spec.Tool))
-      return Refusal(NeedsTool, ToolName(world, spec.Tool, LanguageOf(player)));
+      return Refusal(NeedsTool, ToolNoun(world, spec.Tool, LanguageOf(player)));
     if (!NeighbourhoodLoaded(world.BlockAccessor, cell))
       return Refusal(Unloaded);
 
@@ -172,7 +172,7 @@ internal static class HandAssemblyServer {
     if (!creative && !HoldsTool(toolSlot, spec.Tool))
       return Refusal(
         NeedsToolMain,
-        ToolName(world, spec.Tool, LanguageOf(player))
+        ToolNoun(world, spec.Tool, LanguageOf(player))
       );
     if (!player.Entity.Controls.Sneak)
       return Refusal(Fixed);
@@ -256,7 +256,7 @@ internal static class HandAssemblyServer {
     bool creative = HandAssemblyGate.IsCreative(player);
     ItemSlot toolSlot = player.Entity.LeftHandItemSlot;
     if (!creative && !HoldsTool(toolSlot, spec.Tool))
-      return Refusal(NeedsTool, ToolName(world, spec.Tool, LanguageOf(player)));
+      return Refusal(NeedsTool, ToolNoun(world, spec.Tool, LanguageOf(player)));
     if (HandAssemblyCaps.OpenRefusal(world, node, cell, face) is { } shut)
       return Refusal(shut);
 
@@ -327,7 +327,7 @@ internal static class HandAssemblyServer {
     )
       return Refusal(
         NeedsToolMain,
-        ToolName(world, spec.Tool, LanguageOf(player))
+        ToolNoun(world, spec.Tool, LanguageOf(player))
       );
     return TakeCapOff(world, player, node, cell, record, face, creative);
   }
@@ -458,6 +458,25 @@ internal static class HandAssemblyServer {
     string pattern,
     string? langCode = null
   ) => ItemName(world, pattern, langCode).ToLowerInvariant();
+
+  /// <summary>The noun of the tool <paramref name="pattern"/> matches in the language <paramref name="langCode"/> (the current one when null): the lang entry <c>exlib:handassembly-tool-{word}</c> for the word before the first <c>-</c> of the pattern's path, else <see cref="ToolName"/>.</summary>
+  internal static string ToolNoun(
+    IWorldAccessor world,
+    string pattern,
+    string? langCode = null
+  ) {
+    string path = pattern[(pattern.IndexOf(':') + 1)..];
+    int dash = path.IndexOf('-');
+    string key = "exlib:handassembly-tool-" + (dash < 0 ? path : path[..dash]);
+    bool known =
+      langCode != null
+      && Lang.AvailableLanguages.TryGetValue(langCode, out var service)
+        ? service.HasTranslation(key, false)
+        : Lang.HasTranslation(key, false);
+    if (!known)
+      return ToolName(world, pattern, langCode);
+    return langCode == null ? Lang.Get(key) : Lang.GetL(langCode, key);
+  }
 
   internal static string FastenerName(
     IWorldAccessor world,

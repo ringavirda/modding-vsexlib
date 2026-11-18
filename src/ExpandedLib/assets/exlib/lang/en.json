@@ -195,6 +195,8 @@
   "metalstate-liquid": "liquid",
   "fitsoneblock-toolong": "Longer than one block.",
   "metalstate-hardened": "hardened",
+  "handassembly-tool-wrench": "wrench",
+  "handassembly-tool-hammer": "hammer",
   "handassembly-hud-head": "{0}/{1} {2}:",
   "handassembly-hud-joins": "joins {0}",
   "handassembly-hud-nojoins": "joins nothing",

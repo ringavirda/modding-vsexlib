@@ -32,7 +32,7 @@ internal static class HandAssemblyGate {
     string message = HandAssemblyServer.Line(
       langCode,
       code,
-      HandAssemblyServer.ToolName(world, spec.Tool, langCode)
+      HandAssemblyServer.ToolNoun(world, spec.Tool, langCode)
     );
     if (player is IServerPlayer serverPlayer)
       serverPlayer.SendIngameError(code, message);

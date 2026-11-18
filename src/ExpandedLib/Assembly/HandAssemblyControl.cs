@@ -297,7 +297,7 @@ internal sealed class HandAssemblyControl {
     )
       _refuse(
         HandAssemblyServer.NeedsTool,
-        [HandAssemblyServer.ToolName(world, spec.Tool)]
+        [HandAssemblyServer.ToolNoun(world, spec.Tool)]
       );
     else
       _refuse(
@@ -334,7 +334,7 @@ internal sealed class HandAssemblyControl {
     )
       _refuse(
         HandAssemblyServer.NeedsTool,
-        [HandAssemblyServer.ToolName(world, spec.Tool)]
+        [HandAssemblyServer.ToolNoun(world, spec.Tool)]
       );
     else
       _refuse(
