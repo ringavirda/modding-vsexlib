@@ -98,6 +98,35 @@ public class HandAssemblyControlTests {
     return scene;
   }
 
+  // Fails when the HUD does not read the part's own reason for an aim where it filtered every placement.
+  [Fact]
+  public void Refresh_ReadsThePartsReasonWhenItFilteredEveryPlacement() {
+    var scene = Scene.Standing(["we"], refusing: "we", refusalCode: "wall");
+
+    var driver = new Driver(
+      scene,
+      Scene.Select(Ground, BlockFacing.UP)
+    ).Start();
+
+    Assert.Null(driver.Control.Shown);
+    Assert.Equal("wall", driver.Control.Refusal);
+  }
+
+  // Fails when the part's reason is read for a placement that arms or crossings had already ruled out.
+  [Fact]
+  public void Refresh_KeepsNoReasonWhenArmsRuledEveryPlacementOut() {
+    var scene = Scene.Standing(["we"], refusing: "we", refusalCode: "wall");
+    scene.Pipe(North, "ns");
+
+    var driver = new Driver(
+      scene,
+      Scene.Select(North, BlockFacing.SOUTH)
+    ).Start();
+
+    Assert.Null(driver.Control.Shown);
+    Assert.Null(driver.Control.Refusal);
+  }
+
   // Fails when BeginFix no longer sends on the click, so a sneak press with a fix shown sends nothing.
   [Fact]
   public void Press_FixSendsOnTheClick() {

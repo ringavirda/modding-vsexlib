@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using ExpandedLib.Blocks;
+using ExpandedLib.Helpers;
 using ExpandedLib.Networks;
 using Vintagestory.API.Common;
 using Vintagestory.API.MathTools;
@@ -19,7 +20,7 @@ public static class HandAssemblyCandidates {
   }
 
   /// <summary>The placements of <paramref name="part"/> at the aim, first-offered first.</summary>
-  /// <remarks>A network node offers the tokens of its scheme (and, with a <c>turn</c> variant group, each turn), an <see cref="BlockBehaviorExOrientable"/> block its facings with the one toward the player first, any other block itself. A placement is offered when none of its arms meets a forbidden crossing or another joint family, it has an arm on the anchor when the anchor is joinable, <see cref="Block.CanPlaceBlock"/> passes and <see cref="IHandAssemblyPart.Allows"/> accepts it. Variants missing from the registry are skipped.</remarks>
+  /// <remarks>A network node offers the tokens of its scheme (and, with a <c>turn</c> variant group, each turn), an <see cref="BlockBehaviorExOrientable"/> block its facings with the one toward the player first, any other block itself. A placement is offered when none of its arms meets a forbidden crossing or another joint family, it has an arm on the anchor when the anchor is joinable, <see cref="Block.CanPlaceBlock"/> passes and <see cref="IHandAssemblyPart.Allows"/> accepts it. The list is then stable-sorted by the sum of <see cref="IHandAssemblyPart.CandidateRank"/> over the part's refiners, lowest first. Variants missing from the registry are skipped.</remarks>
   /// <param name="world">The world read; a loaded neighbourhood of the target cell is assumed.</param>
   /// <param name="player">The placing player; its position and look order the list.</param>
   /// <param name="part">The held block.</param>
@@ -30,7 +31,38 @@ public static class HandAssemblyCandidates {
     IPlayer player,
     Block part,
     BlockSelection selection
+  ) => Collect(world, player, part, selection, out _);
+
+  /// <summary>The reason the part itself gave when it filtered every placement the aim would otherwise offer.</summary>
+  /// <param name="world">The world read.</param>
+  /// <param name="player">The placing player.</param>
+  /// <param name="part">The held block.</param>
+  /// <param name="selection">The block the player aims at.</param>
+  /// <returns>The failure code of the first placement <see cref="IHandAssemblyPart.Allows"/> refused; null when a placement is offered, or when none reached the part's refinement (no variant, arms or crossings, <see cref="Block.CanPlaceBlock"/>, a cap in the way).</returns>
+  internal static string? EmptyRefusal(
+    IWorldAccessor world,
+    IPlayer player,
+    Block part,
+    BlockSelection selection
   ) {
+    IReadOnlyList<AssemblyCandidate> offered = Collect(
+      world,
+      player,
+      part,
+      selection,
+      out string? refusal
+    );
+    return offered.Count == 0 ? refusal : null;
+  }
+
+  private static IReadOnlyList<AssemblyCandidate> Collect(
+    IWorldAccessor world,
+    IPlayer player,
+    Block part,
+    BlockSelection selection,
+    out string? partRefusal
+  ) {
+    partRefusal = null;
     HandAssemblyTarget target = HandAssemblyTarget.Resolve(
       world.BlockAccessor,
       selection,
@@ -65,8 +97,10 @@ public static class HandAssemblyCandidates {
       string failure = "";
       if (!block.CanPlaceBlock(world, player, placeSelection, ref failure))
         continue;
-      if (!PartAllows(part, world, target.Cell, block))
+      if (PartRefusal(part, world, target.Cell, block) is { } refusal) {
+        partRefusal ??= refusal;
         continue;
+      }
 
       offered.Add(
         (
@@ -88,7 +122,7 @@ public static class HandAssemblyCandidates {
       );
     }
 
-    return Order(offered, target, player);
+    return Order(offered, target, player, world, selection, part);
   }
 
   /// <summary>The number of joints a placement makes now: one per arm whose neighbour has a crossing back that couples and shares its joint family. A block that is not a network node makes one.</summary>
@@ -171,13 +205,6 @@ public static class HandAssemblyCandidates {
     return !target.Joinable || arms.Contains(target.Anchor);
   }
 
-  private static bool PartAllows(
-    Block part,
-    IWorldAccessor world,
-    BlockPos cell,
-    Block candidate
-  ) => PartRefusal(part, world, cell, candidate) == null;
-
   /// <summary>The refusal <paramref name="part"/> gives a placement through <see cref="IHandAssemblyPart.Allows"/>.</summary>
   /// <returns>Null when every refiner accepts; otherwise the failure code the first refusing one gave, or <c>exlib-handassembly-refused</c> when it gave none.</returns>
   internal static string? PartRefusal(
@@ -186,14 +213,16 @@ public static class HandAssemblyCandidates {
     BlockPos cell,
     Block candidate
   ) {
-    IEnumerable<IHandAssemblyPart> refiners = part is IHandAssemblyPart own
-      ? [own, .. part.BlockBehaviors.OfType<IHandAssemblyPart>()]
-      : part.BlockBehaviors.OfType<IHandAssemblyPart>();
-    foreach (IHandAssemblyPart refiner in refiners)
+    foreach (IHandAssemblyPart refiner in Refiners(part))
       if (!refiner.Allows(world, cell, candidate, out string? failureCode))
         return failureCode ?? HandAssemblyServer.Refused;
     return null;
   }
+
+  private static IEnumerable<IHandAssemblyPart> Refiners(Block part) =>
+    part is IHandAssemblyPart own
+      ? [own, .. part.BlockBehaviors.OfType<IHandAssemblyPart>()]
+      : part.BlockBehaviors.OfType<IHandAssemblyPart>();
 
   private static IEnumerable<(
     Block Block,
@@ -229,7 +258,7 @@ public static class HandAssemblyCandidates {
       foreach (string token in tokens) {
         if (!turns) {
           Block? variant = world.BlockAccessor.GetBlock(
-            part.CodeWithVariant(key, token)
+            part.WithVariant(key, token)
           );
           if (variant != null)
             yield return (variant, token, null);
@@ -243,12 +272,7 @@ public static class HandAssemblyCandidates {
           continue;
         foreach (string turn in TurnsAbout(axis, target.Cell, player)) {
           Block? variant = world.BlockAccessor.GetBlock(
-            part.CodeWithVariants(
-              new Dictionary<string, string> {
-                [key] = token,
-                [TurnVariant] = turn,
-              }
-            )
+            part.WithVariants([key, TurnVariant], [token, turn])
           );
           if (variant != null)
             yield return (variant, token, turn);
@@ -262,7 +286,7 @@ public static class HandAssemblyCandidates {
         )
       ) {
         Block? variant = world.BlockAccessor.GetBlock(
-          part.CodeWithVariant(orientable.VariantKey, token)
+          part.WithVariant(orientable.VariantKey, token)
         );
         if (variant != null)
           yield return (variant, token, null);
@@ -302,7 +326,10 @@ public static class HandAssemblyCandidates {
   private static IReadOnlyList<AssemblyCandidate> Order(
     List<(AssemblyCandidate Candidate, int Declared)> offered,
     HandAssemblyTarget target,
-    IPlayer player
+    IPlayer player,
+    IWorldAccessor world,
+    BlockSelection selection,
+    Block part
   ) {
     BlockFacing lookH = BlockFacing.HorizontalFromYaw(player.Entity.Pos.Yaw);
     Vec3f view = player.Entity.Pos.GetViewVector();
@@ -329,6 +356,10 @@ public static class HandAssemblyCandidates {
         : double.NegativeInfinity;
     }
 
+    IHandAssemblyPart[] refiners = [.. Refiners(part)];
+    int PartRank(AssemblyCandidate c) =>
+      refiners.Sum(r => r.CandidateRank(world, selection, c.Block));
+
     return offered
       .OrderBy(o => StraightRank(o.Candidate))
       .ThenByDescending(o => o.Candidate.Joints)
@@ -337,6 +368,7 @@ public static class HandAssemblyCandidates {
       .ThenByDescending(o => OpenArmLook(o.Candidate))
       .ThenBy(o => o.Declared)
       .Select(o => o.Candidate)
+      .OrderBy(PartRank)
       .ToList();
   }
 }

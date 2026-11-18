@@ -109,13 +109,22 @@ internal static class HandAssemblyServer {
     if (HandAssemblyCaps.InTheWay(world.BlockAccessor, cell) != null)
       return Refusal(CapInWay);
 
-    AssemblyCandidate? candidate = HandAssemblyCandidates
-      .Of(world, player, part, selection)
-      .FirstOrDefault(c => c.Block.Code.Equals(requested.Code));
+    IReadOnlyList<AssemblyCandidate> offered = HandAssemblyCandidates.Of(
+      world,
+      player,
+      part,
+      selection
+    );
+    AssemblyCandidate? candidate = offered.FirstOrDefault(c =>
+      c.Block.Code.Equals(requested.Code)
+    );
     if (candidate == null)
       return Refusal(
-        HandAssemblyCandidates.PartRefusal(part, world, cell, requested)
-          ?? NotOffered
+        offered.Count > 0
+          ? HandAssemblyCandidates.PartRefusal(part, world, cell, requested)
+            ?? NotOffered
+          : HandAssemblyCandidates.EmptyRefusal(world, player, part, selection)
+            ?? NotOffered
       );
 
     string networkRefusal = "";
