@@ -74,7 +74,12 @@ public static class MetalFamilyEmitter {
             out System.Func<MetalDef, string, ExItemDef>? build
           )
         )
-          yield return build(metal, domain);
+        {
+          ExItemDef def = build(metal, domain);
+          yield return metal.OffHandForms?.Contains(token) == true
+            ? def.StorageFlags(OffHandStorageFlags)
+            : def;
+        }
 
       // Tools are opt-in per metal via MetalDef.Tools and emitted into the same owning domain.
       foreach (ExItemDef tool in MetalToolEmitter.Emit(metal, domain))
@@ -87,6 +92,9 @@ public static class MetalFamilyEmitter {
   // Internal: shared with MetalToolEmitter's texture fallback.
   internal static string TextureOf(MetalDef m) =>
     m.TexturePath ?? DefaultTexture;
+
+  // General (1), Metallurgy (4) and Offhand (256).
+  private const int OffHandStorageFlags = 261;
 
   private static int DensityOf(MetalDef m) => m.Density ?? DefaultDensity;
 
