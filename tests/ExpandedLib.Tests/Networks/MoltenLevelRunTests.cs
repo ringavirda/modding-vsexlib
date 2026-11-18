@@ -218,11 +218,8 @@ public class MoltenLevelRunTests {
     Assert.Equal(100, stub.CellAmount + coupling.CellAmount);
   }
 
-  // Fails when the share counts the arms already served or the start (three arms take 34, 22, 16),
-  // or counts an arm that takes nothing: a full, sealed, solid, other-metal or fuller last arm leaves a
-  // third of the spare in the tee. Fails when it counts an arm the tee does not push on to (one of
-  // larger fall, a drain, a conveying connection, one drawn toward a mold): the level arms take 34
-  // and 33.
+  // Fails when the share counts an arm already served, the start, or an arm the tee cannot push on
+  // to: the level arms take 34 and 33, or 34, 22 and 16, and the rest stays in the tee.
   [Theory]
   [InlineData("three arms", 100, 34, 33, 33)]
   [InlineData("short west", 20, 20, 40, 40)]

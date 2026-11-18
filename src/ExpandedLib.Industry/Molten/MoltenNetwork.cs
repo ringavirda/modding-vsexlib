@@ -378,9 +378,10 @@ public class MoltenNetwork(BlockNetworkModSystem system) : BlockNetwork(system) 
   /// cell of smaller <see cref="IMoltenCell.Fall"/> when the falls differ, and from a downhill edge's
   /// upper cell of larger fall, handing over its whole charge, else toward the nearer end
   /// in <paramref name="distToMold"/>, else by <paramref name="rules"/> or the defaults;
-  /// <paramref name="downhillOnly"/> makes the edge one-way from <paramref name="a"/>. A level giver
-  /// pushing on to a farther cell hands it at most its spare over the skin split evenly across
-  /// <paramref name="arms"/>, the remainder to this one.</summary>
+  /// <paramref name="downhillOnly"/> makes the edge one-way from <paramref name="a"/>.</summary>
+  /// <param name="arms">The giver's push-on receivers not yet served this tick, this one included: a
+  /// level giver pushing on hands this one at most its spare over the skin divided by them, the
+  /// remainder to this one.</param>
   private static void FlowEdge(
     (BlockPos Pos, IMoltenCell Cell) a,
     (BlockPos Pos, IMoltenCell Cell) b,
