@@ -225,6 +225,7 @@ internal sealed class ScenarioPlayer : IHandRelease {
   public void RaisePlacedInBeltPath(BlockPos at) {
     if (BeltPaths.Of(_server.Api)?.OwnerAt(at) == null)
       return;
+    _abuse?.OnPlayerJoin(Player);
     _server.EventManager.TriggerDidPlaceBlock(
       Player,
       0,
@@ -369,6 +370,7 @@ internal sealed class ScenarioPlayer : IHandRelease {
         return false;
       }
       _server.TriggerNeighbourBlocksUpdate(at);
+      _abuse?.OnPlayerJoin(Player);
       _server.EventManager.TriggerDidPlaceBlock(
         Player,
         before,
@@ -658,6 +660,7 @@ internal sealed class ScenarioPlayer : IHandRelease {
     int before = _server.BlockAccessor.GetBlock(selection.Position).Id;
     if (ClientClick.PlacesFirst(_server, Player, selection, out var put)) {
       _server.TriggerNeighbourBlocksUpdate(put!.Position);
+      _abuse?.OnPlayerJoin(Player);
       _server.EventManager.TriggerDidPlaceBlock(Player, before, put, stack);
       Placed = true;
       return false;
