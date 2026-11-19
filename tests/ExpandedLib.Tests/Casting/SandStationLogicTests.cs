@@ -579,7 +579,7 @@ public class SandStationLogicTests {
       40,
       [],
       default,
-      new JsonItemStack(),
+      new JsonItemStack { Code = null! },
       0f,
       Share: share
     );
