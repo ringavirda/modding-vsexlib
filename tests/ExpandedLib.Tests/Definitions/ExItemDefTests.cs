@@ -418,7 +418,7 @@ public class ExItemDefTests {
     ["HandbookPage(String)"] =
       "the guide line is written for blocks only: HandbookSections reads the page of a block",
     // Hand assembly is placing a block.
-    ["HandAssembly(String,String,Int32,String)"] =
+    ["HandAssembly(String,String,Int32,String,Int32)"] =
       "hand assembly is a block placement behaviour: items are not placed",
     // BlockType-only fields (verified absent from CollectibleType/ItemType).
     ["Material(EnumBlockMaterial)"] =
