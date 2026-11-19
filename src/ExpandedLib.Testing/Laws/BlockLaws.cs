@@ -440,10 +440,7 @@ public static class BlockLaws {
   internal static void ClearRoomRegistryAccessor() {
 #if GAME_GE_1_21
     typeof(RoomRegistry)
-      .GetField(
-        "blockAccessor",
-        BindingFlags.Static | BindingFlags.NonPublic
-      )
+      .GetField("blockAccessor", BindingFlags.Static | BindingFlags.NonPublic)
       ?.SetValue(null, null);
 #endif
   }
