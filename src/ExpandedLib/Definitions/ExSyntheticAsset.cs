@@ -45,6 +45,12 @@ internal sealed class ExDefinitionOrigin : IAssetOrigin {
     return true;
   }
 
+  /// <summary>Always false: no injected asset has a file path.</summary>
+  public bool TryResolveAsset(string filePath, out IAsset? asset) {
+    asset = null;
+    return false;
+  }
+
   public List<IAsset> GetAssets(
     AssetCategory category,
     bool shouldLoad = true
