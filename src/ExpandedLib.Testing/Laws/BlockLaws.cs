@@ -435,14 +435,16 @@ public static class BlockLaws {
 
   /// <summary>Clears the calling thread's cached <see cref="RoomRegistry"/> block accessor, which
   /// the registry keeps per thread and would otherwise read an earlier world's cells through. A
-  /// thread that clicks in a world calls it before its first click.</summary>
+  /// thread that clicks in a world calls it before its first click. A no-op on a game whose
+  /// registry keeps its accessors per instance (1.23), where no static one exists.</summary>
   internal static void ClearRoomRegistryAccessor() {
 #if GAME_GE_1_21
-    ReflectionHelpers.SetStaticField(
-      typeof(RoomRegistry),
-      "blockAccessor",
-      null
-    );
+    typeof(RoomRegistry)
+      .GetField(
+        "blockAccessor",
+        BindingFlags.Static | BindingFlags.NonPublic
+      )
+      ?.SetValue(null, null);
 #endif
   }
 
