@@ -79,6 +79,26 @@ internal static class HandAssemblyHud {
     return line.ToString();
   }
 
+  /// <summary>Builds the line of an aimed fit, such as <c>Fit: makes Shaft with key | 1 Key, 4 carried</c>.</summary>
+  /// <param name="get">Translates a lang key with its arguments; <c>Lang.Get</c> in the game.</param>
+  /// <param name="made">The name of the block the fit makes.</param>
+  /// <param name="cost">The fasteners the fit spends; 0 leaves the cost clause out.</param>
+  /// <param name="fastener">The fastener's name.</param>
+  /// <param name="carried">How many of the fastener the player carries.</param>
+  public static string FitLine(
+    Func<string, object[], string> get,
+    string made,
+    int cost,
+    string fastener,
+    int carried
+  ) {
+    var line = new StringBuilder(get(ExlibLang.HandassemblyHudFit, [made]));
+    if (cost > 0)
+      line.Append(" | ")
+        .Append(get(ExlibLang.HandassemblyHudCost, [cost, fastener, carried]));
+    return line.ToString();
+  }
+
   /// <summary>Builds the line of an aimed fixed piece the wrench would take off, such as <c>Take off Pipe and 2 Bolt, 1 Cap</c>.</summary>
   /// <param name="get">Translates a lang key with its arguments; <c>Lang.Get</c> in the game.</param>
   /// <param name="piece">The aimed piece's name.</param>

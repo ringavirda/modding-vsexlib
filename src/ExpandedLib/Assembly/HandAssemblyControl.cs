@@ -16,6 +16,7 @@ namespace ExpandedLib.Assembling;
 internal sealed class HandAssemblyControl {
   private const string TakeOffKey = "takeoff";
   private const string CapKey = "cap";
+  private const string FitKey = "fit";
 
   private readonly IClientNetworkChannel _channel;
   private readonly Action<string, string[]> _refuse;
@@ -24,11 +25,12 @@ internal sealed class HandAssemblyControl {
   private IReadOnlyList<AssemblyCandidate> _candidates = [];
   private BlockPos? _takeOff;
   private string _capCode = "";
+  private string _fitCode = "";
   private string _target = "";
   private int _slot;
   private bool _pressed;
 
-  /// <param name="channel">Receives the <see cref="AssemblyFix"/>, <see cref="AssemblyTakeOff"/> or <see cref="AssemblyCap"/> a click sends.</param>
+  /// <param name="channel">Receives the <see cref="AssemblyFix"/>, <see cref="AssemblyTakeOff"/>, <see cref="AssemblyCap"/> or <see cref="AssemblyFit"/> a click sends.</param>
   /// <param name="refuse">Shows a refusal: the placement failure code and the arguments its line formats.</param>
   public HandAssemblyControl(
     IClientNetworkChannel channel,
@@ -80,13 +82,22 @@ internal sealed class HandAssemblyControl {
   /// <summary>The aimed piece's assembly spec while a cap is aimed; null otherwise.</summary>
   public HandAssemblySpec? CapSpec { get; private set; }
 
+  /// <summary>The placed block the item in the main hand is aimed at and fits onto; null otherwise.</summary>
+  public BlockPos? FitAt { get; private set; }
+
+  /// <summary>The block the aimed fit would make; null when no fit is aimed.</summary>
+  public Block? FitBlock { get; private set; }
+
+  /// <summary>The aimed block's assembly spec while a fit is aimed; null otherwise.</summary>
+  public HandAssemblySpec? FitSpec { get; private set; }
+
   /// <summary>The refusal code of <see cref="CapFace"/> when the end takes no cap (capped, joined or closed); null when it does.</summary>
   public string? CapRefusal { get; private set; }
 
   /// <summary>The refusal code of the aimed cell while a part is held: a cap standing in it, or the part's own reason when its refinement filtered every placement; null otherwise.</summary>
   public string? Refusal { get; private set; }
 
-  /// <summary>Whether the tool or the fasteners for the shown placement or the aimed cap are missing, or the aimed end takes no cap.</summary>
+  /// <summary>Whether the tool or the fasteners for the shown placement, the aimed cap or the aimed fit are missing, or the aimed end takes no cap.</summary>
   public bool Short { get; private set; }
 
   /// <summary>The shown placement's position in the offer, from 0.</summary>
@@ -119,6 +130,9 @@ internal sealed class HandAssemblyControl {
     CapFace = null;
     CapSpec = null;
     CapRefusal = null;
+    FitAt = null;
+    FitBlock = null;
+    FitSpec = null;
     Refusal = null;
     _candidates = [];
     if (player?.Entity == null)
@@ -155,6 +169,8 @@ internal sealed class HandAssemblyControl {
       }
     } else if (selection != null && AimCap(world, main, selection)) {
       _target = $"{CapKey}|{CapAt}|{CapFace!.Code}";
+    } else if (selection != null && AimFit(world, main, selection)) {
+      _target = $"{FitKey}|{FitAt}";
     } else if (
         selection != null
         && HandAssemblySpec.Of(accessor.GetBlock(selection.Position)) is { } aimed
@@ -170,9 +186,9 @@ internal sealed class HandAssemblyControl {
       [.. _candidates.Select(c => c.Block.Code.ToString())]
     );
     Short =
-      CapFace != null
-        ? IsCapShort(player)
-        : Spec != null && Shown is { } shown && IsShort(player, shown);
+      CapFace != null ? IsCapShort(player)
+      : FitAt != null ? IsFitShort(player)
+      : Spec != null && Shown is { } shown && IsShort(player, shown);
   }
 
   /// <summary>Takes a right-button press: the first of a press steps the shown placement, or with sneak sends the fix, take-off or cap; a repeat of the same press does nothing. A press without sneak on an aimed cap is not hand assembly's.</summary>
@@ -196,6 +212,14 @@ internal sealed class HandAssemblyControl {
         _stepper.Step();
       else
         SendFix(world, player);
+    } else if (FitAt != null) {
+      if (!sneak && !HandAssemblyGate.IsCreative(player)) {
+        if (!HandAssemblyServer.HoldsTool(player.Entity.LeftHandItemSlot, FitSpec!.Tool))
+          ShowFitRefusal(world, player);
+        else
+          return false;
+      } else
+        SendFit(world, player);
     } else if (sneak && _takeOff != null)
       Send();
     else if (sneak && CapFace != null)
@@ -228,6 +252,65 @@ internal sealed class HandAssemblyControl {
       return;
     }
     Send();
+  }
+
+  private bool AimFit(
+    IWorldAccessor world,
+    ItemSlot main,
+    BlockSelection selection
+  ) {
+    IBlockAccessor accessor = world.BlockAccessor;
+    BlockPos pos = selection.Position;
+    if (
+      main.Itemstack?.Collectible == null
+      || HandFitAim.Of(accessor, pos, main.Itemstack, out _) is not { } aim
+      || HandAssemblySpec.Of(accessor.GetBlock(pos)) is not { } spec
+    )
+      return false;
+    FitAt = pos.Copy();
+    FitBlock = aim.Result;
+    FitSpec = spec;
+    _fitCode = main.Itemstack.Collectible.Code.ToString();
+    return true;
+  }
+
+  private void SendFit(IWorldAccessor world, IPlayer player) {
+    if (Short) {
+      ShowFitRefusal(world, player);
+      return;
+    }
+    Send();
+  }
+
+  private void ShowFitRefusal(IWorldAccessor world, IPlayer player) {
+    HandAssemblySpec spec = FitSpec!;
+    if (
+      !HandAssemblyServer.HoldsTool(player.Entity.LeftHandItemSlot, spec.Tool)
+    )
+      _refuse(
+        HandAssemblyServer.NeedsTool,
+        [HandAssemblyServer.ToolNoun(world, spec.Tool)]
+      );
+    else
+      _refuse(
+        HandAssemblyServer.NeedsFasteners,
+        [
+          spec.PerFit.ToString(),
+          HandAssemblyServer.FastenerName(world, spec.Fastener),
+          ExCarried.Count(player, spec.Fastener).ToString(),
+        ]
+      );
+  }
+
+  private bool IsFitShort(IPlayer player) {
+    if (HandAssemblyGate.IsCreative(player))
+      return false;
+    HandAssemblySpec spec = FitSpec!;
+    return !HandAssemblyServer.HoldsTool(
+        player.Entity.LeftHandItemSlot,
+        spec.Tool
+      )
+      || ExCarried.Count(player, spec.Fastener) < spec.PerFit;
   }
 
   private bool AimCap(
@@ -347,6 +430,19 @@ internal sealed class HandAssemblyControl {
           Y = _takeOff.Y,
           Z = _takeOff.Z,
           Dimension = _takeOff.dimension,
+        }
+      );
+      return;
+    }
+    if (FitAt != null) {
+      _channel.SendPacket(
+        new AssemblyFit {
+          X = FitAt.X,
+          Y = FitAt.Y,
+          Z = FitAt.Z,
+          Dimension = FitAt.dimension,
+          Slot = _slot,
+          ItemCode = _fitCode,
         }
       );
       return;

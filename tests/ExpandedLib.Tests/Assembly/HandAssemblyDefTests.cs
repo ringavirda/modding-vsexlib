@@ -2,6 +2,8 @@ using ExpandedLib.Assembling;
 using ExpandedLib.Definitions;
 using ExpandedLib.Registries;
 using Newtonsoft.Json.Linq;
+using Vintagestory.API.Common;
+using Vintagestory.API.Datastructures;
 using Xunit;
 
 namespace ExpandedLib.Tests;
@@ -85,5 +87,49 @@ public class HandAssemblyDefTests {
     Assert.Throws<System.ArgumentOutOfRangeException>(() =>
       ExBlockDef.Create("test", "c").HandAssembly("t", "f", 0)
     );
+  }
+
+  // Fails when perFit is dropped from the written attribute or written for a def that gave none.
+  [Fact]
+  public void A_perFit_is_written_when_given_and_left_out_when_not() {
+    JObject fitting = ExBlockDef
+      .Create("test", "c")
+      .HandAssembly("game:hammer-*", "iiex:shaftkey", 1, perFit: 1)
+      .ToJson();
+    JObject plain = ExBlockDef
+      .Create("test", "b")
+      .HandAssembly("game:hammer-*", "iiex:shaftkey", 1)
+      .ToJson();
+
+    Assert.Equal(1, (int?)fitting["attributes"]!["handAssembly"]!["perFit"]);
+    Assert.Null(plain["attributes"]!["handAssembly"]!["perFit"]);
+  }
+
+  // Fails when a negative perFit is accepted.
+  [Fact]
+  public void A_fit_cannot_spend_a_negative_count() {
+    Assert.Throws<System.ArgumentOutOfRangeException>(() =>
+      ExBlockDef.Create("test", "c").HandAssembly("t", "f", 1, perFit: -1)
+    );
+  }
+
+  // Fails when the spec reads perFit as 0, or defaults it to anything but 0.
+  [Fact]
+  public void Spec_ReadsPerFit() {
+    var fitting = new Block {
+      Attributes = new JsonObject(
+        JToken.Parse(
+          """{"handAssembly":{"tool":"t","fastener":"f","perJoint":1,"perFit":3}}"""
+        )
+      ),
+    };
+    var plain = new Block {
+      Attributes = new JsonObject(
+        JToken.Parse("""{"handAssembly":{"tool":"t","fastener":"f","perJoint":1}}""")
+      ),
+    };
+
+    Assert.Equal(3, HandAssemblySpec.Of(fitting)!.PerFit);
+    Assert.Equal(0, HandAssemblySpec.Of(plain)!.PerFit);
   }
 }

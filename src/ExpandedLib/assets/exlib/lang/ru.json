@@ -132,6 +132,7 @@
   "game:placefailure-exlib-handassembly-capnoroom": "Нет места для заглушки.",
   "game:placefailure-exlib-handassembly-capinway": "Мешает заглушка.",
   "game:placefailure-exlib-handassembly-capjoined": "Эта грань соединена с блоком рядом.",
+  "game:placefailure-exlib-handassembly-nofit": "Здесь ничего не подходит.",
   "pipe-info-empty": "Пусто",
   "pipe-info-flow": "Пропускная способность: {0} {1} при {2}",
   "pipe-info-leaking": "Утечка!",
@@ -205,6 +206,7 @@
   "handassembly-hud-open": "открыто: {0}",
   "handassembly-hud-cost": "{0} {1}, в наличии {2}",
   "handassembly-hud-cap": "Заглушка: {0}",
+  "handassembly-hud-fit": "Посадить: получится {0}",
   "handassembly-hud-none": "Здесь ничего не подходит.",
   "handassembly-hud-takeoff": "Снять {0} и {1}",
   "handassembly-hud-takeoff-bare": "Снять {0}",
@@ -216,6 +218,7 @@
   "blockhelp-handassembly-step": "Следующее положение",
   "blockhelp-handassembly-fix": "Нажать, чтобы закрепить деталь",
   "blockhelp-handassembly-cap": "Нажать, чтобы надеть заглушку",
+  "blockhelp-handassembly-fit": "Присесть и удерживать клик, чтобы посадить",
   "blockhelp-handassembly-takeoff": "Нажать, чтобы снять деталь",
   "blockhelp-handassembly-capoff": "Снять заглушку"
 }

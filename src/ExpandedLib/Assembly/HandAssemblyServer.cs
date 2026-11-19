@@ -25,6 +25,7 @@ internal static class HandAssemblyServer {
   internal const string Fixed = "exlib-handassembly-fixed";
   internal const string NotFixed = "exlib-handassembly-notfixed";
   internal const string NeedsToolMain = "exlib-handassembly-needstoolmain";
+  internal const string NoFit = "exlib-handassembly-nofit";
   internal const string CapClosed = "exlib-handassembly-capclosed";
   internal const string CapJoined = "exlib-handassembly-capjoined";
   internal const string CapNoRoom = "exlib-handassembly-capnoroom";
@@ -575,6 +576,104 @@ internal static class HandAssemblyServer {
       node.Code,
       cell,
       [face],
+      [],
+      spent == null ? [] : [spent]
+    );
+    PlaySuccess(world, cell, toolSlot);
+    return null;
+  }
+
+  /// <summary>Fits the item held in the main hand onto the placed block <paramref name="fit"/> names, with the tool in the off hand: asks the block's <see cref="IHandFitTarget"/> to swap, spends <see cref="HandAssemblySpec.PerFit"/> fasteners and wears the tool once.</summary>
+  /// <param name="world">The server world.</param>
+  /// <param name="player">The sending player; the item is read from the active hotbar slot and the tool from the off hand.</param>
+  /// <param name="fit">The packet; nothing in it is trusted but the position, the slot and the code; the dimension is the player's own.</param>
+  /// <returns>Null when the fit was made; otherwise the refusal to send, with nothing spent. In creative no tool is asked and nothing is spent. The fasteners spent are added to <see cref="BEBehaviorAssembled.Joint"/> of the swapped block's entity when it carries a record.</returns>
+  public static AssemblyResult? Fit(
+    IWorldAccessor world,
+    IPlayer player,
+    AssemblyFit fit
+  ) {
+    AssemblyResult? refusal = FitOn(world, player, fit);
+    if (refusal != null) {
+      var cell = new BlockPos(fit.X, fit.Y, fit.Z, player.Entity.Pos.Dimension);
+      HandAssemblyLog.Refused(
+        world,
+        player,
+        refusal,
+        world.BlockAccessor.GetBlock(cell).Code,
+        cell
+      );
+    }
+    return refusal;
+  }
+
+  private static AssemblyResult? FitOn(
+    IWorldAccessor world,
+    IPlayer player,
+    AssemblyFit fit
+  ) {
+    ItemSlot heldSlot = player.InventoryManager.ActiveHotbarSlot;
+    if (
+      player.InventoryManager.ActiveHotbarSlotNumber != fit.Slot
+      || heldSlot.Itemstack?.Collectible.Code?.ToString() is not { } held
+      || held != fit.ItemCode
+    )
+      return Refusal(PartMoved);
+
+    var cell = new BlockPos(fit.X, fit.Y, fit.Z, player.Entity.Pos.Dimension);
+    if (!InRange(player, cell))
+      return Refusal(OutOfRange);
+    if (
+      !world.Claims.TryAccess(player, cell, EnumBlockAccessFlags.BuildOrBreak)
+    )
+      return Refusal(Claimed);
+
+    IBlockAccessor accessor = world.BlockAccessor;
+    if (
+      HandFitAim.Of(accessor, cell, heldSlot.Itemstack, out string? why)
+        is not { } aim
+      || HandAssemblySpec.Of(accessor.GetBlock(cell)) is not { } spec
+    )
+      return Refusal(why ?? NoFit);
+
+    bool creative = HandAssemblyGate.IsCreative(player);
+    ItemSlot toolSlot = player.Entity.LeftHandItemSlot;
+    if (!creative && !HoldsTool(toolSlot, spec.Tool))
+      return Refusal(NeedsTool, ToolNoun(world, spec.Tool, LanguageOf(player)));
+
+    int cost = creative ? 0 : spec.PerFit;
+    if (cost > 0) {
+      int carried = ExCarried.Count(player, spec.Fastener);
+      if (carried < cost)
+        return Refusal(
+          NeedsFasteners,
+          cost.ToString(),
+          FastenerName(world, spec.Fastener, LanguageOf(player)),
+          carried.ToString()
+        );
+    }
+
+    string failure = "";
+    if (!aim.Target.Fit(world, cell, player, heldSlot, ref failure))
+      return Refusal(string.IsNullOrEmpty(failure) ? NoFit : failure);
+
+    ItemStack? spent =
+      cost > 0 ? ExCarried.Take(player, spec.Fastener, cost) : null;
+    if (!creative)
+      toolSlot.Itemstack.Collectible.DamageItem(world, player.Entity, toolSlot);
+    if (spent != null && BEBehaviorAssembled.At(accessor, cell) is { } record) {
+      if (record.Joint is { } before && before.Collectible == spent.Collectible)
+        spent.StackSize += before.StackSize;
+      record.Joint = spent;
+      record.Blockentity.MarkDirty(true);
+    }
+    HandAssemblyLog.Write(
+      world,
+      player,
+      "fit",
+      accessor.GetBlock(cell).Code,
+      cell,
+      [],
       [],
       spent == null ? [] : [spent]
     );

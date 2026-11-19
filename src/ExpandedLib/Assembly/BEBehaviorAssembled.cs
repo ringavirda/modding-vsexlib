@@ -55,7 +55,7 @@ public class BEBehaviorAssembled(BlockEntity blockentity)
   /// <summary>Whether any joint of this part is owed nothing.</summary>
   internal bool HasFree => _free.Count > 0;
 
-  /// <summary>The fasteners the one joint of a part that is not a network node spent; null when it spent none.</summary>
+  /// <summary>The fasteners the one joint of a part that is not a network node spent, and those a fit through <see cref="IHandFitTarget"/> spent, added to the same record under the key of the joint; null when they spent none. A take-off returns all of it.</summary>
   public ItemStack? Joint {
     get => _fasteners.GetValueOrDefault(JointKey);
     set => Set(JointKey, value);

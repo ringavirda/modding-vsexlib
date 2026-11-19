@@ -188,6 +188,7 @@ internal static class SetupSteps {
     ],
     ["takeoff"] = ["at"],
     ["cap"] = ["id", "at", "face", "fails"],
+    ["fit"] = ["id", "at", "stack", "count", "fails"],
     ["pickup"] = ["at", "code", "offHand"],
   };
 
@@ -208,6 +209,7 @@ internal static class SetupSteps {
     ["assemble"] = ["code", "at"],
     ["takeoff"] = ["at"],
     ["cap"] = ["at", "face"],
+    ["fit"] = ["at", "stack"],
     ["pickup"] = ["at"],
     ["repeat"] = ["steps"],
     ["advance"] = ["hours"],

@@ -483,6 +483,37 @@ internal sealed class ScenarioPlayer : IHandRelease {
     }
   }
 
+  /// <summary>Fits the item <paramref name="itemCode"/> onto the placed block at <paramref name="at"/>
+  /// (<see cref="HandAssemblyPlay.Fit"/>), then parks the player again.</summary>
+  /// <param name="ctx">The running case, whose pack the item, tool and fasteners come from.</param>
+  /// <param name="at">The absolute cell of the placed block.</param>
+  /// <param name="itemCode">The code of the item held in the main hand.</param>
+  /// <param name="code">The refusal's code, or null when the item was fitted.</param>
+  /// <returns>Null when the item was fitted; otherwise the refusal's line.</returns>
+  public string? Fit(
+    ScenarioContext ctx,
+    BlockPos at,
+    string itemCode,
+    out string? code
+  ) {
+    ((IWorldPlayerData)_data).CurrentGameMode = EnumGameMode.Survival;
+    _data.FreeMove = false;
+    Face(at, BlockFacing.UP);
+    try {
+      AssemblyResult? refused = HandAssemblyPlay.Fit(
+        ctx,
+        _server,
+        Player,
+        at,
+        itemCode
+      );
+      code = refused?.Code;
+      return refused == null ? null : HandAssemblyPlay.Describe(refused);
+    } finally {
+      Park();
+    }
+  }
+
   /// <summary>The refusal a held tool gets from a block that needs a better one, or null when the tool
   /// meets the block's tier.</summary>
   /// <param name="required">The block's required mining tier; 0 or less needs no tool.</param>

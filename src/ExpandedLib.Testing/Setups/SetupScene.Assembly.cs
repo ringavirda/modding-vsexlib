@@ -246,6 +246,84 @@ public sealed partial class SetupScene
       );
   }
 
+  /// <summary>The <c>fit</c> step: the player fits the step's <c>stack</c> held in the main hand onto the
+  /// placed block at <c>at</c>, with the def's tool in the off hand, as a sneak click sends it. The
+  /// step's <c>fails</c> names the refusal the server must answer.</summary>
+  private void FitStep(SetupStep step)
+  {
+    BlockPos at = At(step, "at");
+    Block block = World.GetBlock(at);
+    HandAssemblySpec spec =
+      HandAssemblySpec.Of(block)
+      ?? throw Fail(
+        step.Path,
+        $"{block.Code} at {Describe(at)} does not declare handAssembly."
+      );
+    ItemStack item = StackOf(step.Body, step.Path);
+    Draw(step.Path, item);
+    Player.Hold(item);
+    Player.HoldOffHand(ToolFor(step.Path, spec));
+    Supply(step.Path, spec, spec.PerFit);
+    Dictionary<string, int> before = ExCarried.Totals(Player.Player);
+    bool sneaking = Player.Sneaking;
+    Player.Sneaking = true;
+    AssemblyResult? refused;
+    try
+    {
+      refused = StandingBeside(
+        at,
+        () =>
+          HandAssemblyServer.Fit(
+            World.World,
+            Player.Player,
+            new AssemblyFit
+            {
+              X = at.X,
+              Y = at.Y,
+              Z = at.Z,
+              Dimension = at.dimension,
+              Slot = Player.Player.InventoryManager.ActiveHotbarSlotNumber,
+              ItemCode = item.Collectible.Code.ToString(),
+            }
+          )
+      );
+    }
+    finally
+    {
+      Player.Sneaking = sneaking;
+      Give(Player.ActiveSlot.Itemstack);
+      Give(Player.OffHandSlot.Itemstack);
+      Player.Hold(null);
+      Player.HoldOffHand(null);
+      foreach ((string code, int now) in ExCarried.Totals(Player.Player))
+      {
+        int rise = now - before.GetValueOrDefault(code);
+        if (rise > 0 && ExCarried.Take(Player.Player, code, rise) is { } taken)
+          _pack?.Give(code, taken.StackSize);
+      }
+    }
+    string? fails = (string?)step.Body["fails"];
+    if (fails != null)
+    {
+      if (refused == null)
+        throw Fail(
+          step.Path,
+          $"{block.Code} at {Describe(at)} took the fit; the step expected the refusal {fails}."
+        );
+      if (refused.Code != fails)
+        throw Fail(
+          step.Path,
+          $"{block.Code} at {Describe(at)} was refused with {Refusal(refused)}; the step expected {fails}."
+        );
+      return;
+    }
+    if (refused != null)
+      throw Fail(
+        step.Path,
+        $"the player could not fit {item.Collectible.Code} onto {block.Code} at {Describe(at)}: {Refusal(refused)}."
+      );
+  }
+
   /// <summary>Lays <paramref name="block"/> into <paramref name="at"/> through
   /// <see cref="Assemble"/> as a <c>place</c> of an opted-in block and a run cell do, and draws it
   /// from the pack once the server has fixed it.</summary>

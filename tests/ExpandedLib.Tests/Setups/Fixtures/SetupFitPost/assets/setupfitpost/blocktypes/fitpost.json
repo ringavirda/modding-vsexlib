@@ -1,0 +1,13 @@
+{
+  "code": "fitpost",
+  "class": "SetupFitPost",
+  "behaviors": [{ "name": "HandAssembly" }],
+  "attributes": {
+    "handAssembly": {
+      "tool": "setupfitpost:wrench",
+      "fastener": "setupfitpost:bolt",
+      "perJoint": 1,
+      "perFit": 1
+    }
+  }
+}

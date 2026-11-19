@@ -5,7 +5,7 @@ using Vintagestory.API.Server;
 
 namespace ExpandedLib.Assembling;
 
-/// <summary>Carries hand assembly's fixes, take-offs and cap fits: the client sends an <c>AssemblyFix</c>, an <c>AssemblyTakeOff</c> or an <c>AssemblyCap</c> on the <c>exlib:assembly</c> channel and the server places or takes off the part or fits the cap, or answers an <c>AssemblyResult</c>.</summary>
+/// <summary>Carries hand assembly's fixes, take-offs, cap fits and fits onto placed blocks: the client sends an <c>AssemblyFix</c>, an <c>AssemblyTakeOff</c>, an <c>AssemblyCap</c> or an <c>AssemblyFit</c> on the <c>exlib:assembly</c> channel and the server places or takes off the part, fits the cap, fits the item onto a placed block, or answers an <c>AssemblyResult</c>.</summary>
 [EditorBrowsable(EditorBrowsableState.Never)]
 public class HandAssemblyModSystem : ModSystem {
   internal const string ChannelName = "exlib:assembly";
@@ -20,6 +20,7 @@ public class HandAssemblyModSystem : ModSystem {
       .RegisterMessageType<AssemblyFix>()
       .RegisterMessageType<AssemblyTakeOff>()
       .RegisterMessageType<AssemblyCap>()
+      .RegisterMessageType<AssemblyFit>()
       .RegisterMessageType<AssemblyResult>();
     var client = new HandAssemblyClient(api, channel);
     channel.SetMessageHandler<AssemblyResult>(client.ShowResult);
@@ -33,10 +34,12 @@ public class HandAssemblyModSystem : ModSystem {
       .RegisterMessageType<AssemblyFix>()
       .RegisterMessageType<AssemblyTakeOff>()
       .RegisterMessageType<AssemblyCap>()
+      .RegisterMessageType<AssemblyFit>()
       .RegisterMessageType<AssemblyResult>()
       .SetMessageHandler<AssemblyFix>(OnFix)
       .SetMessageHandler<AssemblyTakeOff>(OnTakeOff)
-      .SetMessageHandler<AssemblyCap>(OnCap);
+      .SetMessageHandler<AssemblyCap>(OnCap)
+      .SetMessageHandler<AssemblyFit>(OnFit);
   }
 
   private void OnTakeOff(IServerPlayer player, AssemblyTakeOff take) {
@@ -55,6 +58,12 @@ public class HandAssemblyModSystem : ModSystem {
       player,
       fit
     );
+    if (refusal != null)
+      _serverChannel!.SendPacket(refusal, player);
+  }
+
+  private void OnFit(IServerPlayer player, AssemblyFit fit) {
+    AssemblyResult? refusal = HandAssemblyServer.Fit(_sapi!.World, player, fit);
     if (refusal != null)
       _serverChannel!.SendPacket(refusal, player);
   }

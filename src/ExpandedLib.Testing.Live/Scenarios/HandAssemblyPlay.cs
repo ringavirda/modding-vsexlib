@@ -232,6 +232,63 @@ internal static class HandAssemblyPlay {
     }
   }
 
+  /// <summary>Fits the item <paramref name="itemCode"/> onto the placed block at <paramref name="at"/>
+  /// through <see cref="HandAssemblyServer.Fit"/> as a sneak click sends it: the item in the main hand,
+  /// the def's tool in the off hand and the fasteners of one fit carried. The item, tool and fasteners
+  /// are drawn from the case's pack and what came back to the player goes to it.</summary>
+  /// <param name="ctx">The running case, whose pack the item, tool and fasteners come from.</param>
+  /// <param name="world">The server world.</param>
+  /// <param name="player">The player, in survival mode and standing in reach of the cell.</param>
+  /// <param name="at">The absolute cell of the placed block.</param>
+  /// <param name="itemCode">The code of the item held in the main hand.</param>
+  /// <returns>Null when the item was fitted; otherwise the server's refusal.</returns>
+  /// <exception cref="StepFailure">The cell's block does not declare handAssembly, or the pack holds no item, tool or fastener.</exception>
+  public static AssemblyResult? Fit(
+    ScenarioContext ctx,
+    IWorldAccessor world,
+    IPlayer player,
+    BlockPos at,
+    string itemCode
+  ) {
+    Block block = world.BlockAccessor.GetBlock(at);
+    HandAssemblySpec spec =
+      HandAssemblySpec.Of(block)
+      ?? throw new StepFailure(
+        $"{block.Code} does not declare handAssembly, so nothing fits onto it.",
+        Suspect.Scenario
+      );
+    ItemSlot slot = player.InventoryManager.ActiveHotbarSlot;
+    ItemSlot offhand = player.Entity.LeftHandItemSlot;
+    string label = $"hand assembly fit onto {block.Code}";
+    slot.Itemstack = PackLedger.Tool(ctx, label, itemCode);
+    LiveOffHand.Put(offhand, PackLedger.Tool(ctx, label, spec.Tool));
+    Supply(ctx, world, player, spec, spec.PerFit);
+    Dictionary<string, int> before = ExCarried.Totals(player);
+    bool sneaking = player.Entity.Controls.Sneak;
+    player.Entity.Controls.Sneak = true;
+    try {
+      return HandAssemblyServer.Fit(
+        world,
+        player,
+        new AssemblyFit {
+          X = at.X,
+          Y = at.Y,
+          Z = at.Z,
+          Dimension = at.dimension,
+          Slot = player.InventoryManager.ActiveHotbarSlotNumber,
+          ItemCode = slot.Itemstack.Collectible.Code.ToString(),
+        }
+      );
+    } finally {
+      player.Entity.Controls.Sneak = sneaking;
+      PackLedger.Give(ctx, slot.Itemstack);
+      PackLedger.Give(ctx, offhand.Itemstack);
+      slot.Itemstack = null;
+      offhand.Itemstack = null;
+      ReturnToPack(ctx, player, before);
+    }
+  }
+
   private static BlockPos Aimed(
     IWorldAccessor world,
     Block part,

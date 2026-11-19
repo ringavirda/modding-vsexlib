@@ -37,6 +37,7 @@ internal static class ScenarioSteps {
       new AssembleStep(),
       new TakeOffStep(),
       new CapStep(),
+      new FitStep(),
       new PickUpStep(),
     }.ToDictionary(s => s.Kind);
 

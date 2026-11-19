@@ -75,4 +75,36 @@ public class BlockBehaviorHandAssembly : BlockBehavior {
       },
     ];
   }
+
+  /// <summary>Adds the fit gesture to the help of a placed block that is an <see cref="IHandFitTarget"/> while the main hand holds an item it takes; the line shows the tools of <see cref="Spec"/>.</summary>
+  public override WorldInteraction[] GetPlacedBlockInteractionHelp(
+    IWorldAccessor world,
+    BlockSelection selection,
+    IPlayer forPlayer,
+    ref EnumHandling handled
+  ) {
+    handled = EnumHandling.PassThrough;
+    if (
+      Spec is not { } spec
+      || forPlayer.InventoryManager.ActiveHotbarSlot.Itemstack is not { } held
+      || HandFitAim.Of(
+        world.BlockAccessor,
+        selection.Position,
+        held,
+        out _
+      )
+        is null
+    )
+      return [];
+    return
+    [
+      new WorldInteraction
+      {
+        ActionLangCode = ExlibLang.BlockhelpHandassemblyFit,
+        MouseButton = EnumMouseButton.Right,
+        HotKeyCode = "shift",
+        Itemstacks = spec.ToolStacks(world),
+      },
+    ];
+  }
 }

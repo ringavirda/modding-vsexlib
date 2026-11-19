@@ -343,6 +343,89 @@ public class SetupAssemblyStepTests {
     Assert.Contains("takes \"face\"", e.Message);
   }
 
+  private static readonly string FitFixturePath = Path.Combine(
+    RepoPaths.Root,
+    "tests",
+    "ExpandedLib.Tests",
+    "Setups",
+    "Fixtures",
+    "SetupFitPost"
+  );
+
+  private static SetupScene BuildFit(string steps) =>
+    SetupScene.Build(
+      SetupFile.Parse(
+        "{\"setup\": \"t\", \"description\": \"d\", \"mods\": [\"setupfitpost\"], \"steps\": "
+          + steps
+          + ", \"seconds\": 10, \"record\": {}}",
+        "t.json"
+      ),
+      [FitFixturePath],
+      world => {
+        foreach (int x in new[] { 0, 2 })
+          world.Place(
+            new BlockPos(x, 0, 0),
+            world.World.GetBlock(new AssetLocation("setupfitpost:fitpost"))
+          );
+      },
+      world => world.RegisterClass("SetupFitPost", typeof(SetupFitPost))
+    );
+
+  // Fails when the fit step ignores its at and fits the first post it finds, so the post at 0 changes and the one at 2 does not.
+  [Fact]
+  public void FitStep_FitsTheNamedCell() {
+    using SetupScene scene = BuildFit(
+      "[{ \"fit\": { \"at\": [2, 0, 0], \"stack\": \"setupfitpost:shaft\" } }]"
+    );
+
+    Assert.Equal(
+      "setupfitpost:fitpost",
+      scene.World.GetBlock(new BlockPos(0, 0, 0)).Code.ToString()
+    );
+    Assert.Equal(
+      "setupfitpost:fitdone",
+      scene.World.GetBlock(new BlockPos(2, 0, 0)).Code.ToString()
+    );
+  }
+
+  // Fails when stack is dropped from the required fields: a fit step with no stack holds nothing.
+  [Fact]
+  public void FitStep_FieldsRequired() {
+    Exception e = Assert.ThrowsAny<Exception>(() =>
+      BuildFit("[{ \"fit\": { \"at\": [0, 0, 0] } }]")
+    );
+
+    Assert.Contains("takes \"stack\"", e.Message);
+  }
+
+  private sealed class SetupFitPost : Block, IHandFitTarget {
+    public Block? FitResult(
+      IBlockAccessor accessor,
+      BlockPos pos,
+      ItemStack held,
+      out string? failureCode
+    ) {
+      failureCode = null;
+      return api.World.GetBlock(new AssetLocation("setupfitpost:fitdone"));
+    }
+
+    public bool Fit(
+      IWorldAccessor world,
+      BlockPos pos,
+      IPlayer player,
+      ItemSlot held,
+      ref string failureCode
+    ) {
+      world.BlockAccessor.SetBlock(
+        FitResult(world.BlockAccessor, pos, held.Itemstack, out _)!.Id,
+        pos
+      );
+      held.TakeOut(1);
+      held.MarkDirty();
+      return true;
+    }
+  }
+
   // Fails when the fixed flag is read as anything but the record's.
   [Fact]
   public void Asm_reads_whether_the_piece_is_fixed() {

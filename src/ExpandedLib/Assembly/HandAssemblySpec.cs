@@ -9,11 +9,13 @@ namespace ExpandedLib.Assembling;
 /// <param name="Fastener">Item code of the fastener a joint spends.</param>
 /// <param name="PerJoint">Count of <paramref name="Fastener"/> items one joint spends, at least 1.</param>
 /// <param name="Cap">Item code of the cap held in the main hand, with the tool in the off hand, to close an open crossing of the part, wildcards allowed; null when the part takes no cap.</param>
+/// <param name="PerFit">Count of <paramref name="Fastener"/> items one fit onto the placed part spends through <see cref="IHandFitTarget"/>; 0 for a fit that spends none, though it still asks the tool.</param>
 public sealed record HandAssemblySpec(
   string Tool,
   string Fastener,
   int PerJoint,
-  string? Cap = null
+  string? Cap = null,
+  int PerFit = 0
 ) {
   /// <summary>The attribute key the spec is stored under.</summary>
   public const string AttributeKey = "handAssembly";
@@ -35,7 +37,8 @@ public sealed record HandAssemblySpec(
       tool,
       fastener,
       attribute["perJoint"].AsInt(1),
-      string.IsNullOrEmpty(cap) ? null : cap
+      string.IsNullOrEmpty(cap) ? null : cap,
+      attribute["perFit"].AsInt(0)
     );
   }
 

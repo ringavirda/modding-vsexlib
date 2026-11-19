@@ -83,6 +83,8 @@ internal sealed class HandAssemblyClient : IRenderer {
   private void Display() {
     if (_control.CapFace != null)
       RebuildCap();
+    else if (_control.FitAt != null)
+      RebuildFit();
     else if (
       _control.TakeOffLine(
         _capi.World,
@@ -108,6 +110,19 @@ internal sealed class HandAssemblyClient : IRenderer {
           ? HandAssemblyServer.Line(null, refusal)
           : null,
         spec.PerJoint,
+        HandAssemblyServer.FastenerName(_capi.World, spec.Fastener),
+        ExCarried.Count(Player!, spec.Fastener)
+      )
+    );
+  }
+
+  private void RebuildFit() {
+    HandAssemblySpec spec = _control.FitSpec!;
+    ShowHud(
+      HandAssemblyHud.FitLine(
+        (key, args) => Lang.Get(key, args),
+        new ItemStack(_control.FitBlock!).GetName(),
+        spec.PerFit,
         HandAssemblyServer.FastenerName(_capi.World, spec.Fastener),
         ExCarried.Count(Player!, spec.Fastener)
       )
@@ -181,6 +196,8 @@ internal sealed class HandAssemblyClient : IRenderer {
     _control.Frame(_capi.Input.InWorldMouseButton.Right);
     if (_control.CapFace != null)
       DrawCapGhost(entity);
+    else if (_control.FitAt != null)
+      DrawFitGhost(entity);
     else
       DrawGhost(entity);
   }
@@ -213,6 +230,25 @@ internal sealed class HandAssemblyClient : IRenderer {
       shader,
       ghost,
       GhostColor(piece.GetColor(_capi, cell), _control.Short),
+      cell.X - camera.X,
+      cell.Y - camera.Y,
+      cell.Z - camera.Z
+    );
+    shader.Stop();
+    previous?.Use();
+  }
+
+  private void DrawFitGhost(EntityPlayer entity) {
+    if (_control.FitAt is not { } cell || _control.FitBlock is not { } made)
+      return;
+    Vec3d camera = entity.CameraPos;
+    IShaderProgram? previous = _capi.Render.CurrentActiveShader;
+    previous?.Stop();
+    IStandardShaderProgram shader = Begin(cell);
+    DrawProjected(
+      shader,
+      _capi.TesselatorManager.GetDefaultBlockMeshRef(made),
+      GhostColor(made.GetColor(_capi, cell), _control.Short),
       cell.X - camera.X,
       cell.Y - camera.Y,
       cell.Z - camera.Z

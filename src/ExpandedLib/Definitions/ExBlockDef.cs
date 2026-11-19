@@ -566,13 +566,21 @@ public sealed class ExBlockDef : IExDef {
   /// <param name="fastener">Item code of the fastener a joint spends.</param>
   /// <param name="perJoint">Count of <paramref name="fastener"/> items one joint spends, at least 1.</param>
   /// <param name="cap">Item code of the cap held in the main hand, with the tool in the off hand, to close an open crossing of the part, wildcards allowed; null, the default, when the part takes no cap.</param>
-  /// <exception cref="ArgumentOutOfRangeException"><paramref name="perJoint"/> is below 1.</exception>
+  /// <param name="perFit">Count of <paramref name="fastener"/> items one fit onto the placed part spends, 0 by default.</param>
+  /// <exception cref="ArgumentOutOfRangeException"><paramref name="perJoint"/> is below 1 or <paramref name="perFit"/> is negative.</exception>
   public ExBlockDef HandAssembly(
     string tool,
     string fastener,
     int perJoint,
-    string? cap = null
+    string? cap = null,
+    int perFit = 0
   ) {
+    if (perFit < 0)
+      throw new ArgumentOutOfRangeException(
+        nameof(perFit),
+        perFit,
+        "A fit spends no fewer than zero fasteners."
+      );
     if (perJoint < 1)
       throw new ArgumentOutOfRangeException(
         nameof(perJoint),
@@ -587,6 +595,8 @@ public sealed class ExBlockDef : IExDef {
     };
     if (cap != null)
       spec["cap"] = cap;
+    if (perFit > 0)
+      spec["perFit"] = perFit;
     Attribute(Assembling.HandAssemblySpec.AttributeKey, spec);
     NestedArray("behaviors")
       .Insert(0, new JObject { ["name"] = "HandAssembly" });

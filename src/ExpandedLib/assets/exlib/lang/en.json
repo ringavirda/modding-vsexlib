@@ -132,6 +132,7 @@
   "game:placefailure-exlib-handassembly-capnoroom": "No room for the cap.",
   "game:placefailure-exlib-handassembly-capinway": "A cap is in the way.",
   "game:placefailure-exlib-handassembly-capjoined": "That face is joined to the block beside it.",
+  "game:placefailure-exlib-handassembly-nofit": "Nothing fits here.",
   "pipe-info-empty": "Empty",
   "pipe-info-flow": "Throughput: {0} of {1} at {2}",
   "pipe-info-leaking": "Leaking!",
@@ -205,6 +206,7 @@
   "handassembly-hud-open": "open {0}",
   "handassembly-hud-cost": "{0} {1}, {2} carried",
   "handassembly-hud-cap": "Cap {0}",
+  "handassembly-hud-fit": "Fit: makes {0}",
   "handassembly-hud-none": "No placement fits here.",
   "handassembly-hud-takeoff": "Take off {0} and {1}",
   "handassembly-hud-takeoff-bare": "Take off {0}",
@@ -216,6 +218,7 @@
   "blockhelp-handassembly-step": "Next placement",
   "blockhelp-handassembly-fix": "Click to fix the part",
   "blockhelp-handassembly-cap": "Click to fit the cap",
+  "blockhelp-handassembly-fit": "Hold sneak and click to fit",
   "blockhelp-handassembly-takeoff": "Click to take the part off",
   "blockhelp-handassembly-capoff": "Take the cap off"
 }

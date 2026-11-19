@@ -861,6 +861,9 @@ public sealed partial class SetupScene : IDisposable
         case "cap":
           CapStep(step);
           break;
+        case "fit":
+          FitStep(step);
+          break;
         case "pickup":
           PickUpStep(step);
           break;

@@ -96,3 +96,26 @@ internal class AssemblyCap {
   [ProtoMember(7)]
   public string CapCode = "";
 }
+
+/// <summary>Client to server: fit the item held in the main hand onto the placed block at a position. Carries the aim and what is held, nothing about cost.</summary>
+[ProtoContract]
+internal class AssemblyFit {
+  [ProtoMember(1)]
+  public int X;
+
+  [ProtoMember(2)]
+  public int Y;
+
+  [ProtoMember(3)]
+  public int Z;
+
+  [ProtoMember(4)]
+  public int Dimension;
+
+  /// <summary>The hotbar slot number holding the item.</summary>
+  [ProtoMember(5)]
+  public int Slot;
+
+  [ProtoMember(6)]
+  public string ItemCode = "";
+}

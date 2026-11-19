@@ -132,6 +132,7 @@
   "game:placefailure-exlib-handassembly-capnoroom": "Немає місця для ковпака.",
   "game:placefailure-exlib-handassembly-capinway": "Заважає ковпак.",
   "game:placefailure-exlib-handassembly-capjoined": "Ця грань з'єднана з блоком поруч.",
+  "game:placefailure-exlib-handassembly-nofit": "Тут нічого не підходить.",
   "pipe-info-empty": "Порожньо",
   "pipe-info-flow": "Пропускна здатність: {0} з {1} при {2}",
   "pipe-info-leaking": "Витік!",
@@ -205,6 +206,7 @@
   "handassembly-hud-open": "відкрито: {0}",
   "handassembly-hud-cost": "{0} {1}, є {2}",
   "handassembly-hud-cap": "Ковпак: {0}",
+  "handassembly-hud-fit": "Посадити: вийде {0}",
   "handassembly-hud-none": "Тут нічого не підходить.",
   "handassembly-hud-takeoff": "Зняти {0} і {1}",
   "handassembly-hud-takeoff-bare": "Зняти {0}",
@@ -216,6 +218,7 @@
   "blockhelp-handassembly-step": "Наступне положення",
   "blockhelp-handassembly-fix": "Натиснути, щоб закріпити деталь",
   "blockhelp-handassembly-cap": "Натиснути, щоб надіти ковпак",
+  "blockhelp-handassembly-fit": "Присісти й утримувати клік, щоб посадити",
   "blockhelp-handassembly-takeoff": "Натиснути, щоб зняти деталь",
   "blockhelp-handassembly-capoff": "Зняти ковпак"
 }
