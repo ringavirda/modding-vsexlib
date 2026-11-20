@@ -5,6 +5,7 @@ using System.Linq;
 using ExpandedLib.Assembling;
 using ExpandedLib.Helpers;
 using ExpandedLib.Scenarios;
+using Newtonsoft.Json.Linq;
 using Vintagestory.API.Common;
 using Vintagestory.API.MathTools;
 
@@ -82,18 +83,41 @@ public sealed partial class SetupScene
     }
   }
 
+  /// <summary>The step's <c>hit</c>, sixteenths across the aimed cell, as blocks from its corner; null when it names none.</summary>
+  private static Vec3d? HitOf(SetupStep step) =>
+    step.Body["hit"] is JArray point
+      ? new Vec3d(
+        (double)point[0] / 16,
+        (double)point[1] / 16,
+        (double)point[2] / 16
+      )
+      : null;
+
   /// <summary>The <c>takeoff</c> step: the player takes the fixed piece off with its tool in the
   /// main hand and the sneak held, and the pack gets back what came to the player.</summary>
   private void TakeOffStep(SetupStep step)
   {
     BlockPos at = At(step, "at");
-    Block block = World.GetBlock(at);
+    Vec3d? hit = HitOf(step);
+    IBlockAccessor accessor = World.World.BlockAccessor;
+    BlockPos principal = HandFitAim.PrincipalOf(accessor, at);
+    Block block = World.GetBlock(principal);
     HandAssemblySpec spec =
       HandAssemblySpec.Of(block)
       ?? throw Fail(
         step.Path,
         $"{block.Code} at {Describe(at)} does not declare handAssembly, so nothing takes it off."
       );
+    if (
+      block is IHandFitCellTarget target
+      && target.FittedAt(
+        accessor,
+        principal,
+        new HandFitPoint(at, hit ?? new Vec3d(0.5, 0.5, 0.5))
+      )
+        is { Tool: { } tool }
+    )
+      spec = spec with { Tool = tool };
     Dictionary<string, int> before = ExCarried.Totals(Player.Player);
     Player.Hold(ToolFor(step.Path, spec));
     bool sneaking = Player.Sneaking;
@@ -113,6 +137,9 @@ public sealed partial class SetupScene
               Y = at.Y,
               Z = at.Z,
               Dimension = at.dimension,
+              HitX = hit?.X ?? 0.5,
+              HitY = hit?.Y ?? 0.5,
+              HitZ = hit?.Z ?? 0.5,
             }
           )
       );
@@ -246,13 +273,16 @@ public sealed partial class SetupScene
       );
   }
 
-  /// <summary>The <c>fit</c> step: the player fits the step's <c>stack</c> held in the main hand onto the
-  /// placed block at <c>at</c>, with the def's tool in the off hand, as a sneak click sends it. The
-  /// step's <c>fails</c> names the refusal the server must answer.</summary>
+  /// <summary>The <c>fit</c> step: the player fits the step's <c>stack</c> onto the placed block at <c>at</c>
+  /// as a sneak click sends it, aimed at the step's <c>hit</c> (sixteenths across the cell; the centre without
+  /// it), with the principal's fasteners and the plan's companions drawn from the pack.</summary>
   private void FitStep(SetupStep step)
   {
     BlockPos at = At(step, "at");
-    Block block = World.GetBlock(at);
+    Vec3d? hit = HitOf(step);
+    Block block = World.GetBlock(
+      HandFitAim.PrincipalOf(World.World.BlockAccessor, at)
+    );
     HandAssemblySpec spec =
       HandAssemblySpec.Of(block)
       ?? throw Fail(
@@ -263,7 +293,12 @@ public sealed partial class SetupScene
     Draw(step.Path, item);
     Player.Hold(item);
     Player.HoldOffHand(ToolFor(step.Path, spec));
-    Supply(step.Path, spec, spec.PerFit);
+    HandFitPlan? plan = HandFitAim
+      .OfCell(World.World.BlockAccessor, at, hit, item, out _)
+      ?.Plan;
+    Supply(step.Path, spec, plan?.Fasteners ?? spec.PerFit);
+    foreach (HandFitCompanion companion in plan?.Companions ?? [])
+      SupplyCompanion(step.Path, companion, item);
     Dictionary<string, int> before = ExCarried.Totals(Player.Player);
     bool sneaking = Player.Sneaking;
     Player.Sneaking = true;
@@ -284,6 +319,9 @@ public sealed partial class SetupScene
               Dimension = at.dimension,
               Slot = Player.Player.InventoryManager.ActiveHotbarSlotNumber,
               ItemCode = item.Collectible.Code.ToString(),
+              HitX = hit?.X ?? 0.5,
+              HitY = hit?.Y ?? 0.5,
+              HitZ = hit?.Z ?? 0.5,
             }
           )
       );
@@ -466,31 +504,54 @@ public sealed partial class SetupScene
     return tool;
   }
 
-  private void Supply(string where, HandAssemblySpec spec, int cost)
+  private void Supply(string where, HandAssemblySpec spec, int cost) =>
+    SupplyItem(
+      where,
+      spec.Fastener,
+      cost - ExCarried.Count(Player.Player, spec.Fastener)
+    );
+
+  /// <summary>Puts into the pack what a fit's companion needs beyond what is carried, counting the held
+  /// item when the companion's code matches it.</summary>
+  private void SupplyCompanion(
+    string where,
+    HandFitCompanion companion,
+    ItemStack held
+  )
   {
-    int missing = cost - ExCarried.Count(Player.Player, spec.Fastener);
+    if (companion.Code.Contains('*'))
+      throw Fail(
+        where,
+        $"the fit's companion {companion.Code} is a wildcard; a setup can supply only a named item."
+      );
+    int need =
+      companion.Count
+      + (companion.Code == held.Collectible.Code.ToString() ? 1 : 0);
+    SupplyItem(
+      where,
+      companion.Code,
+      need - ExCarried.Count(Player.Player, companion.Code)
+    );
+  }
+
+  private void SupplyItem(string where, string code, int missing)
+  {
     if (missing <= 0)
       return;
     Item fastener =
-      World.World.GetItem(new AssetLocation(spec.Fastener))
-      ?? throw Fail(
-        where,
-        $"the fastener {spec.Fastener} is not a loaded item."
-      );
+      World.World.GetItem(new AssetLocation(code))
+      ?? throw Fail(where, $"{code} is not a loaded item.");
     if (_pack is { DrawsBlocks: true })
-      Draw(where, spec.Fastener, missing);
-    else if (_granted.Add(spec.Fastener))
-      _standIns.Add($"granted {missing} {spec.Fastener} for hand assembly");
+      Draw(where, code, missing);
+    else if (_granted.Add(code))
+      _standIns.Add($"granted {missing} {code} for hand assembly");
     if (
       !Player.Player.InventoryManager.TryGiveItemstack(
         new ItemStack(fastener, missing),
         true
       )
     )
-      throw Fail(
-        where,
-        $"the player has no room for {missing} {spec.Fastener}."
-      );
+      throw Fail(where, $"the player has no room for {missing} {code}.");
   }
 
   private BlockFacing FaceOf(SetupStep step, string? letter) =>

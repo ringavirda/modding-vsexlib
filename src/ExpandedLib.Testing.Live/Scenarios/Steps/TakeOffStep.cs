@@ -30,7 +30,13 @@ internal sealed class TakeOffStep : ScenarioStep {
     BlockPos local = ctx.Position(step, o["at"], "at");
     string was = ctx.Setup.BlockAt(local).Code.ToString();
     ctx.RequireInWorld(local);
-    if (player.TakeOff(ctx, ctx.Setup.Absolute(local)) is { } failure)
+    if (
+      player.TakeOff(
+        ctx,
+        ctx.Setup.Absolute(local),
+        StepValues.Hit(o["hit"])
+      ) is { } failure
+    )
       throw new StepFailure(
         $"the player could not take {was} off at {FailureDetail.Cell(local)}: {failure}.",
         Suspect.Mod

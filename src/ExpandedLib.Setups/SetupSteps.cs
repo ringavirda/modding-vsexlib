@@ -186,9 +186,9 @@ internal static class SetupSteps {
       "arms",
       "turn",
     ],
-    ["takeoff"] = ["at"],
+    ["takeoff"] = ["at", "hit"],
     ["cap"] = ["id", "at", "face", "fails"],
-    ["fit"] = ["id", "at", "stack", "count", "fails"],
+    ["fit"] = ["id", "at", "hit", "stack", "count", "fails"],
     ["pickup"] = ["at", "code", "offHand"],
   };
 
@@ -312,7 +312,7 @@ internal static class SetupSteps {
       ValidateCraft(o, at);
     if (kind is "interact" or "use" && o["keep"] != null)
       SetupJson.Bool(o["keep"], at.In("keep"));
-    if (kind == "use" && o["hit"] != null)
+    if (kind is "use" or "fit" or "takeoff" && o["hit"] != null)
       ValidateHit(o["hit"]!, at.In("hit"));
     if (kind == "interact" && o["hit"] != null) {
       if (o["control"] == null)
