@@ -329,9 +329,9 @@ internal sealed class HandAssemblyControl {
     if (
       accessor.GetBlock(principal) is not IHandFitCellTarget target
       || HandAssemblySpec.Of(accessor.GetBlock(principal)) is not { } spec
-      || !HandAssemblyServer.HoldsTool(main, spec.Tool)
       || target.FittedAt(accessor, principal, new HandFitPoint(pos, _hit))
         is not { } removal
+      || !HandAssemblyServer.HoldsTool(main, removal.Tool ?? spec.Tool)
     )
       return false;
     _takeOff = pos.Copy();

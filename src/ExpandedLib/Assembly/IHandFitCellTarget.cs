@@ -31,9 +31,11 @@ public sealed record HandFitMesh(MeshData Mesh, Vec3d Place);
 /// <summary>What a fitted part gives back when it is taken off.</summary>
 /// <param name="Parts">The held part and its companions, as stacks.</param>
 /// <param name="Fasteners">How many of <see cref="HandAssemblySpec.Fastener"/> come back with them; 0 for none.</param>
+/// <param name="Tool">The tool the take-off needs in the main hand, an item code with wildcards allowed; null for the fit's own <see cref="HandAssemblySpec.Tool"/>.</param>
 public sealed record HandFitRemoval(
   IReadOnlyList<ItemStack> Parts,
-  int Fasteners
+  int Fasteners,
+  string? Tool = null
 );
 
 /// <summary>

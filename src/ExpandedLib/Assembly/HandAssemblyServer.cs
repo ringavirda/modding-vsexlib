@@ -329,19 +329,18 @@ internal static class HandAssemblyServer {
 
     bool creative = HandAssemblyGate.IsCreative(player);
     ItemSlot toolSlot = player.InventoryManager.ActiveHotbarSlot;
-    if (!creative && !HoldsTool(toolSlot, spec.Tool))
+    var at = new HandFitPoint(cell, new Vec3d(take.HitX, take.HitY, take.HitZ));
+    if (target.FittedAt(accessor, principal, at) is not { } removal)
+      return Refusal(NotFixed);
+    string tool = removal.Tool ?? spec.Tool;
+    if (!creative && !HoldsTool(toolSlot, tool))
       return Refusal(
         NeedsToolMain,
-        ToolNoun(world, spec.Tool, LanguageOf(player))
+        ToolNoun(world, tool, LanguageOf(player))
       );
     if (!player.Entity.Controls.Sneak)
       return Refusal(Fixed);
-
-    var at = new HandFitPoint(cell, new Vec3d(take.HitX, take.HitY, take.HitZ));
-    if (
-      target.FittedAt(accessor, principal, at) is not { } removal
-      || !target.TakeOff(world, principal, at, player)
-    )
+    if (!target.TakeOff(world, principal, at, player))
       return Refusal(NotFixed);
 
     var fasteners = new List<ItemStack>();

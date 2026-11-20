@@ -85,6 +85,28 @@ public class HandFitCellTests {
     Assert.True(scene.Post.Fitted);
   }
 
+  // Fails when a companion that is the held item's own code counts the held one in its count: a stack of two fits as a pair, a stack of one is refused.
+  [Fact]
+  public void Fit_CompanionMayBeTheHeldItem() {
+    var scene = CellScene.Standing(washers: 0);
+    scene.Post.CompanionCode = "test:shaft";
+    scene.Post.CompanionCount = 1;
+    scene.Player.Hold(new ItemStack(scene.Shaft, 2));
+
+    Assert.Null(scene.Fit());
+
+    Assert.Equal(0, scene.Carried(scene.Shaft));
+    Assert.True(scene.Post.Fitted);
+
+    var single = CellScene.Standing(washers: 0);
+    single.Post.CompanionCode = "test:shaft";
+    single.Post.CompanionCount = 1;
+    single.Player.Hold(new ItemStack(single.Shaft, 1));
+
+    Assert.Equal(HandAssemblyServer.NeedsCompanion, single.Fit()!.Code);
+    Assert.Equal(1, single.Carried(single.Shaft));
+  }
+
   // Fails when a missing companion is not refused by name, or anything is taken despite the refusal.
   [Fact]
   public void Fit_RefusedWhenACompanionIsMissing() {
@@ -125,6 +147,22 @@ public class HandFitCellTests {
     Assert.Null(scene.TakeOff());
 
     Assert.Equal(3, scene.Carried(scene.Washer));
+  }
+
+  // Fails when the take-off asks the fit's own tool: the target names the wrench for the take-off and the fit's tool is a hammer, so the hammer in the main hand is refused and the wrench takes the part off.
+  [Fact]
+  public void FitTakeOff_UsesTheTargetsTool() {
+    var scene = CellScene.Fitted();
+    scene.Post.RemovalTool = "test:wrench-*";
+    scene.SpecTool("test:hammer-*");
+
+    Assert.Equal(
+      HandAssemblyServer.NeedsToolMain,
+      scene.TakeOff(withTool: true, tool: "test:hammer-iron")!.Code
+    );
+    Assert.True(scene.Post.Fitted);
+    Assert.Null(scene.TakeOff());
+    Assert.False(scene.Post.Fitted);
   }
 
   // Fails when the tool in the main hand is not required: a take-off with the tool elsewhere changes nothing.
@@ -189,6 +227,12 @@ public class HandFitCellTests {
     public Item Washer { get; }
     public CellPost Post { get; }
 
+    /// <summary>Gives the principal's block another fit tool.</summary>
+    public void SpecTool(string tool) =>
+      Post.Attributes = new JsonObject(
+        JToken.Parse(Spec.Replace("test:wrench-*", tool))
+      );
+
     public static CellScene Standing(int washers = 3) => new(washers);
 
     /// <summary>A scene after a fit on the filler: shaft 2 held, 8 bolts, 1 washer carried, the target holding the part.</summary>
@@ -220,9 +264,11 @@ public class HandFitCellTests {
       );
 
     /// <summary>Takes the fitted part off sneaking, with the tool in the main hand when <paramref name="withTool"/> is set and the shaft otherwise.</summary>
-    public AssemblyResult? TakeOff(bool withTool = true) {
+    public AssemblyResult? TakeOff(bool withTool = true, string? tool = null) {
       Player.Sneaking = true;
-      Player.Hotbar[3].Itemstack = new ItemStack(Wrench);
+      Player.Hotbar[3].Itemstack = new ItemStack(
+        tool == null ? Wrench : World.RegisterItem(tool)
+      );
       Player.Select(withTool ? 3 : 0);
       return HandAssemblyServer.TakeOff(
         World.World,
@@ -244,6 +290,9 @@ public class HandFitCellTests {
     : Block,
       IHandFitCellTarget {
     public bool Fitted;
+    public string CompanionCode = "test:washer";
+    public int CompanionCount = 2;
+    public string? RemovalTool;
     public HandFitPoint? PlannedAt;
     public readonly IReadOnlyList<HandFitMesh> Meshes =
     [
@@ -259,7 +308,7 @@ public class HandFitCellTests {
     ) {
       PlannedAt = at;
       failureCode = null;
-      return new HandFitPlan([new HandFitCompanion("test:washer", 2)], 2);
+      return new HandFitPlan([new HandFitCompanion(CompanionCode, CompanionCount)], 2);
     }
 
     public IReadOnlyList<HandFitMesh>? Ghost(
@@ -292,7 +341,8 @@ public class HandFitCellTests {
       Fitted
         ? new HandFitRemoval(
             [new ItemStack(shaft, 1), new ItemStack(washer, 2)],
-            2
+            2,
+            RemovalTool
           )
         : null;
 

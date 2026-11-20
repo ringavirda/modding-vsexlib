@@ -3,10 +3,12 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using ExpandedLib.Assembling;
+using ExpandedLib.Helpers;
 using ExpandedLib.Scenarios;
 using ExpandedLib.Testing;
 using ExpandedLib.Testing.Live;
 using Newtonsoft.Json.Linq;
+using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
 using Vintagestory.API.MathTools;
@@ -368,7 +370,10 @@ public class SetupAssemblyStepTests {
             world.World.GetBlock(new AssetLocation("setupfitpost:fitpost"))
           );
       },
-      world => world.RegisterClass("SetupFitPost", typeof(SetupFitPost))
+      world => {
+        world.RegisterClass("SetupFitPost", typeof(SetupFitPost));
+        world.RegisterClass("SetupFitCell", typeof(SetupFitCell));
+      }
     );
 
   // Fails when the fit step ignores its at and fits the first post it finds, so the post at 0 changes and the one at 2 does not.
@@ -396,6 +401,121 @@ public class SetupAssemblyStepTests {
     );
 
     Assert.Contains("takes \"stack\"", e.Message);
+  }
+
+  private static SetupScene BuildCell(string steps) =>
+    SetupScene.Build(
+      SetupFile.Parse(
+        "{\"setup\": \"t\", \"description\": \"d\", \"mods\": [\"setupfitpost\"], \"steps\": "
+          + steps
+          + ", \"seconds\": 10, \"record\": {}}",
+        "t.json"
+      ),
+      [FitFixturePath],
+      world => {
+        world.Place(
+          new BlockPos(0, 0, 0),
+          world.World.GetBlock(new AssetLocation("setupfitpost:fitcell"))
+        );
+        world.PlaceFiller(
+          new BlockPos(1, 0, 0),
+          null,
+          new BlockPos(0, 0, 0)
+        );
+      },
+      world => {
+        world.RegisterClass("SetupFitPost", typeof(SetupFitPost));
+        world.RegisterClass("SetupFitCell", typeof(SetupFitCell));
+      }
+    );
+
+  // Fails when the fit step resolves its at to the principal before the target is asked: the target sees the principal's cell, not the filler clicked, and the hit is lost.
+  [Fact]
+  public void FitStep_OnFillerCell() {
+    using SetupScene scene = BuildCell(
+      "[{ \"fit\": { \"at\": [1, 0, 0], \"hit\": [4, 8, 12], \"stack\": \"setupfitpost:shaft\" } }]"
+    );
+
+    var post = (SetupFitCell)scene.World.GetBlock(new BlockPos(0, 0, 0));
+    Assert.NotNull(post.LastFit);
+    Assert.Equal(new BlockPos(1, 0, 0), post.LastFit.Value.Cell);
+    Assert.Equal(new Vec3d(0.25, 0.5, 0.75), post.LastFit.Value.Hit);
+    Assert.Equal(2, post.Companions);
+  }
+
+  // Fails when the takeoff step aims the principal instead of the filler clicked, loses its hit, or draws the fit's tool where the target names another: the hammer is the removal's tool and the fixture's fit tool is the wrench.
+  [Fact]
+  public void TakeOffStep_OnFillerCell() {
+    using SetupScene scene = BuildCell(
+      "[{ \"fit\": { \"at\": [1, 0, 0], \"stack\": \"setupfitpost:shaft\" } }, { \"takeoff\": { \"at\": [1, 0, 0], \"hit\": [12, 8, 4] } }]"
+    );
+
+    var post = (SetupFitCell)scene.World.GetBlock(new BlockPos(0, 0, 0));
+    Assert.NotNull(post.TakenOffAt);
+    Assert.Equal(new BlockPos(1, 0, 0), post.TakenOffAt.Value.Cell);
+    Assert.Equal(new Vec3d(0.75, 0.5, 0.25), post.TakenOffAt.Value.Hit);
+  }
+
+  private sealed class SetupFitCell : Block, IHandFitCellTarget {
+    public HandFitPoint? LastFit { get; private set; }
+    public HandFitPoint? TakenOffAt { get; private set; }
+    public int Companions { get; private set; }
+
+    public HandFitPlan? Plan(
+      IBlockAccessor accessor,
+      BlockPos principal,
+      HandFitPoint at,
+      ItemStack held,
+      out string? failureCode
+    ) {
+      failureCode = null;
+      return new HandFitPlan(
+        [new HandFitCompanion("setupfitpost:washer", 2)],
+        2
+      );
+    }
+
+    public IReadOnlyList<HandFitMesh>? Ghost(
+      ICoreClientAPI capi,
+      BlockPos principal,
+      HandFitPoint at,
+      ItemStack held,
+      HandFitPlan plan
+    ) => null;
+
+    public bool Fit(
+      IWorldAccessor world,
+      BlockPos principal,
+      HandFitPoint at,
+      IPlayer player,
+      ItemSlot held,
+      ref string failureCode
+    ) {
+      LastFit = at;
+      Companions = ExCarried.Count(player, "setupfitpost:washer");
+      held.TakeOut(1);
+      held.MarkDirty();
+      return true;
+    }
+
+    HandFitRemoval? IHandFitCellTarget.FittedAt(
+      IBlockAccessor accessor,
+      BlockPos principal,
+      HandFitPoint at
+    ) =>
+      LastFit != null && TakenOffAt == null
+        ? new HandFitRemoval([], 0, "setupfitpost:hammer")
+        : null;
+
+    public bool TakeOff(
+      IWorldAccessor world,
+      BlockPos principal,
+      HandFitPoint at,
+      IPlayer player
+    ) {
+      TakenOffAt = at;
+      return true;
+    }
   }
 
   private sealed class SetupFitPost : Block, IHandFitTarget {

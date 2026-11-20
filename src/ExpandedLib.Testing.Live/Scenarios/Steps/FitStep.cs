@@ -38,7 +38,8 @@ internal sealed class FitStep : ScenarioStep {
       ctx,
       ctx.Setup.Absolute(local),
       item,
-      out string? code
+      out string? code,
+      StepValues.Hit(o["hit"])
     );
     ctx.Touched.Add(local.Copy());
     string? fails = (string?)o["fails"];

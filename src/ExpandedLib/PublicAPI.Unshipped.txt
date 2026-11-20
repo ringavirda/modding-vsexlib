@@ -904,11 +904,13 @@ ExpandedLib.Assembling.HandFitMesh.Mesh.init -> void
 ExpandedLib.Assembling.HandFitMesh.Place.get -> Vintagestory.API.MathTools.Vec3d!
 ExpandedLib.Assembling.HandFitMesh.Place.init -> void
 ExpandedLib.Assembling.HandFitRemoval
-ExpandedLib.Assembling.HandFitRemoval.HandFitRemoval(System.Collections.Generic.IReadOnlyList<Vintagestory.API.Common.ItemStack!>! Parts, int Fasteners) -> void
+ExpandedLib.Assembling.HandFitRemoval.HandFitRemoval(System.Collections.Generic.IReadOnlyList<Vintagestory.API.Common.ItemStack!>! Parts, int Fasteners, string? Tool = null) -> void
 ExpandedLib.Assembling.HandFitRemoval.Parts.get -> System.Collections.Generic.IReadOnlyList<Vintagestory.API.Common.ItemStack!>!
 ExpandedLib.Assembling.HandFitRemoval.Parts.init -> void
 ExpandedLib.Assembling.HandFitRemoval.Fasteners.get -> int
 ExpandedLib.Assembling.HandFitRemoval.Fasteners.init -> void
+ExpandedLib.Assembling.HandFitRemoval.Tool.get -> string?
+ExpandedLib.Assembling.HandFitRemoval.Tool.init -> void
 ExpandedLib.Assembling.IHandFitCellTarget
 ExpandedLib.Assembling.IHandFitCellTarget.Plan(Vintagestory.API.Common.IBlockAccessor! accessor, Vintagestory.API.MathTools.BlockPos! principal, ExpandedLib.Assembling.HandFitPoint at, Vintagestory.API.Common.ItemStack! held, out string? failureCode) -> ExpandedLib.Assembling.HandFitPlan?
 ExpandedLib.Assembling.IHandFitCellTarget.Ghost(Vintagestory.API.Client.ICoreClientAPI! capi, Vintagestory.API.MathTools.BlockPos! principal, ExpandedLib.Assembling.HandFitPoint at, Vintagestory.API.Common.ItemStack! held, ExpandedLib.Assembling.HandFitPlan! plan) -> System.Collections.Generic.IReadOnlyList<ExpandedLib.Assembling.HandFitMesh!>?
