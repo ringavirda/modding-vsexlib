@@ -1,8 +1,10 @@
 #if GAME_GE_1_22
 using System;
 using System.IO;
+using System.Linq;
 using ExpandedLib.Scenarios;
 using ExpandedLib.Testing;
+using Vintagestory.API.MathTools;
 using Xunit;
 
 namespace ExpandedLib.Tests.Setups;
@@ -234,6 +236,101 @@ public class SetupPackTests
     SetupPack pack = Pack("pack-diamond");
     Assert.True(pack.TakeStanding("iiex:workbench-bench"));
     Assert.False(pack.TakeStanding("iiex:workbench-bench"));
+  }
+
+  private static SetupPack Standing(params string[] entries)
+  {
+    SetupFileModel stage = Inline(
+      "{ \"scope\": \"all\", \"ends\": { \"standing\": [ "
+        + string.Join(", ", entries.Select(e => "\"" + e + "\""))
+        + " ] } }"
+    );
+    SetupFileModel later = Inline(
+      "{ \"scope\": \"all\", \"after\": { \"mod/setups/stage\": 1 } }"
+    );
+    return SetupPack.Start(later, id => id == "mod/setups/stage" ? stage : null);
+  }
+
+  // Fails when an entry with a cell is matched by its code alone, at another cell or at none.
+  [Fact]
+  public void A_standing_entry_with_a_cell_is_taken_only_at_that_cell()
+  {
+    SetupPack pack = Standing("game:stone@1,2,3");
+    Assert.False(pack.TakeStanding("game:stone"));
+    Assert.False(pack.TakeStanding("game:stone", new BlockPos(1, 2, 4)));
+    Assert.False(pack.TookStanding(new BlockPos(1, 2, 4)));
+    Assert.True(pack.TakeStanding("game:stone", new BlockPos(1, 2, 3)));
+    Assert.True(pack.TookStanding(new BlockPos(1, 2, 3)));
+    Assert.False(pack.TakeStanding("game:stone", new BlockPos(1, 2, 3)));
+  }
+
+  // Fails when an entry without a cell is refused a place at a cell, or a place without one.
+  [Fact]
+  public void A_standing_entry_without_a_cell_is_taken_by_code_at_any_cell()
+  {
+    SetupPack pack = Standing("game:stone", "game:ston*");
+    Assert.True(pack.TakeStanding("game:stone", new BlockPos(7, 0, -2)));
+    Assert.True(pack.TakeStanding("game:stone"));
+    Assert.False(pack.TakeStanding("game:stone"));
+  }
+
+  // Fails when a place at a cell takes a cell-less entry that an entry naming its cell should have
+  // served first, leaving the cell entry for no one.
+  [Fact]
+  public void A_place_takes_the_entry_naming_its_cell_before_a_bare_code()
+  {
+    SetupPack pack = Standing("game:stone", "game:stone@1,2,3");
+    Assert.True(pack.TakeStanding("game:stone", new BlockPos(1, 2, 3)));
+    Assert.True(pack.TakeStanding("game:stone", new BlockPos(9, 9, 9)));
+    Assert.False(pack.TakeStanding("game:stone", new BlockPos(1, 2, 3)));
+  }
+
+  // Fails when CheckStanding ignores the cell of an entry that has one.
+  [Fact]
+  public void An_end_standing_entry_with_a_cell_must_stand_at_that_cell()
+  {
+    SetupPack pack = SetupPack.Start(
+      Inline(
+        "{ \"scope\": \"all\", \"ends\": { \"standing\": [ \"game:stone@1,2,3\", \"game:log-*\" ] } }"
+      ),
+      _ => null
+    );
+    (string, BlockPos)[] elsewhere =
+    [
+      ("game:stone", new BlockPos(1, 2, 4)),
+      ("game:log-oak", new BlockPos(0, 0, 0)),
+    ];
+    InvalidOperationException error = Assert.Throws<InvalidOperationException>(
+      () => pack.CheckStanding(elsewhere)
+    );
+    Assert.Equal(
+      "the stage ends with no game:stone@1,2,3 standing.",
+      error.Message
+    );
+    pack.CheckStanding(
+      [
+        ("game:stone", new BlockPos(1, 2, 3)),
+        ("game:log-oak", new BlockPos(5, 5, 5)),
+      ]
+    );
+  }
+
+  // Fails when the record drops a cell, or writes the entries in the order the blocks were found.
+  [Fact]
+  public void The_record_lists_the_standing_blocks_as_cell_entries()
+  {
+    SetupPack pack = Standing();
+    SetupPackRecord record = pack.Record(
+      [
+        ("game:stone", new BlockPos(2, 0, 0)),
+        ("game:stone", new BlockPos(1, 2, 3)),
+      ]
+    );
+    Assert.Equal(
+      ["game:stone@1,2,3", "game:stone@2,0,0"],
+      record.StandingAt
+    );
+    Assert.Equal(2, record.Standing["game:stone"]);
   }
 
   // Fails when a concrete draw takes from a wildcard key before its own key, so a later draw of

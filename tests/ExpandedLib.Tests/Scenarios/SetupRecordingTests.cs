@@ -712,7 +712,8 @@ public class SetupRecordingTests : IDisposable {
       new Dictionary<string, int> { ["game:log-*"] = 4, ["game:flint"] = 1 },
       new Dictionary<string, int> { ["game:log-*"] = 1 },
       new Dictionary<string, int> { ["iiex:bench"] = 1 },
-      [("steps[2]", "game:log-*", 3), ("steps[0]", "game:flint", 1)]
+      [("steps[2]", "game:log-*", 3), ("steps[0]", "game:flint", 1)],
+      ["iiex:bench@1,0,2"]
     );
 
   // Fails when the section drops a part of the pack's record, sorts the draws, or writes the
@@ -730,6 +731,7 @@ public class SetupRecordingTests : IDisposable {
     );
     Assert.Equal("{\"game:log-*\":1}", pack["end"]!.ToJsonString());
     Assert.Equal("{\"iiex:bench\":1}", pack["standing"]!.ToJsonString());
+    Assert.Equal("[\"iiex:bench@1,0,2\"]", pack["standingAt"]!.ToJsonString());
     Assert.Equal(
       "[[\"steps[2]\",\"game:log-*\",3],[\"steps[0]\",\"game:flint\",1]]",
       pack["draws"]!.ToJsonString()
@@ -742,6 +744,16 @@ public class SetupRecordingTests : IDisposable {
     string text = Scripted(Repeat(1f)).Text();
 
     Assert.Null(Parse(text)["pack"]);
+  }
+
+  // Fails when a pack record without standing cells writes a standingAt key, which would move every
+  // recording made before the key existed.
+  [Fact]
+  public void A_pack_record_without_standing_cells_writes_no_standingAt() {
+    SetupRecording recording = Scripted(Repeat(1f));
+    recording.Pack = PackRecord() with { StandingAt = [] };
+
+    Assert.Null(Parse(recording.Text())["pack"]!["standingAt"]);
   }
 
   // Fails when reading a recording back drops its pack section.

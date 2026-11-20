@@ -190,12 +190,12 @@ internal static class PackLedger {
       return;
     foreach (var (metal, units) in MetalIn(ctx, ctx.Placed))
       pack.Give(metal, units);
-    string[] standing =
+    (string Code, BlockPos Cell)[] standing =
     [
       .. ctx
-        .Placed.Select(c => ctx.Setup.BlockAt(c))
-        .Where(b => b.Id != 0)
-        .Select(b => b.Code.ToString()),
+        .Placed.Select(c => (Block: ctx.Setup.BlockAt(c), Cell: c))
+        .Where(b => b.Block.Id != 0)
+        .Select(b => (b.Block.Code.ToString(), b.Cell)),
     ];
     try {
       pack.CheckStanding(standing);

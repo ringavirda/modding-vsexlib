@@ -209,12 +209,12 @@ public sealed partial class SetupScene
     ];
     foreach (var (metal, units) in MetalIn(molten))
       _pack.Give(metal, units);
-    string[] standing =
+    (string Code, BlockPos Cell)[] standing =
     [
       .. cells
-        .Select(c => World.GetBlock(c))
-        .Where(b => b.Id != 0)
-        .Select(b => b.Code.ToString()),
+        .Select(c => (Block: World.GetBlock(c), Cell: c))
+        .Where(b => b.Block.Id != 0)
+        .Select(b => (b.Block.Code.ToString(), b.Cell)),
     ];
     try
     {
