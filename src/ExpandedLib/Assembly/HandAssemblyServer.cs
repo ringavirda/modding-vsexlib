@@ -334,10 +334,7 @@ internal static class HandAssemblyServer {
       return Refusal(NotFixed);
     string tool = removal.Tool ?? spec.Tool;
     if (!creative && !HoldsTool(toolSlot, tool))
-      return Refusal(
-        NeedsToolMain,
-        ToolNoun(world, tool, LanguageOf(player))
-      );
+      return Refusal(NeedsToolMain, ToolNoun(world, tool, LanguageOf(player)));
     if (!player.Entity.Controls.Sneak)
       return Refusal(Fixed);
     if (!target.TakeOff(world, principal, at, player))
@@ -387,7 +384,8 @@ internal static class HandAssemblyServer {
       lang == null ? Lang.Get(key, args) : Lang.GetL(lang, key, args);
     string piece = string.Join(
       ", ",
-      Grouped(parts, lang).Select(g => Say("exlib:handassembly-hud-stack", g.Count, g.Name))
+      Grouped(parts, lang)
+        .Select(g => Say("exlib:handassembly-hud-stack", g.Count, g.Name))
     );
     string line =
       fasteners.Count == 0
@@ -734,8 +732,13 @@ internal static class HandAssemblyServer {
     IBlockAccessor accessor = world.BlockAccessor;
     var hit = new Vec3d(fit.HitX, fit.HitY, fit.HitZ);
     if (
-      HandFitAim.OfCell(accessor, cell, hit, heldSlot.Itemstack, out string? cellWhy)
-        is { } cellAim
+      HandFitAim.OfCell(
+        accessor,
+        cell,
+        hit,
+        heldSlot.Itemstack,
+        out string? cellWhy
+      ) is { } cellAim
     )
       return FitCell(world, player, heldSlot, cell, cellAim);
     if (cellWhy != null)
@@ -843,14 +846,23 @@ internal static class HandAssemblyServer {
 
     string failure = "";
     if (
-      !aim.Target.Fit(world, aim.Principal, aim.At, player, heldSlot, ref failure)
+      !aim.Target.Fit(
+        world,
+        aim.Principal,
+        aim.At,
+        player,
+        heldSlot,
+        ref failure
+      )
     )
       return Refusal(string.IsNullOrEmpty(failure) ? NoFit : failure);
 
     var spent = new List<ItemStack>();
     if (!creative) {
       foreach (HandFitCompanion companion in companions)
-        if (ExCarried.Take(player, companion.Code, companion.Count) is { } taken)
+        if (
+          ExCarried.Take(player, companion.Code, companion.Count) is { } taken
+        )
           spent.Add(taken);
       if (cost > 0 && ExCarried.Take(player, spec.Fastener, cost) is { } bolts)
         spent.Add(bolts);

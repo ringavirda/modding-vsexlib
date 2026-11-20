@@ -23,7 +23,10 @@ internal static class HandFitAim {
   ) {
     failureCode = null;
     Block block = accessor.GetBlock(pos);
-    if (block.Replaceable >= ReplaceableFrom || block is not IHandFitTarget target)
+    if (
+      block.Replaceable >= ReplaceableFrom
+      || block is not IHandFitTarget target
+    )
       return null;
     Block? result = target.FitResult(accessor, pos, held, out failureCode);
     return result == null ? null : (target, result);
@@ -48,7 +51,8 @@ internal static class HandFitAim {
   /// <param name="pos">The aimed cell.</param>
   /// <returns>The principal's cell when <paramref name="pos"/> is a filler cell with a principal; <paramref name="pos"/> itself otherwise.</returns>
   public static BlockPos PrincipalOf(IBlockAccessor accessor, BlockPos pos) =>
-    accessor.GetBlockEntity(pos) is BlockEntityStructureFiller { Principal: { } principal }
+    accessor.GetBlockEntity(pos)
+      is BlockEntityStructureFiller { Principal: { } principal }
       ? principal
       : pos;
 
@@ -69,10 +73,21 @@ internal static class HandFitAim {
     failureCode = null;
     BlockPos principal = PrincipalOf(accessor, pos);
     Block block = accessor.GetBlock(principal);
-    if (block.Replaceable >= ReplaceableFrom || block is not IHandFitCellTarget target)
+    if (
+      block.Replaceable >= ReplaceableFrom
+      || block is not IHandFitCellTarget target
+    )
       return null;
     var at = new HandFitPoint(pos.Copy(), hit ?? new Vec3d(0.5, 0.5, 0.5));
-    HandFitPlan? plan = target.Plan(accessor, principal, at, held, out failureCode);
-    return plan == null ? null : new Cell(target, principal.Copy(), block, at, plan);
+    HandFitPlan? plan = target.Plan(
+      accessor,
+      principal,
+      at,
+      held,
+      out failureCode
+    );
+    return plan == null
+      ? null
+      : new Cell(target, principal.Copy(), block, at, plan);
   }
 }

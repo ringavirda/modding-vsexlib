@@ -67,9 +67,7 @@ internal sealed class HandAssemblyControl {
       return null;
     IBlockAccessor accessor = world.BlockAccessor;
     if (_fitRemoval is { Parts.Count: > 0 } removal) {
-      var returns = HandAssemblyServer
-        .Grouped(removal.Parts.Skip(1))
-        .ToList();
+      var returns = HandAssemblyServer.Grouped(removal.Parts.Skip(1)).ToList();
       if (removal.Fasteners > 0 && _takeOffSpec != null)
         returns.Add(
           (
@@ -202,7 +200,8 @@ internal sealed class HandAssemblyControl {
     } else if (selection != null && AimFit(world, main, selection)) {
       _target = $"{FitKey}|{FitAt}|{_hit.X:0.0}|{_hit.Y:0.0}|{_hit.Z:0.0}";
     } else if (selection != null && AimFitTakeOff(world, main, selection)) {
-      _target = $"{TakeOffKey}|{_takeOff}|{_hit.X:0.0}|{_hit.Y:0.0}|{_hit.Z:0.0}";
+      _target =
+        $"{TakeOffKey}|{_takeOff}|{_hit.X:0.0}|{_hit.Y:0.0}|{_hit.Z:0.0}";
     } else if (
         selection != null
         && HandAssemblySpec.Of(accessor.GetBlock(selection.Position)) is { } aimed
@@ -246,7 +245,12 @@ internal sealed class HandAssemblyControl {
         SendFix(world, player);
     } else if (FitAt != null) {
       if (!sneak && !HandAssemblyGate.IsCreative(player)) {
-        if (!HandAssemblyServer.HoldsTool(player.Entity.LeftHandItemSlot, FitSpec!.Tool))
+        if (
+          !HandAssemblyServer.HoldsTool(
+            player.Entity.LeftHandItemSlot,
+            FitSpec!.Tool
+          )
+        )
           ShowFitRefusal(world, player);
         else
           return false;
@@ -373,7 +377,8 @@ internal sealed class HandAssemblyControl {
       );
     if (FitCell is { } cell) {
       foreach (
-        HandFitCompanion companion in cell.Plan.Companions.GroupBy(c => c.Code)
+        HandFitCompanion companion in cell
+          .Plan.Companions.GroupBy(c => c.Code)
           .Select(g => new HandFitCompanion(g.Key, g.Sum(c => c.Count)))
       ) {
         int needed =

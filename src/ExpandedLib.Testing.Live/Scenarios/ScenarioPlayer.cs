@@ -443,7 +443,8 @@ internal sealed class ScenarioPlayer : IHandRelease {
     _data.FreeMove = false;
     Face(at, BlockFacing.UP);
     try {
-      return HandAssemblyPlay.TakeOff(ctx, _server, Player, at, hit) is { } refused
+      return
+        HandAssemblyPlay.TakeOff(ctx, _server, Player, at, hit) is { } refused
         ? HandAssemblyPlay.Describe(refused)
         : null;
     } finally {

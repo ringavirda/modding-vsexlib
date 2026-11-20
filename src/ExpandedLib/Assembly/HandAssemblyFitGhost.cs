@@ -16,8 +16,8 @@ internal static class HandAssemblyFitGhost {
     HandFitAim.Cell aim,
     ItemStack held
   ) =>
-    aim.Target.Ghost(capi, aim.Principal, aim.At, held, aim.Plan) is
-    { Count: > 0 } meshes
+    aim.Target.Ghost(capi, aim.Principal, aim.At, held, aim.Plan)
+      is { Count: > 0 } meshes
       ? meshes
       : null;
 }

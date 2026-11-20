@@ -86,7 +86,11 @@ public sealed partial class SetupScene
   /// <summary>The step's <c>hit</c>, sixteenths across the aimed cell, as blocks from its corner; null when it names none.</summary>
   private static Vec3d? HitOf(SetupStep step) =>
     step.Body["hit"] is JArray point
-      ? new Vec3d((double)point[0] / 16, (double)point[1] / 16, (double)point[2] / 16)
+      ? new Vec3d(
+        (double)point[0] / 16,
+        (double)point[1] / 16,
+        (double)point[2] / 16
+      )
       : null;
 
   /// <summary>The <c>takeoff</c> step: the player takes the fixed piece off with its tool in the
@@ -279,7 +283,9 @@ public sealed partial class SetupScene
   {
     BlockPos at = At(step, "at");
     Vec3d? hit = HitOf(step);
-    Block block = World.GetBlock(HandFitAim.PrincipalOf(World.World.BlockAccessor, at));
+    Block block = World.GetBlock(
+      HandFitAim.PrincipalOf(World.World.BlockAccessor, at)
+    );
     HandAssemblySpec spec =
       HandAssemblySpec.Of(block)
       ?? throw Fail(
@@ -489,11 +495,19 @@ public sealed partial class SetupScene
   }
 
   private void Supply(string where, HandAssemblySpec spec, int cost) =>
-    SupplyItem(where, spec.Fastener, cost - ExCarried.Count(Player.Player, spec.Fastener));
+    SupplyItem(
+      where,
+      spec.Fastener,
+      cost - ExCarried.Count(Player.Player, spec.Fastener)
+    );
 
   /// <summary>Puts into the pack what a fit's companion needs beyond what is carried, counting the held
   /// item when the companion's code matches it.</summary>
-  private void SupplyCompanion(string where, HandFitCompanion companion, ItemStack held)
+  private void SupplyCompanion(
+    string where,
+    HandFitCompanion companion,
+    ItemStack held
+  )
   {
     if (companion.Code.Contains('*'))
       throw Fail(
@@ -503,7 +517,11 @@ public sealed partial class SetupScene
     int need =
       companion.Count
       + (companion.Code == held.Collectible.Code.ToString() ? 1 : 0);
-    SupplyItem(where, companion.Code, need - ExCarried.Count(Player.Player, companion.Code));
+    SupplyItem(
+      where,
+      companion.Code,
+      need - ExCarried.Count(Player.Player, companion.Code)
+    );
   }
 
   private void SupplyItem(string where, string code, int missing)

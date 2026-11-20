@@ -417,11 +417,7 @@ public class SetupAssemblyStepTests {
           new BlockPos(0, 0, 0),
           world.World.GetBlock(new AssetLocation("setupfitpost:fitcell"))
         );
-        world.PlaceFiller(
-          new BlockPos(1, 0, 0),
-          null,
-          new BlockPos(0, 0, 0)
-        );
+        world.PlaceFiller(new BlockPos(1, 0, 0), null, new BlockPos(0, 0, 0));
       },
       world => {
         world.RegisterClass("SetupFitPost", typeof(SetupFitPost));

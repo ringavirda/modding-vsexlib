@@ -377,7 +377,10 @@ internal static class HandAssemblyPlay {
       return;
     Item item =
       world.GetItem(new AssetLocation(code))
-      ?? throw new StepFailure($"{code} is not a loaded item.", Suspect.Scenario);
+      ?? throw new StepFailure(
+        $"{code} is not a loaded item.",
+        Suspect.Scenario
+      );
     if (ctx.Pack is { DrawsBlocks: true })
       PackLedger.Draw(ctx, code, missing);
     else if (ctx.Granted.Add(code))

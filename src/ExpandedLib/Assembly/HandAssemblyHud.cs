@@ -97,7 +97,9 @@ internal static class HandAssemblyHud {
     var line = new StringBuilder(get(ExlibLang.HandassemblyHudFit, [made]));
     if (companions is { Count: > 0 })
       line.Append(" | ")
-        .Append(get(ExlibLang.HandassemblyHudCompanions, [Stacks(get, companions)]));
+        .Append(
+          get(ExlibLang.HandassemblyHudCompanions, [Stacks(get, companions)])
+        );
     if (cost > 0)
       line.Append(" | ")
         .Append(get(ExlibLang.HandassemblyHudCost, [cost, fastener, carried]));

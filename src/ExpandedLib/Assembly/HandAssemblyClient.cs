@@ -253,9 +253,8 @@ internal sealed class HandAssemblyClient : IRenderer {
     Vec3d camera = entity.CameraPos;
     if (_control.FitCell is { } aim) {
       ItemStack? held = Player?.InventoryManager.ActiveHotbarSlot.Itemstack;
-      IReadOnlyList<HandFitMesh>? meshes = held == null
-        ? null
-        : HandAssemblyFitGhost.Of(_capi, aim, held);
+      IReadOnlyList<HandFitMesh>? meshes =
+        held == null ? null : HandAssemblyFitGhost.Of(_capi, aim, held);
       DrawCellFit(camera, aim, meshes);
       return;
     }
@@ -313,7 +312,9 @@ internal sealed class HandAssemblyClient : IRenderer {
           at.Z - camera.Z + part.Place.Z
         );
       }
-      foreach (MeshData stale in _fitMeshes.Keys.Where(k => !used.Contains(k)).ToList()) {
+      foreach (
+        MeshData stale in _fitMeshes.Keys.Where(k => !used.Contains(k)).ToList()
+      ) {
         _fitMeshes[stale].Dispose();
         _fitMeshes.Remove(stale);
       }

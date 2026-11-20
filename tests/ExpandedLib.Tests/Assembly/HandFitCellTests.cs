@@ -308,7 +308,10 @@ public class HandFitCellTests {
     ) {
       PlannedAt = at;
       failureCode = null;
-      return new HandFitPlan([new HandFitCompanion(CompanionCode, CompanionCount)], 2);
+      return new HandFitPlan(
+        [new HandFitCompanion(CompanionCode, CompanionCount)],
+        2
+      );
     }
 
     public IReadOnlyList<HandFitMesh>? Ghost(
@@ -340,10 +343,10 @@ public class HandFitCellTests {
     ) =>
       Fitted
         ? new HandFitRemoval(
-            [new ItemStack(shaft, 1), new ItemStack(washer, 2)],
-            2,
-            RemovalTool
-          )
+          [new ItemStack(shaft, 1), new ItemStack(washer, 2)],
+          2,
+          RemovalTool
+        )
         : null;
 
     public bool TakeOff(
