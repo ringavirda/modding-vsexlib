@@ -6,6 +6,7 @@ using ExpandedLib.Scenarios;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using Vintagestory.API.Common;
+using Vintagestory.API.MathTools;
 
 namespace ExpandedLib.Testing.Live;
 
@@ -14,6 +15,18 @@ namespace ExpandedLib.Testing.Live;
 internal static class StepValues {
   private const BindingFlags Instance =
     BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic;
+
+  /// <summary>A step's <c>hit</c> in sixteenths as blocks from the corner of the aimed cell.</summary>
+  /// <param name="hit">The step's <c>hit</c> value; null for none.</param>
+  /// <returns>The point, or null when the step names none.</returns>
+  public static Vec3d? Hit(JToken? hit) =>
+    hit is JArray cell
+      ? new Vec3d(
+        (double)cell[0] / 16,
+        (double)cell[1] / 16,
+        (double)cell[2] / 16
+      )
+      : null;
 
   /// <summary>A stack of <paramref name="count"/> of the item or block with
   /// <paramref name="code"/>, holding <paramref name="litres"/> of the liquid item

@@ -8,6 +8,7 @@ using ExpandedLib.Networks;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.MathTools;
+using Vintagestory.API.Util;
 
 namespace ExpandedLib.Assembling;
 
@@ -24,6 +25,9 @@ internal sealed class HandAssemblyControl {
 
   private IReadOnlyList<AssemblyCandidate> _candidates = [];
   private BlockPos? _takeOff;
+  private Vec3d _hit = new(0.5, 0.5, 0.5);
+  private HandFitRemoval? _fitRemoval;
+  private HandAssemblySpec? _takeOffSpec;
   private string _capCode = "";
   private string _fitCode = "";
   private string _target = "";
@@ -62,6 +66,23 @@ internal sealed class HandAssemblyControl {
     if (_takeOff == null || player == null)
       return null;
     IBlockAccessor accessor = world.BlockAccessor;
+    if (_fitRemoval is { Parts.Count: > 0 } removal) {
+      var returns = HandAssemblyServer.Grouped(removal.Parts.Skip(1)).ToList();
+      if (removal.Fasteners > 0 && _takeOffSpec != null)
+        returns.Add(
+          (
+            HandAssemblyServer.FastenerName(world, _takeOffSpec.Fastener),
+            removal.Fasteners
+          )
+        );
+      return HandAssemblyHud.TakeOffLine(
+        get,
+        removal.Parts[0].GetName(),
+        returns,
+        false,
+        HandAssemblyGate.IsCreative(player)
+      );
+    }
     (IReadOnlyList<ItemStack> stacks, bool anyFree) =
       HandAssemblyServer.TakeOffReturns(accessor, _takeOff);
     return HandAssemblyHud.TakeOffLine(
@@ -85,7 +106,10 @@ internal sealed class HandAssemblyControl {
   /// <summary>The placed block the item in the main hand is aimed at and fits onto; null otherwise.</summary>
   public BlockPos? FitAt { get; private set; }
 
-  /// <summary>The block the aimed fit would make; null when no fit is aimed.</summary>
+  /// <summary>What the aimed fit onto a cell target costs besides the held item; null when no such fit is aimed.</summary>
+  internal HandFitAim.Cell? FitCell { get; private set; }
+
+  /// <summary>The block the aimed fit would make; null when no fit is aimed, or the fit is onto an <see cref="IHandFitCellTarget"/>, which makes none.</summary>
   public Block? FitBlock { get; private set; }
 
   /// <summary>The aimed block's assembly spec while a fit is aimed; null otherwise.</summary>
@@ -133,6 +157,9 @@ internal sealed class HandAssemblyControl {
     FitAt = null;
     FitBlock = null;
     FitSpec = null;
+    FitCell = null;
+    _fitRemoval = null;
+    _takeOffSpec = null;
     Refusal = null;
     _candidates = [];
     if (player?.Entity == null)
@@ -140,6 +167,7 @@ internal sealed class HandAssemblyControl {
 
     IBlockAccessor accessor = world.BlockAccessor;
     ItemSlot main = player.InventoryManager.ActiveHotbarSlot;
+    _hit = selection?.HitPosition?.Clone() ?? new Vec3d(0.5, 0.5, 0.5);
     _slot = player.InventoryManager.ActiveHotbarSlotNumber;
 
     if (
@@ -170,7 +198,10 @@ internal sealed class HandAssemblyControl {
     } else if (selection != null && AimCap(world, main, selection)) {
       _target = $"{CapKey}|{CapAt}|{CapFace!.Code}";
     } else if (selection != null && AimFit(world, main, selection)) {
-      _target = $"{FitKey}|{FitAt}";
+      _target = $"{FitKey}|{FitAt}|{_hit.X:0.0}|{_hit.Y:0.0}|{_hit.Z:0.0}";
+    } else if (selection != null && AimFitTakeOff(world, main, selection)) {
+      _target =
+        $"{TakeOffKey}|{_takeOff}|{_hit.X:0.0}|{_hit.Y:0.0}|{_hit.Z:0.0}";
     } else if (
         selection != null
         && HandAssemblySpec.Of(accessor.GetBlock(selection.Position)) is { } aimed
@@ -187,7 +218,7 @@ internal sealed class HandAssemblyControl {
     );
     Short =
       CapFace != null ? IsCapShort(player)
-      : FitAt != null ? IsFitShort(player)
+      : FitAt != null ? IsFitShort(world, player)
       : Spec != null && Shown is { } shown && IsShort(player, shown);
   }
 
@@ -214,7 +245,12 @@ internal sealed class HandAssemblyControl {
         SendFix(world, player);
     } else if (FitAt != null) {
       if (!sneak && !HandAssemblyGate.IsCreative(player)) {
-        if (!HandAssemblyServer.HoldsTool(player.Entity.LeftHandItemSlot, FitSpec!.Tool))
+        if (
+          !HandAssemblyServer.HoldsTool(
+            player.Entity.LeftHandItemSlot,
+            FitSpec!.Tool
+          )
+        )
           ShowFitRefusal(world, player);
         else
           return false;
@@ -262,6 +298,18 @@ internal sealed class HandAssemblyControl {
     IBlockAccessor accessor = world.BlockAccessor;
     BlockPos pos = selection.Position;
     if (
+      main.Itemstack?.Collectible != null
+      && HandFitAim.OfCell(accessor, pos, _hit, main.Itemstack, out _)
+        is { } cell
+      && HandAssemblySpec.Of(cell.PrincipalBlock) is { } cellSpec
+    ) {
+      FitAt = pos.Copy();
+      FitCell = cell;
+      FitSpec = cellSpec;
+      _fitCode = main.Itemstack.Collectible.Code.ToString();
+      return true;
+    }
+    if (
       main.Itemstack?.Collectible == null
       || HandFitAim.Of(accessor, pos, main.Itemstack, out _) is not { } aim
       || HandAssemblySpec.Of(accessor.GetBlock(pos)) is not { } spec
@@ -274,6 +322,28 @@ internal sealed class HandAssemblyControl {
     return true;
   }
 
+  private bool AimFitTakeOff(
+    IWorldAccessor world,
+    ItemSlot main,
+    BlockSelection selection
+  ) {
+    IBlockAccessor accessor = world.BlockAccessor;
+    BlockPos pos = selection.Position;
+    BlockPos principal = HandFitAim.PrincipalOf(accessor, pos);
+    if (
+      accessor.GetBlock(principal) is not IHandFitCellTarget target
+      || HandAssemblySpec.Of(accessor.GetBlock(principal)) is not { } spec
+      || target.FittedAt(accessor, principal, new HandFitPoint(pos, _hit))
+        is not { } removal
+      || !HandAssemblyServer.HoldsTool(main, removal.Tool ?? spec.Tool)
+    )
+      return false;
+    _takeOff = pos.Copy();
+    _fitRemoval = removal;
+    _takeOffSpec = spec;
+    return true;
+  }
+
   private void SendFit(IWorldAccessor world, IPlayer player) {
     if (Short) {
       ShowFitRefusal(world, player);
@@ -283,34 +353,61 @@ internal sealed class HandAssemblyControl {
   }
 
   private void ShowFitRefusal(IWorldAccessor world, IPlayer player) {
+    if (FitShortfall(world, player) is { } short_)
+      _refuse(short_.Code, short_.Args);
+  }
+
+  private bool IsFitShort(IWorldAccessor world, IPlayer player) =>
+    FitShortfall(world, player) != null;
+
+  // The first thing the aimed fit lacks, in the order the server checks it: the tool, the companions, the fasteners.
+  private (string Code, string[] Args)? FitShortfall(
+    IWorldAccessor world,
+    IPlayer player
+  ) {
+    if (HandAssemblyGate.IsCreative(player))
+      return null;
     HandAssemblySpec spec = FitSpec!;
     if (
       !HandAssemblyServer.HoldsTool(player.Entity.LeftHandItemSlot, spec.Tool)
     )
-      _refuse(
+      return (
         HandAssemblyServer.NeedsTool,
         [HandAssemblyServer.ToolNoun(world, spec.Tool)]
       );
-    else
-      _refuse(
+    if (FitCell is { } cell) {
+      foreach (
+        HandFitCompanion companion in cell
+          .Plan.Companions.GroupBy(c => c.Code)
+          .Select(g => new HandFitCompanion(g.Key, g.Sum(c => c.Count)))
+      ) {
+        int needed =
+          companion.Count
+          + (WildcardUtil.Match(companion.Code, _fitCode) ? 1 : 0);
+        int carried = ExCarried.Count(player, companion.Code);
+        if (carried < needed)
+          return (
+            HandAssemblyServer.NeedsCompanion,
+            [
+              needed.ToString(),
+              HandAssemblyServer.ItemName(world, companion.Code, null),
+              carried.ToString(),
+            ]
+          );
+      }
+    }
+    int cost = FitCell?.Plan.Fasteners ?? spec.PerFit;
+    int have = ExCarried.Count(player, spec.Fastener);
+    return have < cost
+      ? (
         HandAssemblyServer.NeedsFasteners,
         [
-          spec.PerFit.ToString(),
+          cost.ToString(),
           HandAssemblyServer.FastenerName(world, spec.Fastener),
-          ExCarried.Count(player, spec.Fastener).ToString(),
+          have.ToString(),
         ]
-      );
-  }
-
-  private bool IsFitShort(IPlayer player) {
-    if (HandAssemblyGate.IsCreative(player))
-      return false;
-    HandAssemblySpec spec = FitSpec!;
-    return !HandAssemblyServer.HoldsTool(
-        player.Entity.LeftHandItemSlot,
-        spec.Tool
       )
-      || ExCarried.Count(player, spec.Fastener) < spec.PerFit;
+      : null;
   }
 
   private bool AimCap(
@@ -430,6 +527,9 @@ internal sealed class HandAssemblyControl {
           Y = _takeOff.Y,
           Z = _takeOff.Z,
           Dimension = _takeOff.dimension,
+          HitX = _hit.X,
+          HitY = _hit.Y,
+          HitZ = _hit.Z,
         }
       );
       return;
@@ -443,6 +543,9 @@ internal sealed class HandAssemblyControl {
           Dimension = FitAt.dimension,
           Slot = _slot,
           ItemCode = _fitCode,
+          HitX = _hit.X,
+          HitY = _hit.Y,
+          HitZ = _hit.Z,
         }
       );
       return;

@@ -116,15 +116,28 @@ internal static class HandAssemblyPlay {
     ScenarioContext ctx,
     IWorldAccessor world,
     IPlayer player,
-    BlockPos at
+    BlockPos at,
+    Vec3d? hit = null
   ) {
-    Block block = world.BlockAccessor.GetBlock(at);
+    IBlockAccessor accessor = world.BlockAccessor;
+    BlockPos principal = HandFitAim.PrincipalOf(accessor, at);
+    Block block = accessor.GetBlock(principal);
     HandAssemblySpec spec =
       HandAssemblySpec.Of(block)
       ?? throw new StepFailure(
         $"{block.Code} does not declare handAssembly, so nothing takes it off.",
         Suspect.Scenario
       );
+    if (
+      block is IHandFitCellTarget target
+      && target.FittedAt(
+        accessor,
+        principal,
+        new HandFitPoint(at, hit ?? new Vec3d(0.5, 0.5, 0.5))
+      )
+        is { Tool: { } tool }
+    )
+      spec = spec with { Tool = tool };
     ItemSlot slot = player.InventoryManager.ActiveHotbarSlot;
     Dictionary<string, int> before = ExCarried.Totals(player);
     slot.Itemstack = PackLedger.Tool(
@@ -143,6 +156,9 @@ internal static class HandAssemblyPlay {
           Y = at.Y,
           Z = at.Z,
           Dimension = at.dimension,
+          HitX = hit?.X ?? 0.5,
+          HitY = hit?.Y ?? 0.5,
+          HitZ = hit?.Z ?? 0.5,
         }
       );
     } finally {
@@ -248,9 +264,11 @@ internal static class HandAssemblyPlay {
     IWorldAccessor world,
     IPlayer player,
     BlockPos at,
-    string itemCode
+    string itemCode,
+    Vec3d? hit = null
   ) {
-    Block block = world.BlockAccessor.GetBlock(at);
+    BlockPos principal = HandFitAim.PrincipalOf(world.BlockAccessor, at);
+    Block block = world.BlockAccessor.GetBlock(principal);
     HandAssemblySpec spec =
       HandAssemblySpec.Of(block)
       ?? throw new StepFailure(
@@ -262,7 +280,12 @@ internal static class HandAssemblyPlay {
     string label = $"hand assembly fit onto {block.Code}";
     slot.Itemstack = PackLedger.Tool(ctx, label, itemCode);
     LiveOffHand.Put(offhand, PackLedger.Tool(ctx, label, spec.Tool));
-    Supply(ctx, world, player, spec, spec.PerFit);
+    HandFitPlan? plan = HandFitAim
+      .OfCell(world.BlockAccessor, at, hit, slot.Itemstack, out _)
+      ?.Plan;
+    Supply(ctx, world, player, spec, plan?.Fasteners ?? spec.PerFit);
+    foreach (HandFitCompanion companion in plan?.Companions ?? [])
+      SupplyCompanion(ctx, world, player, companion, slot.Itemstack);
     Dictionary<string, int> before = ExCarried.Totals(player);
     bool sneaking = player.Entity.Controls.Sneak;
     player.Entity.Controls.Sneak = true;
@@ -277,6 +300,9 @@ internal static class HandAssemblyPlay {
           Dimension = at.dimension,
           Slot = player.InventoryManager.ActiveHotbarSlotNumber,
           ItemCode = slot.Itemstack.Collectible.Code.ToString(),
+          HitX = hit?.X ?? 0.5,
+          HitY = hit?.Y ?? 0.5,
+          HitZ = hit?.Z ?? 0.5,
         }
       );
     } finally {
@@ -307,28 +333,66 @@ internal static class HandAssemblyPlay {
     IPlayer player,
     HandAssemblySpec spec,
     int cost
+  ) =>
+    SupplyItem(
+      ctx,
+      world,
+      player,
+      spec.Fastener,
+      cost - ExCarried.Count(player, spec.Fastener)
+    );
+
+  private static void SupplyCompanion(
+    ScenarioContext ctx,
+    IWorldAccessor world,
+    IPlayer player,
+    HandFitCompanion companion,
+    ItemStack held
   ) {
-    int missing = cost - ExCarried.Count(player, spec.Fastener);
+    if (companion.Code.Contains('*'))
+      throw new StepFailure(
+        $"the fit's companion {companion.Code} is a wildcard; a setup can supply only a named item.",
+        Suspect.Scenario
+      );
+    int need =
+      companion.Count
+      + (companion.Code == held.Collectible.Code.ToString() ? 1 : 0);
+    SupplyItem(
+      ctx,
+      world,
+      player,
+      companion.Code,
+      need - ExCarried.Count(player, companion.Code)
+    );
+  }
+
+  private static void SupplyItem(
+    ScenarioContext ctx,
+    IWorldAccessor world,
+    IPlayer player,
+    string code,
+    int missing
+  ) {
     if (missing <= 0)
       return;
-    Item fastener =
-      world.GetItem(new AssetLocation(spec.Fastener))
+    Item item =
+      world.GetItem(new AssetLocation(code))
       ?? throw new StepFailure(
-        $"the fastener {spec.Fastener} is not a loaded item.",
+        $"{code} is not a loaded item.",
         Suspect.Scenario
       );
     if (ctx.Pack is { DrawsBlocks: true })
-      PackLedger.Draw(ctx, spec.Fastener, missing);
-    else if (ctx.Granted.Add(spec.Fastener))
-      ctx.Line($"granted {missing} {spec.Fastener} for hand assembly");
+      PackLedger.Draw(ctx, code, missing);
+    else if (ctx.Granted.Add(code))
+      ctx.Line($"granted {missing} {code} for hand assembly");
     if (
       !player.InventoryManager.TryGiveItemstack(
-        new ItemStack(fastener, missing),
+        new ItemStack(item, missing),
         true
       )
     )
       throw new StepFailure(
-        $"the player has no room for {missing} {spec.Fastener}.",
+        $"the player has no room for {missing} {code}.",
         Suspect.Scenario
       );
   }

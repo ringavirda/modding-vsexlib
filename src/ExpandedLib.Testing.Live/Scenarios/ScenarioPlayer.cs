@@ -438,12 +438,13 @@ internal sealed class ScenarioPlayer : IHandRelease {
   /// <param name="ctx">The running case, whose pack the tool comes from and the returns go to.</param>
   /// <param name="at">The absolute cell of the piece.</param>
   /// <returns>Null when the piece came off; otherwise the refusal's line.</returns>
-  public string? TakeOff(ScenarioContext ctx, BlockPos at) {
+  public string? TakeOff(ScenarioContext ctx, BlockPos at, Vec3d? hit = null) {
     ((IWorldPlayerData)_data).CurrentGameMode = EnumGameMode.Survival;
     _data.FreeMove = false;
     Face(at, BlockFacing.UP);
     try {
-      return HandAssemblyPlay.TakeOff(ctx, _server, Player, at) is { } refused
+      return
+        HandAssemblyPlay.TakeOff(ctx, _server, Player, at, hit) is { } refused
         ? HandAssemblyPlay.Describe(refused)
         : null;
     } finally {
@@ -494,7 +495,8 @@ internal sealed class ScenarioPlayer : IHandRelease {
     ScenarioContext ctx,
     BlockPos at,
     string itemCode,
-    out string? code
+    out string? code,
+    Vec3d? hit = null
   ) {
     ((IWorldPlayerData)_data).CurrentGameMode = EnumGameMode.Survival;
     _data.FreeMove = false;
@@ -505,7 +507,8 @@ internal sealed class ScenarioPlayer : IHandRelease {
         _server,
         Player,
         at,
-        itemCode
+        itemCode,
+        hit
       );
       code = refused?.Code;
       return refused == null ? null : HandAssemblyPlay.Describe(refused);

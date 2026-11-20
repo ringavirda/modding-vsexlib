@@ -17,6 +17,7 @@ internal sealed class HandAssemblyClient : IRenderer {
   private readonly HandAssemblyControl _control;
   private readonly HandAssemblyHudDialog _hud;
   private readonly HandAssemblyCapGhost _capGhost = new();
+  private readonly Dictionary<MeshData, MeshRef> _fitMeshes = [];
   private readonly Matrixf _model = new();
 
   private bool _hudShown;
@@ -118,13 +119,21 @@ internal sealed class HandAssemblyClient : IRenderer {
 
   private void RebuildFit() {
     HandAssemblySpec spec = _control.FitSpec!;
+    ItemStack? held = Player?.InventoryManager.ActiveHotbarSlot.Itemstack;
+    HandFitPlan? plan = _control.FitCell?.Plan;
     ShowHud(
       HandAssemblyHud.FitLine(
         (key, args) => Lang.Get(key, args),
-        new ItemStack(_control.FitBlock!).GetName(),
-        spec.PerFit,
+        plan != null
+          ? held?.GetName() ?? ""
+          : new ItemStack(_control.FitBlock!).GetName(),
+        plan?.Fasteners ?? spec.PerFit,
         HandAssemblyServer.FastenerName(_capi.World, spec.Fastener),
-        ExCarried.Count(Player!, spec.Fastener)
+        ExCarried.Count(Player!, spec.Fastener),
+        plan?.Companions.Select(c =>
+            (HandAssemblyServer.ItemName(_capi.World, c.Code, null), c.Count)
+          )
+          .ToList()
       )
     );
   }
@@ -239,9 +248,18 @@ internal sealed class HandAssemblyClient : IRenderer {
   }
 
   private void DrawFitGhost(EntityPlayer entity) {
-    if (_control.FitAt is not { } cell || _control.FitBlock is not { } made)
+    if (_control.FitAt is not { } cell)
       return;
     Vec3d camera = entity.CameraPos;
+    if (_control.FitCell is { } aim) {
+      ItemStack? held = Player?.InventoryManager.ActiveHotbarSlot.Itemstack;
+      IReadOnlyList<HandFitMesh>? meshes =
+        held == null ? null : HandAssemblyFitGhost.Of(_capi, aim, held);
+      DrawCellFit(camera, aim, meshes);
+      return;
+    }
+    if (_control.FitBlock is not { } made)
+      return;
     IShaderProgram? previous = _capi.Render.CurrentActiveShader;
     previous?.Stop();
     IStandardShaderProgram shader = Begin(cell);
@@ -253,6 +271,54 @@ internal sealed class HandAssemblyClient : IRenderer {
       cell.Y - camera.Y,
       cell.Z - camera.Z
     );
+    shader.Stop();
+    previous?.Use();
+  }
+
+  private void DrawCellFit(
+    Vec3d camera,
+    HandFitAim.Cell aim,
+    IReadOnlyList<HandFitMesh>? meshes
+  ) {
+    BlockPos at = aim.Principal;
+    int color = GhostColor(
+      aim.PrincipalBlock.GetColor(_capi, at),
+      _control.Short
+    );
+    IShaderProgram? previous = _capi.Render.CurrentActiveShader;
+    previous?.Stop();
+    IStandardShaderProgram shader = Begin(at);
+    if (meshes == null)
+      DrawProjected(
+        shader,
+        _capi.TesselatorManager.GetDefaultBlockMeshRef(aim.PrincipalBlock),
+        color,
+        at.X - camera.X,
+        at.Y - camera.Y,
+        at.Z - camera.Z
+      );
+    else {
+      var used = new HashSet<MeshData>();
+      foreach (HandFitMesh part in meshes) {
+        used.Add(part.Mesh);
+        if (!_fitMeshes.TryGetValue(part.Mesh, out MeshRef? uploaded))
+          _fitMeshes[part.Mesh] = uploaded = _capi.Render.UploadMesh(part.Mesh);
+        DrawProjected(
+          shader,
+          [uploaded],
+          color,
+          at.X - camera.X + part.Place.X,
+          at.Y - camera.Y + part.Place.Y,
+          at.Z - camera.Z + part.Place.Z
+        );
+      }
+      foreach (
+        MeshData stale in _fitMeshes.Keys.Where(k => !used.Contains(k)).ToList()
+      ) {
+        _fitMeshes[stale].Dispose();
+        _fitMeshes.Remove(stale);
+      }
+    }
     shader.Stop();
     previous?.Use();
   }
@@ -292,6 +358,15 @@ internal sealed class HandAssemblyClient : IRenderer {
     double x,
     double y,
     double z
+  ) => DrawProjected(shader, mesh.meshrefs, color, x, y, z);
+
+  private void DrawProjected(
+    IStandardShaderProgram shader,
+    IEnumerable<MeshRef> meshes,
+    int color,
+    double x,
+    double y,
+    double z
   ) {
     IRenderAPI render = _capi.Render;
     shader.NormalShaded = 1;
@@ -299,7 +374,7 @@ internal sealed class HandAssemblyClient : IRenderer {
     shader.ModelMatrix = _model.Identity().Translate(x, y, z).Values;
     render.GlToggleBlend(true);
     render.GLDepthMask(false);
-    foreach (MeshRef part in mesh.meshrefs) {
+    foreach (MeshRef part in meshes) {
       shader.BindTexture2D("tex", White().TextureId, 0);
       render.RenderMesh(part);
     }
@@ -371,6 +446,9 @@ internal sealed class HandAssemblyClient : IRenderer {
       ring?.Dispose();
     _white?.Dispose();
     _capGhost.Dispose();
+    foreach (MeshRef uploaded in _fitMeshes.Values)
+      uploaded.Dispose();
+    _fitMeshes.Clear();
     _hud.Dispose();
   }
 }

@@ -38,7 +38,8 @@ internal sealed class FitStep : ScenarioStep {
       ctx,
       ctx.Setup.Absolute(local),
       item,
-      out string? code
+      out string? code,
+      StepValues.Hit(o["hit"])
     );
     ctx.Touched.Add(local.Copy());
     string? fails = (string?)o["fails"];
@@ -61,7 +62,6 @@ internal sealed class FitStep : ScenarioStep {
         $"the player could not fit {item} onto {was} at {FailureDetail.Cell(local)}: {failure}.",
         Suspect.Mod
       );
-    report.Value =
-      $"{item} onto {was} at plot {FailureDetail.Cell(local)}";
+    report.Value = $"{item} onto {was} at plot {FailureDetail.Cell(local)}";
   }
 }
