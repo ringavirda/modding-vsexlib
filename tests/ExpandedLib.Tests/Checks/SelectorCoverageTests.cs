@@ -68,4 +68,25 @@ public class SelectorCoverageTests {
       Assert.Empty(groupBy);
     }
   }
+
+  [Fact]
+  public void A_variant_a_skipVariants_wildcard_drops_needs_no_shape_pattern() {
+    var files = new PlantedFiles();
+    string path = files.Write(
+      "goldens/exlib/blocktypes/lamp.json",
+      """
+      {
+        "code": "lamp",
+        "variantgroups": [{ "code": "color", "states": ["red", "blue"] }],
+        "skipVariants": ["*-blue"],
+        "shapeByType": { "*-red": { "base": "exlib:block/empty" } }
+      }
+      """
+    );
+    using (files) {
+      var (shapeByType, _) = SelectorCoverage.Check(path);
+
+      Assert.Empty(shapeByType);
+    }
+  }
 }

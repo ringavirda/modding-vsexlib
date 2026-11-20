@@ -146,7 +146,8 @@ public static class SelectorCoverage {
     return i >= 0 && i + 1 < parts.Length ? parts[i + 1] : "";
   }
 
-  /// <summary>Every full block code the definition's variant groups produce.</summary>
+  /// <summary>Every full block code the definition's variant groups produce, less the codes its
+  /// <c>skipVariants</c> wildcards match, which the loader never registers.</summary>
   private static IEnumerable<string> BlockCodes(JsonElement root) {
     string code = root.TryGetProperty("code", out JsonElement c)
       ? c.GetString() ?? ""
@@ -169,8 +170,15 @@ public static class SelectorCoverage {
     IEnumerable<string> codes = [code];
     foreach (string[] axis in axes)
       codes = codes.SelectMany(prefix => axis.Select(v => prefix + "-" + v));
+    var skips = new List<string>();
+    if (
+      root.TryGetProperty("skipVariants", out JsonElement skipped)
+      && skipped.ValueKind == JsonValueKind.Array
+    )
+      skips.AddRange(skipped.EnumerateArray().Select(s => s.GetString() ?? ""));
     foreach (string full in codes)
-      yield return full;
+      if (!skips.Any(skip => WildcardUtil.Match(skip, full)))
+        yield return full;
   }
 
   private static JsonDocument Parse(string repoRelativePath) =>
