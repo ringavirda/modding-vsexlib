@@ -22,7 +22,10 @@ internal static class HandFitAim {
   ) {
     failureCode = null;
     Block block = accessor.GetBlock(pos);
-    if (block.Replaceable >= ReplaceableFrom || block is not IHandFitTarget target)
+    if (
+      block.Replaceable >= ReplaceableFrom
+      || block is not IHandFitTarget target
+    )
       return null;
     Block? result = target.FitResult(accessor, pos, held, out failureCode);
     return result == null ? null : (target, result);

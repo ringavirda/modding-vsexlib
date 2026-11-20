@@ -87,12 +87,7 @@ public class BlockBehaviorHandAssembly : BlockBehavior {
     if (
       Spec is not { } spec
       || forPlayer.InventoryManager.ActiveHotbarSlot.Itemstack is not { } held
-      || HandFitAim.Of(
-        world.BlockAccessor,
-        selection.Position,
-        held,
-        out _
-      )
+      || HandFitAim.Of(world.BlockAccessor, selection.Position, held, out _)
         is null
     )
       return [];

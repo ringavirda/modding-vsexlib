@@ -125,7 +125,9 @@ public class HandAssemblyDefTests {
     };
     var plain = new Block {
       Attributes = new JsonObject(
-        JToken.Parse("""{"handAssembly":{"tool":"t","fastener":"f","perJoint":1}}""")
+        JToken.Parse(
+          """{"handAssembly":{"tool":"t","fastener":"f","perJoint":1}}"""
+        )
       ),
     };
 

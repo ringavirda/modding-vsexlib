@@ -121,7 +121,10 @@ public class HandAssemblyFitTests {
       Cell
     );
 
-    Assert.Equal(2, stacks.Where(s => s.Collectible == scene.Bolt).Sum(s => s.StackSize));
+    Assert.Equal(
+      2,
+      stacks.Where(s => s.Collectible == scene.Bolt).Sum(s => s.StackSize)
+    );
   }
 
   // Fails when creative spends the fasteners, wears the tool, asks for it, or records a spend.

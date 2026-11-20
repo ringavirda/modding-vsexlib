@@ -214,7 +214,12 @@ internal sealed class HandAssemblyControl {
         SendFix(world, player);
     } else if (FitAt != null) {
       if (!sneak && !HandAssemblyGate.IsCreative(player)) {
-        if (!HandAssemblyServer.HoldsTool(player.Entity.LeftHandItemSlot, FitSpec!.Tool))
+        if (
+          !HandAssemblyServer.HoldsTool(
+            player.Entity.LeftHandItemSlot,
+            FitSpec!.Tool
+          )
+        )
           ShowFitRefusal(world, player);
         else
           return false;
