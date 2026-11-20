@@ -356,7 +356,8 @@ public sealed partial class SetupScene
   /// <see cref="HandAssemblyServer.Fix"/> as the client's packet would: the part in the main hand,
   /// the tool in the off hand, the fasteners of the chosen candidate in the pack's draw or granted.
   /// The hands are empty afterwards.</summary>
-  /// <returns>Null when the part was fixed; otherwise the server's refusal, or one with code
+  /// <returns>Null when the part was fixed; otherwise the server's refusal, the part's own refusal when it
+  /// filtered every placement (<see cref="HandAssemblyCandidates.EmptyRefusal"/>), or one with code
   /// <see cref="AssemblyPick.NoCandidate"/> when the pick leaves no candidate.</returns>
   private AssemblyResult? Assemble(
     string where,
@@ -383,17 +384,29 @@ public sealed partial class SetupScene
         0.5 + 0.5 * face.Normali.Y,
         0.5 + 0.5 * face.Normali.Z
       );
+      var selection = new BlockSelection
+      {
+        Position = aimed,
+        Face = face,
+        HitPosition = hit,
+      };
       IReadOnlyList<AssemblyCandidate> offered = HandAssemblyCandidates.Of(
         World.World,
         Player.Player,
         part,
-        new BlockSelection
-        {
-          Position = aimed,
-          Face = face,
-          HitPosition = hit,
-        }
+        selection
       );
+      if (
+        offered.Count == 0
+        && HandAssemblyCandidates.EmptyRefusal(
+          World.World,
+          Player.Player,
+          part,
+          selection
+        )
+          is { } named
+      )
+        return HandAssemblyServer.Refusal(named);
       if (pick.Choose(offered) is not { } chosen)
         return new AssemblyResult
         {

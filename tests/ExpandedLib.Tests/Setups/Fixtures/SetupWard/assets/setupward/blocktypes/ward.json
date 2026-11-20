@@ -1,0 +1,47 @@
+{
+  "code": "ward",
+  "class": "exlib.BlockPipe",
+  "entityClass": "exlib.BlockEntityPipe",
+  "variantgroups": [
+    {
+      "code": "type",
+      "states": [
+        "straight"
+      ]
+    },
+    {
+      "code": "orientation",
+      "states": [
+        "we"
+      ]
+    }
+  ],
+  "behaviors": [
+    {
+      "name": "HandAssembly"
+    },
+    {
+      "name": "ExOrientable",
+      "properties": {
+        "mode": "network",
+        "scheme": "Axis"
+      }
+    },
+    {
+      "name": "SetupAsmRefuseAll"
+    }
+  ],
+  "entityBehaviors": [
+    {
+      "name": "exlib.BEBehaviorAssembled"
+    }
+  ],
+  "attributes": {
+    "handAssembly": {
+      "tool": "setupasm:wrench",
+      "fastener": "setupasm:bolt",
+      "perJoint": 2,
+      "cap": "setupasm:cap"
+    }
+  }
+}
