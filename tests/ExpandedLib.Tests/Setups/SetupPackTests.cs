@@ -248,7 +248,10 @@ public class SetupPackTests
     SetupFileModel later = Inline(
       "{ \"scope\": \"all\", \"after\": { \"mod/setups/stage\": 1 } }"
     );
-    return SetupPack.Start(later, id => id == "mod/setups/stage" ? stage : null);
+    return SetupPack.Start(
+      later,
+      id => id == "mod/setups/stage" ? stage : null
+    );
   }
 
   // Fails when an entry with a cell is matched by its code alone, at another cell or at none.
@@ -301,18 +304,17 @@ public class SetupPackTests
       ("game:log-oak", new BlockPos(0, 0, 0)),
     ];
     InvalidOperationException error = Assert.Throws<InvalidOperationException>(
-      () => pack.CheckStanding(elsewhere)
+      () =>
+        pack.CheckStanding(elsewhere)
     );
     Assert.Equal(
       "the stage ends with no game:stone@1,2,3 standing.",
       error.Message
     );
-    pack.CheckStanding(
-      [
-        ("game:stone", new BlockPos(1, 2, 3)),
-        ("game:log-oak", new BlockPos(5, 5, 5)),
-      ]
-    );
+    pack.CheckStanding([
+      ("game:stone", new BlockPos(1, 2, 3)),
+      ("game:log-oak", new BlockPos(5, 5, 5)),
+    ]);
   }
 
   // Fails when the record drops a cell, or writes the entries in the order the blocks were found.
@@ -320,16 +322,11 @@ public class SetupPackTests
   public void The_record_lists_the_standing_blocks_as_cell_entries()
   {
     SetupPack pack = Standing();
-    SetupPackRecord record = pack.Record(
-      [
-        ("game:stone", new BlockPos(2, 0, 0)),
-        ("game:stone", new BlockPos(1, 2, 3)),
-      ]
-    );
-    Assert.Equal(
-      ["game:stone@1,2,3", "game:stone@2,0,0"],
-      record.StandingAt
-    );
+    SetupPackRecord record = pack.Record([
+      ("game:stone", new BlockPos(2, 0, 0)),
+      ("game:stone", new BlockPos(1, 2, 3)),
+    ]);
+    Assert.Equal(["game:stone@1,2,3", "game:stone@2,0,0"], record.StandingAt);
     Assert.Equal(2, record.Standing["game:stone"]);
   }
 

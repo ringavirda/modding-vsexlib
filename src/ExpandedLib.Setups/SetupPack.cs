@@ -235,7 +235,8 @@ internal sealed class SetupPack {
   /// <returns>True when a standing block was taken, so the place draws nothing; false when none
   /// matches.</returns>
   public bool TakeStanding(string code, BlockPos? cell = null) {
-    int index = cell == null ? -1 : _standing.FindIndex(p => Reads(p, code, cell));
+    int index =
+      cell == null ? -1 : _standing.FindIndex(p => Reads(p, code, cell));
     if (index < 0)
       index = _standing.FindIndex(p => Reads(p, code, null));
     if (index < 0)
@@ -250,7 +251,8 @@ internal sealed class SetupPack {
   // reads.
   private static bool Reads(string entry, string code, BlockPos? cell) {
     (string key, (int X, int Y, int Z)? at) = Split(entry);
-    bool cellMatches = cell == null ? at == null : at == (cell.X, cell.Y, cell.Z);
+    bool cellMatches =
+      cell == null ? at == null : at == (cell.X, cell.Y, cell.Z);
     return cellMatches && Matches(key, code);
   }
 
