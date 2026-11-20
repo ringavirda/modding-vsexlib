@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
 using System.Text.RegularExpressions;
 using ExpandedLib.Machines;
@@ -9,12 +10,15 @@ using Vintagestory.API.Util;
 namespace ExpandedLib.Scenarios;
 
 /// <summary>What a run did with its pack, as the recording's <c>pack</c> section keeps it: the stacks
-/// it started with, the stacks left, the blocks standing and every draw in the order made.</summary>
+/// it started with, the stacks left, the blocks standing and every draw in the order made.
+/// <c>StandingAt</c> lists the standing blocks as <c>code@x,y,z</c> entries, the form
+/// <c>ends.standing</c> reads; null reads as none.</summary>
 internal sealed record SetupPackRecord(
   IReadOnlyDictionary<string, int> Start,
   IReadOnlyDictionary<string, int> End,
   IReadOnlyDictionary<string, int> Standing,
-  IReadOnlyList<(string Where, string Code, int Count)> Draws
+  IReadOnlyList<(string Where, string Code, int Count)> Draws,
+  IReadOnlyList<string>? StandingAt = null
 );
 
 /// <summary>
@@ -23,6 +27,11 @@ internal sealed record SetupPackRecord(
 /// drawn code holding a <c>*</c> draws from one key that covers its whole count.
 /// </summary>
 internal sealed class SetupPack {
+  private static readonly Regex CellEntry = new(
+    @"^(?<code>.+)@(?<x>-?\d+),(?<y>-?\d+),(?<z>-?\d+)$",
+    RegexOptions.Compiled
+  );
+
   private readonly SetupPackSpec _spec;
   private readonly Dictionary<string, int> _held = [];
   private readonly List<string> _standing = [];
@@ -190,16 +199,23 @@ internal sealed class SetupPack {
   }
 
   /// <summary>What the run did with the pack, for the recording.</summary>
-  /// <param name="standing">The codes of the blocks standing at the end of the run, one per
-  /// block.</param>
-  public SetupPackRecord Record(IEnumerable<string> standing) =>
+  /// <param name="standing">The blocks standing at the end of the run, one per block: its code and
+  /// its plot-local cell.</param>
+  public SetupPackRecord Record(
+    IReadOnlyCollection<(string Code, BlockPos Cell)> standing
+  ) =>
     new(
       _start,
       Snapshot(),
       standing
-        .GroupBy(c => c, StringComparer.Ordinal)
+        .GroupBy(b => b.Code, StringComparer.Ordinal)
         .ToDictionary(g => g.Key, g => g.Count()),
-      [.. _draws]
+      [.. _draws],
+      [
+        .. standing
+          .Select(b => $"{b.Code}@{b.Cell.X},{b.Cell.Y},{b.Cell.Z}")
+          .Order(StringComparer.Ordinal),
+      ]
     );
 
   /// <summary>Adds <paramref name="count"/> of <paramref name="code"/> to the pack: a stack or metal
@@ -208,21 +224,50 @@ internal sealed class SetupPack {
   /// <param name="count">The stacks or units handed on, at least 1.</param>
   public void Give(string code, int count) => Add(code, count);
 
-  /// <summary>Takes the first standing block that matches <paramref name="code"/> off the list.</summary>
+  /// <summary>Takes the first standing entry that matches <paramref name="code"/> off the list. An
+  /// entry is a code or <c>code@x,y,z</c>; one with a cell matches only a place at that cell, one
+  /// without matches by code alone. A place at a cell takes an entry naming that cell before one
+  /// without; a place with no cell takes only entries without one.</summary>
   /// <param name="code">The block's code.</param>
-  /// <param name="cell">The cell the block is placed at, or null when it is not a principal whose
-  /// structure and construction stages the run may raise; a taken block is recorded against it for
-  /// <see cref="TookStanding"/>.</param>
+  /// <param name="cell">The plot-local cell the block is placed at, or null when it is not a
+  /// principal whose structure and construction stages the run may raise; a taken block is
+  /// recorded against it for <see cref="TookStanding"/>.</param>
   /// <returns>True when a standing block was taken, so the place draws nothing; false when none
   /// matches.</returns>
   public bool TakeStanding(string code, BlockPos? cell = null) {
-    int index = _standing.FindIndex(p => Matches(p, code));
+    int index =
+      cell == null ? -1 : _standing.FindIndex(p => Reads(p, code, cell));
+    if (index < 0)
+      index = _standing.FindIndex(p => Reads(p, code, null));
     if (index < 0)
       return false;
     _standing.RemoveAt(index);
     if (cell != null)
       _carried.Add((cell.X, cell.Y, cell.Z));
     return true;
+  }
+
+  // An entry with a cell is read only against that cell; with a null cell, only a cell-less entry
+  // reads.
+  private static bool Reads(string entry, string code, BlockPos? cell) {
+    (string key, (int X, int Y, int Z)? at) = Split(entry);
+    bool cellMatches =
+      cell == null ? at == null : at == (cell.X, cell.Y, cell.Z);
+    return cellMatches && Matches(key, code);
+  }
+
+  private static (string Code, (int X, int Y, int Z)? Cell) Split(string entry) {
+    Match m = CellEntry.Match(entry);
+    return m.Success
+      ? (
+        m.Groups["code"].Value,
+        (
+          int.Parse(m.Groups["x"].Value, CultureInfo.InvariantCulture),
+          int.Parse(m.Groups["y"].Value, CultureInfo.InvariantCulture),
+          int.Parse(m.Groups["z"].Value, CultureInfo.InvariantCulture)
+        )
+      )
+      : (entry, null);
   }
 
   /// <summary>Whether the block at <paramref name="cell"/> was taken free from the standing list, so
@@ -248,16 +293,26 @@ internal sealed class SetupPack {
     }
   }
 
-  /// <summary>Checks that a block matching each <c>ends.standing</c> code stands.</summary>
-  /// <param name="standing">The codes of the blocks standing at the end of the run.</param>
-  /// <exception cref="InvalidOperationException">A declared code matches no standing block; the
+  /// <summary>Checks that a block matching each <c>ends.standing</c> entry stands: an entry
+  /// <c>code@x,y,z</c> at that cell, a bare code anywhere.</summary>
+  /// <param name="standing">The blocks standing at the end of the run: code and plot-local cell.</param>
+  /// <exception cref="InvalidOperationException">A declared entry matches no standing block; the
   /// message names it.</exception>
-  public void CheckStanding(IReadOnlyCollection<string> standing) {
-    foreach (string code in _spec.EndStanding)
-      if (!standing.Any(s => Matches(code, s)))
+  public void CheckStanding(
+    IReadOnlyCollection<(string Code, BlockPos Cell)> standing
+  ) {
+    foreach (string entry in _spec.EndStanding) {
+      (string code, (int X, int Y, int Z)? at) = Split(entry);
+      if (
+        !standing.Any(s =>
+          (at == null || at == (s.Cell.X, s.Cell.Y, s.Cell.Z))
+          && Matches(code, s.Code)
+        )
+      )
         throw new InvalidOperationException(
-          $"the stage ends with no {code} standing."
+          $"the stage ends with no {entry} standing."
         );
+    }
   }
 
   /// <summary>Whether placed blocks are drawn from the pack: true under <c>scope: "all"</c>, false

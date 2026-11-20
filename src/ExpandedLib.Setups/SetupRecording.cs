@@ -597,6 +597,13 @@ internal sealed class SetupRecording {
     + CountsJson(pack.End)
     + ",\n\"standing\":"
     + CountsJson(pack.Standing)
+    + (
+      pack.StandingAt is { Count: > 0 }
+        ? ",\n\"standingAt\":["
+          + string.Join(",", pack.StandingAt.Select(Quote))
+          + "]"
+        : ""
+    )
     + ",\n\"draws\":["
     + string.Join(
       ",\n",
@@ -714,7 +721,10 @@ internal sealed class SetupRecording {
             .Select(d =>
               (d[0].GetString()!, d[1].GetString()!, d[2].GetInt32())
             ),
-        ]
+        ],
+        pack.TryGetProperty("standingAt", out JsonElement at)
+          ? [.. at.EnumerateArray().Select(e => e.GetString()!)]
+          : []
       );
     recording._samples = seconds;
     recording._started = true;
