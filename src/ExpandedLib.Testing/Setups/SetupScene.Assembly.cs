@@ -273,12 +273,9 @@ public sealed partial class SetupScene
       );
   }
 
-  /// <summary>The <c>fit</c> step: the player fits the step's <c>stack</c> held in the main hand onto the
-  /// placed block at <c>at</c>, with the def's tool in the off hand, as a sneak click sends it. The
-  /// step's <c>fails</c> names the refusal the server must answer. An <c>at</c> on a filler cell of a
-  /// megablock is aimed as the player aims it, at the step's <c>hit</c> (sixteenths across the cell;
-  /// the centre without it), and the fit's spec, fasteners and companions are the principal's: the
-  /// companions its plan names are drawn from the pack like the fasteners.</summary>
+  /// <summary>The <c>fit</c> step: the player fits the step's <c>stack</c> onto the placed block at <c>at</c>
+  /// as a sneak click sends it, aimed at the step's <c>hit</c> (sixteenths across the cell; the centre without
+  /// it), with the principal's fasteners and the plan's companions drawn from the pack.</summary>
   private void FitStep(SetupStep step)
   {
     BlockPos at = At(step, "at");
