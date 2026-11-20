@@ -68,6 +68,16 @@ internal class AssemblyTakeOff {
 
   [ProtoMember(4)]
   public int Dimension;
+
+  /// <summary>The hit point inside the cell, each axis in 0 to 1.</summary>
+  [ProtoMember(5)]
+  public double HitX;
+
+  [ProtoMember(6)]
+  public double HitY;
+
+  [ProtoMember(7)]
+  public double HitZ;
 }
 
 /// <summary>Client to server: fit the cap held in the main hand on one open end of the fixed piece at a position. Carries the aim and what is held, nothing about cost.</summary>
@@ -118,4 +128,14 @@ internal class AssemblyFit {
 
   [ProtoMember(6)]
   public string ItemCode = "";
+
+  /// <summary>The hit point inside the aimed cell, each axis in 0 to 1.</summary>
+  [ProtoMember(7)]
+  public double HitX;
+
+  [ProtoMember(8)]
+  public double HitY;
+
+  [ProtoMember(9)]
+  public double HitZ;
 }

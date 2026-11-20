@@ -26,6 +26,7 @@ internal static class HandAssemblyServer {
   internal const string NotFixed = "exlib-handassembly-notfixed";
   internal const string NeedsToolMain = "exlib-handassembly-needstoolmain";
   internal const string NoFit = "exlib-handassembly-nofit";
+  internal const string NeedsCompanion = "exlib-handassembly-needcompanion";
   internal const string CapClosed = "exlib-handassembly-capclosed";
   internal const string CapJoined = "exlib-handassembly-capjoined";
   internal const string CapNoRoom = "exlib-handassembly-capnoroom";
@@ -239,6 +240,18 @@ internal static class HandAssemblyServer {
     )
       return Refusal(Claimed);
 
+    BlockPos principal = HandFitAim.PrincipalOf(accessor, cell);
+    if (
+      accessor.GetBlock(principal) is IHandFitCellTarget fitTarget
+      && fitTarget.FittedAt(
+        accessor,
+        principal,
+        new HandFitPoint(cell, new Vec3d(take.HitX, take.HitY, take.HitZ))
+      )
+        is not null
+    )
+      return TakeOffFit(world, player, take, cell, principal, fitTarget);
+
     Block block = accessor.GetBlock(cell);
     BEBehaviorAssembled? record = BEBehaviorAssembled.At(accessor, cell);
     if (
@@ -299,6 +312,97 @@ internal static class HandAssemblyServer {
       if (!player.InventoryManager.TryGiveItemstack(stack, true))
         world.SpawnItemEntity(stack, player.Entity.Pos.XYZ);
     return null;
+  }
+
+  private static AssemblyResult? TakeOffFit(
+    IWorldAccessor world,
+    IPlayer player,
+    AssemblyTakeOff take,
+    BlockPos cell,
+    BlockPos principal,
+    IHandFitCellTarget target
+  ) {
+    IBlockAccessor accessor = world.BlockAccessor;
+    Block block = accessor.GetBlock(principal);
+    if (HandAssemblySpec.Of(block) is not { } spec)
+      return Refusal(NotFixed);
+
+    bool creative = HandAssemblyGate.IsCreative(player);
+    ItemSlot toolSlot = player.InventoryManager.ActiveHotbarSlot;
+    if (!creative && !HoldsTool(toolSlot, spec.Tool))
+      return Refusal(
+        NeedsToolMain,
+        ToolNoun(world, spec.Tool, LanguageOf(player))
+      );
+    if (!player.Entity.Controls.Sneak)
+      return Refusal(Fixed);
+
+    var at = new HandFitPoint(cell, new Vec3d(take.HitX, take.HitY, take.HitZ));
+    if (
+      target.FittedAt(accessor, principal, at) is not { } removal
+      || !target.TakeOff(world, principal, at, player)
+    )
+      return Refusal(NotFixed);
+
+    var fasteners = new List<ItemStack>();
+    if (
+      !creative
+      && removal.Fasteners > 0
+      && world.GetItem(new AssetLocation(spec.Fastener)) is { } fastener
+    )
+      fasteners.Add(new ItemStack(fastener, removal.Fasteners));
+    List<ItemStack> back = creative
+      ? []
+      : [.. removal.Parts.Select(p => p.Clone()), .. fasteners];
+
+    HandAssemblyLog.Write(
+      world,
+      player,
+      "takeoff",
+      block.Code,
+      cell,
+      [],
+      back,
+      []
+    );
+    TellTookOff(player, removal.Parts, fasteners);
+    PlaySuccess(world, cell, toolSlot);
+    if (creative)
+      return null;
+    toolSlot.Itemstack.Collectible.DamageItem(world, player.Entity, toolSlot);
+    foreach (ItemStack stack in back)
+      if (!player.InventoryManager.TryGiveItemstack(stack, true))
+        world.SpawnItemEntity(stack, player.Entity.Pos.XYZ);
+    return null;
+  }
+
+  private static void TellTookOff(
+    IPlayer player,
+    IReadOnlyList<ItemStack> parts,
+    IReadOnlyList<ItemStack> fasteners
+  ) {
+    if (player is not IServerPlayer serverPlayer)
+      return;
+    string? lang = LanguageOf(player);
+    string Say(string key, params object[] args) =>
+      lang == null ? Lang.Get(key, args) : Lang.GetL(lang, key, args);
+    string piece = string.Join(
+      ", ",
+      Grouped(parts, lang).Select(g => Say("exlib:handassembly-hud-stack", g.Count, g.Name))
+    );
+    string line =
+      fasteners.Count == 0
+        ? Say("exlib:handassembly-hud-tookoff-bare", piece)
+        : Say(
+          "exlib:handassembly-hud-tookoff",
+          piece,
+          HandAssemblyHud.Stacks(Say, Grouped(fasteners, lang))
+        );
+    serverPlayer.SendMessage(
+      GlobalConstants.InfoLogChatGroup,
+      line,
+      EnumChatType.Notification
+    );
   }
 
   private static void TellTookOff(
@@ -629,6 +733,14 @@ internal static class HandAssemblyServer {
       return Refusal(Claimed);
 
     IBlockAccessor accessor = world.BlockAccessor;
+    var hit = new Vec3d(fit.HitX, fit.HitY, fit.HitZ);
+    if (
+      HandFitAim.OfCell(accessor, cell, hit, heldSlot.Itemstack, out string? cellWhy)
+        is { } cellAim
+    )
+      return FitCell(world, player, heldSlot, cell, cellAim);
+    if (cellWhy != null)
+      return Refusal(cellWhy);
     if (
       HandFitAim.Of(accessor, cell, heldSlot.Itemstack, out string? why)
         is not { } aim
@@ -676,6 +788,84 @@ internal static class HandAssemblyServer {
       [],
       [],
       spent == null ? [] : [spent]
+    );
+    PlaySuccess(world, cell, toolSlot);
+    return null;
+  }
+
+  private static AssemblyResult? FitCell(
+    IWorldAccessor world,
+    IPlayer player,
+    ItemSlot heldSlot,
+    BlockPos cell,
+    HandFitAim.Cell aim
+  ) {
+    if (HandAssemblySpec.Of(aim.PrincipalBlock) is not { } spec)
+      return Refusal(NoFit);
+
+    bool creative = HandAssemblyGate.IsCreative(player);
+    ItemSlot toolSlot = player.Entity.LeftHandItemSlot;
+    if (!creative && !HoldsTool(toolSlot, spec.Tool))
+      return Refusal(NeedsTool, ToolNoun(world, spec.Tool, LanguageOf(player)));
+
+    string heldCode = heldSlot.Itemstack.Collectible.Code.ToString();
+    IReadOnlyList<HandFitCompanion> companions =
+    [
+      .. aim
+        .Plan.Companions.GroupBy(c => c.Code)
+        .Select(g => new HandFitCompanion(g.Key, g.Sum(c => c.Count))),
+    ];
+    if (!creative)
+      foreach (HandFitCompanion companion in companions) {
+        int needed =
+          companion.Count
+          + (WildcardUtil.Match(companion.Code, heldCode) ? 1 : 0);
+        int carried = ExCarried.Count(player, companion.Code);
+        if (carried < needed)
+          return Refusal(
+            NeedsCompanion,
+            needed.ToString(),
+            ItemName(world, companion.Code, LanguageOf(player)),
+            carried.ToString()
+          );
+      }
+
+    int cost = creative ? 0 : aim.Plan.Fasteners;
+    if (cost > 0) {
+      int carried = ExCarried.Count(player, spec.Fastener);
+      if (carried < cost)
+        return Refusal(
+          NeedsFasteners,
+          cost.ToString(),
+          FastenerName(world, spec.Fastener, LanguageOf(player)),
+          carried.ToString()
+        );
+    }
+
+    string failure = "";
+    if (
+      !aim.Target.Fit(world, aim.Principal, aim.At, player, heldSlot, ref failure)
+    )
+      return Refusal(string.IsNullOrEmpty(failure) ? NoFit : failure);
+
+    var spent = new List<ItemStack>();
+    if (!creative) {
+      foreach (HandFitCompanion companion in companions)
+        if (ExCarried.Take(player, companion.Code, companion.Count) is { } taken)
+          spent.Add(taken);
+      if (cost > 0 && ExCarried.Take(player, spec.Fastener, cost) is { } bolts)
+        spent.Add(bolts);
+      toolSlot.Itemstack.Collectible.DamageItem(world, player.Entity, toolSlot);
+    }
+    HandAssemblyLog.Write(
+      world,
+      player,
+      "fit",
+      aim.PrincipalBlock.Code,
+      cell,
+      [],
+      [],
+      spent
     );
     PlaySuccess(world, cell, toolSlot);
     return null;
@@ -932,7 +1122,7 @@ internal static class HandAssemblyServer {
     string? langCode = null
   ) => ItemName(world, code, langCode);
 
-  private static string ItemName(
+  internal static string ItemName(
     IWorldAccessor world,
     string pattern,
     string? langCode

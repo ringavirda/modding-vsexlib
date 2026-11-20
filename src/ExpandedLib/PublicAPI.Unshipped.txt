@@ -878,6 +878,43 @@ ExpandedLib.Assembling.HandAssemblySpec.PerFit.init -> void
 ExpandedLib.Assembling.IHandFitTarget
 ExpandedLib.Assembling.IHandFitTarget.Fit(Vintagestory.API.Common.IWorldAccessor! world, Vintagestory.API.MathTools.BlockPos! pos, Vintagestory.API.Common.IPlayer! player, Vintagestory.API.Common.ItemSlot! held, ref string! failureCode) -> bool
 ExpandedLib.Assembling.IHandFitTarget.FitResult(Vintagestory.API.Common.IBlockAccessor! accessor, Vintagestory.API.MathTools.BlockPos! pos, Vintagestory.API.Common.ItemStack! held, out string? failureCode) -> Vintagestory.API.Common.Block?
+ExpandedLib.Assembling.HandFitPoint
+ExpandedLib.Assembling.HandFitPoint.HandFitPoint() -> void
+ExpandedLib.Assembling.HandFitPoint.HandFitPoint(Vintagestory.API.MathTools.BlockPos! Cell, Vintagestory.API.MathTools.Vec3d! Hit) -> void
+ExpandedLib.Assembling.HandFitPoint.Cell.get -> Vintagestory.API.MathTools.BlockPos!
+ExpandedLib.Assembling.HandFitPoint.Cell.init -> void
+ExpandedLib.Assembling.HandFitPoint.Hit.get -> Vintagestory.API.MathTools.Vec3d!
+ExpandedLib.Assembling.HandFitPoint.Hit.init -> void
+ExpandedLib.Assembling.HandFitCompanion
+ExpandedLib.Assembling.HandFitCompanion.HandFitCompanion(string! Code, int Count) -> void
+ExpandedLib.Assembling.HandFitCompanion.Code.get -> string!
+ExpandedLib.Assembling.HandFitCompanion.Code.init -> void
+ExpandedLib.Assembling.HandFitCompanion.Count.get -> int
+ExpandedLib.Assembling.HandFitCompanion.Count.init -> void
+ExpandedLib.Assembling.HandFitPlan
+ExpandedLib.Assembling.HandFitPlan.HandFitPlan(System.Collections.Generic.IReadOnlyList<ExpandedLib.Assembling.HandFitCompanion!>! Companions, int Fasteners) -> void
+ExpandedLib.Assembling.HandFitPlan.Companions.get -> System.Collections.Generic.IReadOnlyList<ExpandedLib.Assembling.HandFitCompanion!>!
+ExpandedLib.Assembling.HandFitPlan.Companions.init -> void
+ExpandedLib.Assembling.HandFitPlan.Fasteners.get -> int
+ExpandedLib.Assembling.HandFitPlan.Fasteners.init -> void
+ExpandedLib.Assembling.HandFitMesh
+ExpandedLib.Assembling.HandFitMesh.HandFitMesh(Vintagestory.API.Client.MeshData! Mesh, Vintagestory.API.MathTools.Vec3d! Place) -> void
+ExpandedLib.Assembling.HandFitMesh.Mesh.get -> Vintagestory.API.Client.MeshData!
+ExpandedLib.Assembling.HandFitMesh.Mesh.init -> void
+ExpandedLib.Assembling.HandFitMesh.Place.get -> Vintagestory.API.MathTools.Vec3d!
+ExpandedLib.Assembling.HandFitMesh.Place.init -> void
+ExpandedLib.Assembling.HandFitRemoval
+ExpandedLib.Assembling.HandFitRemoval.HandFitRemoval(System.Collections.Generic.IReadOnlyList<Vintagestory.API.Common.ItemStack!>! Parts, int Fasteners) -> void
+ExpandedLib.Assembling.HandFitRemoval.Parts.get -> System.Collections.Generic.IReadOnlyList<Vintagestory.API.Common.ItemStack!>!
+ExpandedLib.Assembling.HandFitRemoval.Parts.init -> void
+ExpandedLib.Assembling.HandFitRemoval.Fasteners.get -> int
+ExpandedLib.Assembling.HandFitRemoval.Fasteners.init -> void
+ExpandedLib.Assembling.IHandFitCellTarget
+ExpandedLib.Assembling.IHandFitCellTarget.Plan(Vintagestory.API.Common.IBlockAccessor! accessor, Vintagestory.API.MathTools.BlockPos! principal, ExpandedLib.Assembling.HandFitPoint at, Vintagestory.API.Common.ItemStack! held, out string? failureCode) -> ExpandedLib.Assembling.HandFitPlan?
+ExpandedLib.Assembling.IHandFitCellTarget.Ghost(Vintagestory.API.Client.ICoreClientAPI! capi, Vintagestory.API.MathTools.BlockPos! principal, ExpandedLib.Assembling.HandFitPoint at, Vintagestory.API.Common.ItemStack! held, ExpandedLib.Assembling.HandFitPlan! plan) -> System.Collections.Generic.IReadOnlyList<ExpandedLib.Assembling.HandFitMesh!>?
+ExpandedLib.Assembling.IHandFitCellTarget.Fit(Vintagestory.API.Common.IWorldAccessor! world, Vintagestory.API.MathTools.BlockPos! principal, ExpandedLib.Assembling.HandFitPoint at, Vintagestory.API.Common.IPlayer! player, Vintagestory.API.Common.ItemSlot! held, ref string! failureCode) -> bool
+ExpandedLib.Assembling.IHandFitCellTarget.FittedAt(Vintagestory.API.Common.IBlockAccessor! accessor, Vintagestory.API.MathTools.BlockPos! principal, ExpandedLib.Assembling.HandFitPoint at) -> ExpandedLib.Assembling.HandFitRemoval?
+ExpandedLib.Assembling.IHandFitCellTarget.TakeOff(Vintagestory.API.Common.IWorldAccessor! world, Vintagestory.API.MathTools.BlockPos! principal, ExpandedLib.Assembling.HandFitPoint at, Vintagestory.API.Common.IPlayer! player) -> bool
 ExpandedLib.Definitions.ExBlockDef.HandAssembly(string! tool, string! fastener, int perJoint, string? cap = null, int perFit = 0) -> ExpandedLib.Definitions.ExBlockDef!
 static readonly ExpandedLib.Helpers.ExOrientations.PipeCorner -> ExpandedLib.Helpers.ExOrientationScheme!
 override ExpandedLib.Machines.BlockEntityMachineStation.GetBlockInfo(Vintagestory.API.Common.IPlayer! forPlayer, System.Text.StringBuilder! dsc) -> void

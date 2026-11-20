@@ -85,14 +85,19 @@ internal static class HandAssemblyHud {
   /// <param name="cost">The fasteners the fit spends; 0 leaves the cost clause out.</param>
   /// <param name="fastener">The fastener's name.</param>
   /// <param name="carried">How many of the fastener the player carries.</param>
+  /// <param name="companions">The further items the fit takes, each name with its count as in <see cref="Stacks"/>; null or empty leaves the clause out.</param>
   public static string FitLine(
     Func<string, object[], string> get,
     string made,
     int cost,
     string fastener,
-    int carried
+    int carried,
+    IReadOnlyList<(string Name, int Count)>? companions = null
   ) {
     var line = new StringBuilder(get(ExlibLang.HandassemblyHudFit, [made]));
+    if (companions is { Count: > 0 })
+      line.Append(" | ")
+        .Append(get(ExlibLang.HandassemblyHudCompanions, [Stacks(get, companions)]));
     if (cost > 0)
       line.Append(" | ")
         .Append(get(ExlibLang.HandassemblyHudCost, [cost, fastener, carried]));
