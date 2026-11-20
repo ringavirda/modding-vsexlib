@@ -145,6 +145,21 @@ public class ScenarioPlayerAssemblyTests {
     Assert.Null(scene.Player.OffHandSlot.Itemstack);
   }
 
+  // Fails when the live runner answers harness-nocandidate for a part that refused every placement itself, instead of the part's own refusal.
+  [Fact]
+  public void A_part_that_refuses_every_placement_returns_its_own_refusal() {
+    var scene = HandAssemblyFixTests.Scene.Standing(
+      ["nes"],
+      refusing: "nes",
+      refusalCode: "gate-refused"
+    );
+
+    AssemblyResult? refused = Place(scene, Context(scene, []), "");
+
+    Assert.Equal("gate-refused", refused!.Code);
+    Assert.Equal(0, scene.World.GetBlock(Cell).Id);
+  }
+
   // Fails when a refusal is turned into a placement or dropped: the server's code comes back.
   [Fact]
   public void A_refused_fix_returns_the_servers_code() {

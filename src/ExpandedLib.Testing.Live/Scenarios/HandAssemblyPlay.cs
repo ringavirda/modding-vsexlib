@@ -31,7 +31,7 @@ internal static class HandAssemblyPlay {
   /// <param name="face">The face the click lands on.</param>
   /// <param name="hit">The hit point on that face.</param>
   /// <param name="pick">Which candidate to fix.</param>
-  /// <returns>Null when the part was fixed; otherwise the server's refusal, or <see cref="NoCandidate"/>.</returns>
+  /// <returns>Null when the part was fixed; otherwise the server's refusal, the part's own refusal when it filtered every placement, or <see cref="NoCandidate"/>.</returns>
   /// <exception cref="StepFailure">The block is not opted in, the pack holds no tool or too few fasteners, or the fastener is not a loaded item.</exception>
   public static AssemblyResult? Place(
     ScenarioContext ctx,
@@ -69,6 +69,12 @@ internal static class HandAssemblyPlay {
         part,
         selection
       );
+      if (
+        offered.Count == 0
+        && HandAssemblyCandidates.EmptyRefusal(world, player, part, selection)
+          is { } named
+      )
+        return HandAssemblyServer.Refusal(named);
       if (pick.Choose(offered) is not { } chosen)
         return new AssemblyResult {
           Code = NoCandidate,

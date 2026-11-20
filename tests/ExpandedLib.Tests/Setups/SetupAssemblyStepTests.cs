@@ -614,4 +614,48 @@ public class SetupAssemblyStepTests {
 
     Assert.Equal(0, scene.World.GetBlock(new BlockPos(1, 0, 0)).Id);
   }
+
+  // Fails when the setup runner answers harness-nocandidate for a part that refused every placement itself, instead of asking the part's own refusal.
+  [Fact]
+  public void An_assemble_the_part_refuses_in_every_placement_expects_its_named_refusal() {
+    using SetupScene scene = SetupScene.Build(
+      SetupFile.Parse(
+        """
+        {"setup": "t", "description": "d", "mods": ["setupasm", "setupward"],
+         "steps": [{ "assemble": { "code": "setupward:ward-straight-we", "at": [0, 0, 0], "fails": "setupasm-refused" } }],
+         "seconds": 10, "record": {}}
+        """,
+        "t.json"
+      ),
+      [
+        FixturePath,
+        Path.Combine(
+          RepoPaths.Root,
+          "tests",
+          "ExpandedLib.Tests",
+          "Setups",
+          "Fixtures",
+          "SetupWard"
+        ),
+      ],
+      null,
+      w => w.RegisterClass("SetupAsmRefuseAll", typeof(RefuseAll))
+    );
+
+    Assert.Equal(0, scene.World.GetBlock(new BlockPos(0, 0, 0)).Id);
+  }
+
+  private sealed class RefuseAll(Block block)
+    : BlockBehavior(block),
+      IHandAssemblyPart {
+    public bool Allows(
+      IWorldAccessor world,
+      BlockPos pos,
+      Block candidate,
+      out string? failureCode
+    ) {
+      failureCode = "setupasm-refused";
+      return false;
+    }
+  }
 }
