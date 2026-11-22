@@ -243,7 +243,7 @@ public sealed class StructureRig {
         yield return (pos, part);
   }
 
-  private void FinishConstruction(BlockPos at) {
+  internal void FinishConstruction(BlockPos at) {
     if (
       _world.GetBlockEntity(at)?.GetBehavior<ExRightClickConstructable>() is { } part
     )
