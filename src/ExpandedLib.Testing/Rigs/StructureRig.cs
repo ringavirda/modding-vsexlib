@@ -243,12 +243,15 @@ public sealed class StructureRig {
         yield return (pos, part);
   }
 
-  internal void FinishConstruction(BlockPos at) {
-    if (
-      _world.GetBlockEntity(at)?.GetBehavior<ExRightClickConstructable>() is { } part
-    )
+  /// <summary>
+  /// Sets every part <see cref="UnfinishedParts"/> names to its last stage, no player paying.
+  /// </summary>
+  /// <returns>This rig.</returns>
+  internal StructureRig FinishParts() {
+    foreach ((_, ExRightClickConstructable part) in UnfinishedParts().ToList())
       part.Construction.CurrentCompletedStage =
         part.Construction.Stages.Length - 1;
+    return this;
   }
 
   /// <summary>
@@ -260,9 +263,7 @@ public sealed class StructureRig {
   /// part's are set to their last stage.</remarks>
   /// <exception cref="InvalidOperationException">The machine does not complete.</exception>
   public StructureRig Complete() {
-    Raise();
-    foreach ((BlockPos at, _) in UnfinishedParts())
-      FinishConstruction(at);
+    Raise().FinishParts();
     _world.Initialize(_anchor);
     if (!AwaitCompletion())
       throw new InvalidOperationException(

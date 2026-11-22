@@ -560,6 +560,25 @@ public class BlockLawsTests {
     );
   }
 
+  // Fails when the law ticks the monitor without finishing the anchor's own staged construction.
+  [Fact]
+  public void A_multiblock_with_a_staged_anchor_completes_in_every_facing() {
+    TestWorld world = Stand(
+      Wall,
+      Structure("framed", "test-sideframe")
+        .Behavior("BlockEntityInteract")
+        .Construction(c =>
+          c.Stage(s => s.Require("game:stick", 1))
+            .Stage(s => s.Require("game:stick", 2))
+        )
+    );
+
+    BlockLaws.Law law = MultiblockLaw.Run(world, "test");
+
+    Assert.Empty(law.Findings);
+    Assert.Equal(4, law.Cases);
+  }
+
   // Fails when the fill checks the layout after each cell it places, or scans the registered
   // blocks for each cell, instead of placing one representative in each and scanning once.
   [Fact]
