@@ -233,16 +233,25 @@ public static class StructureFillers {
   public static bool CanPlace(
     IWorldAccessor world,
     IEnumerable<FillerCell> cells
+  ) => ResolveFiller(world) != null && Refusing(world, cells).Count == 0;
+
+  /// <summary>The positions among <paramref name="cells"/> that are neither air nor replaceable by the filler;
+  /// every position when the filler block is not registered.</summary>
+  internal static List<BlockPos> Refusing(
+    IWorldAccessor world,
+    IEnumerable<FillerCell> cells
   ) {
     Block? filler = ResolveFiller(world);
-    if (filler == null)
-      return false;
+    List<BlockPos> refusing = [];
     foreach (var cell in cells) {
       Block existing = world.BlockAccessor.GetBlock(cell.Pos);
-      if (existing.Id != 0 && !existing.IsReplacableBy(filler))
-        return false;
+      if (
+        filler == null
+        || (existing.Id != 0 && !existing.IsReplacableBy(filler))
+      )
+        refusing.Add(cell.Pos);
     }
-    return true;
+    return refusing;
   }
 
   /// <summary>Places filler blocks at every cell and links each to the principal. Server-side only.</summary>

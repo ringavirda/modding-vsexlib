@@ -218,6 +218,30 @@ public sealed class ExOrientableRig {
     return placed;
   }
 
+  /// <summary>The cells the held block's preview shows with the player looking <paramref name="lookDirection"/>
+  /// at <see cref="Pos"/>'s <paramref name="selectedFace"/>, as <see cref="PlaceLooking"/> aims.</summary>
+  public (
+    IReadOnlyList<BlockPos> Clear,
+    IReadOnlyList<BlockPos> Refuse
+  ) PreviewLooking(string lookDirection, string selectedFace = "up") {
+    BlockFacing look = BlockFacing.FromCode(lookDirection)!;
+    IPlayer player = PlayerAt(
+      Pos.X + 0.5 - (look.Normali.X * 5),
+      Pos.Y + 0.5 - (look.Normali.Y * 5),
+      Pos.Z + 0.5 - (look.Normali.Z * 5)
+    );
+    return CollectibleBehaviorMegablockPreview.Footprint(
+      World.World,
+      _placer,
+      player,
+      new BlockSelection {
+        Position = Pos.Copy(),
+        Face = BlockFacing.FromCode(selectedFace)!,
+        HitPosition = new Vec3d(0.5, 0.5, 0.5),
+      }
+    );
+  }
+
   /// <summary>What breaking the placed block hands back.</summary>
   public string? DropCode {
     get {

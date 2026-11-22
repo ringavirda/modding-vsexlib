@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using ExpandedLib.Blocks;
 using ExpandedLib.Helpers;
 using ExpandedLib.Registries;
+using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
@@ -32,6 +33,8 @@ public class BlockFilledMegastructure
   public override void OnLoaded(ICoreAPI api) {
     base.OnLoaded(api);
     JsonMultiblockLayout.Resolve(this, api.Logger);
+    if (api is ICoreClientAPI capi)
+      CollectibleBehaviorMegablockPreview.Attach(this, capi);
   }
 
   public override Cuboidf[] GetCollisionBoxes(
@@ -90,6 +93,10 @@ public class BlockFilledMegastructure
   /// <returns>False makes <see cref="CanPlaceBlock"/> refuse with <c>notenoughspace</c>.</returns>
   protected virtual bool HasRoom(IWorldAccessor world, BlockPos pos) =>
     StructureFillers.CanPlace(world, ReservedCells(world, pos));
+
+  /// <summary><see cref="HasRoom"/> for the aiming preview.</summary>
+  internal bool HasRoomAt(IWorldAccessor world, BlockPos pos) =>
+    HasRoom(world, pos);
 
   public override bool CanPlaceBlock(
     IWorldAccessor world,
