@@ -387,8 +387,8 @@ internal sealed class MpShaftNetwork(BlockNetworkModSystem system)
       var meshFaces = meshes?.MeshFaces ?? [];
       float load = 0f;
       float torque = 0f;
-      var faceLoad = new Dictionary<BlockFacing, float>();
-      var faceTorque = new Dictionary<BlockFacing, float>();
+      Dictionary<BlockFacing, float>? faceLoad = null;
+      Dictionary<BlockFacing, float>? faceTorque = null;
       foreach (var n in cell) {
         if (meshFaces.Count == 0) {
           load = MathF.Max(load, Store.NodeLoad(n.Value));
@@ -399,6 +399,8 @@ internal sealed class MpShaftNetwork(BlockNetworkModSystem system)
         float ownTorque = 0f;
         foreach (var (face, jointLoad, jointTorque) in Store.Joints(n.Value))
           if (face != null && meshFaces.Contains(face)) {
+            faceLoad ??= [];
+            faceTorque ??= [];
             faceLoad[face] = MathF.Max(
               faceLoad.GetValueOrDefault(face),
               jointLoad
@@ -426,11 +428,14 @@ internal sealed class MpShaftNetwork(BlockNetworkModSystem system)
           (failed ??= []).Add(segment.Part);
         if (meshes != null)
           foreach (BlockFacing face in meshFaces) {
-            float faceOver = faceLoad.GetValueOrDefault(face) - 1f;
+            float faceOver = (faceLoad?.GetValueOrDefault(face) ?? 0f) - 1f;
             float strain = meshes.MeshStrain(face);
             if (faceOver > 0f)
               strain = MathF.Min(1f, strain + faceOver * hours / tau);
-            if (ultimate > 0f && faceTorque.GetValueOrDefault(face) >= ultimate)
+            if (
+              ultimate > 0f
+              && (faceTorque?.GetValueOrDefault(face) ?? 0f) >= ultimate
+            )
               strain = 1f;
             if (strain != meshes.MeshStrain(face))
               meshes.SetMeshStrain(face, strain);

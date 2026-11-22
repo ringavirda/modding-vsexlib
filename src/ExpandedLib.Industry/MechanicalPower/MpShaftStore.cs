@@ -180,7 +180,7 @@ internal sealed partial class MpShaftStore {
     _inertia[node] = MathF.Max(0f, inertiaKgM2);
 
   /// <summary>Sets the node's working torque at its own speed.</summary>
-  /// <param name="ratingNm">N*m; zero or less marks the node unrated, so it never counts as loaded.</param>
+  /// <param name="ratingNm">N*m; zero or less marks the node unrated; a joint end with its own stored rating counts whatever this is.</param>
   public void SetRating(int node, float ratingNm) =>
     _rating[node] = MathF.Max(0f, ratingNm);
 

@@ -70,7 +70,7 @@ public interface IMpEnergySegment {
 
   /// <summary>Working torque (N*m) the segment carries without taking set through the joint on <paramref name="face"/>,
   /// in the units of <see cref="RatingNm"/>. <see cref="RatingNm"/> by default, so a segment rated as one piece keeps
-  /// its behaviour.</summary>
+  /// its behaviour. Read when the run builds its joints, on a topology change, not on every step.</summary>
   /// <param name="face">The face of the segment's own cell the joint crosses.</param>
   float RatingAcross(BlockFacing face) => RatingNm;
 
