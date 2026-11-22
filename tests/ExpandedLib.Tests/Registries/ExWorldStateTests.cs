@@ -96,6 +96,8 @@ public class ExWorldStateTests {
     ["ExpandedLib.Structures.JsonMultiblockLayout._resolved"] = WeakByWorld,
     ["ExpandedLib.Industry.Molten.MoltenBurn.LastHit"] = WeakByWorld,
     ["ExpandedLib.WorldGen.SeamDepositGenerator.ProvinceMaps"] = WeakByWorld,
+    ["ExpandedLib.Structures.BlockBehaviorMultiblockStructure.ShownPart"] =
+      "the client's one shown part outline, cleared when its part finishes, unloads or goes",
     ["ExpandedLib.Structures.CellRole._single"] = TypeInitializers,
     ["ExpandedLib.Structures.CellRole._owners"] = TypeInitializers,
     ["ExpandedLib.Helpers.ExHighlightSlots._slots"] = TypeInitializers,

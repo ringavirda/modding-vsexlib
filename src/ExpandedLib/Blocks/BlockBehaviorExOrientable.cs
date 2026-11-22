@@ -97,10 +97,7 @@ public partial class BlockBehaviorExOrientable : BlockBehavior {
 
     handling = EnumHandling.PreventDefault;
 
-    string token = TokenFor(byPlayer, blockSel);
-    Block? oriented = world.BlockAccessor.GetBlock(
-      block.WithVariant(VariantKey, token)
-    );
+    Block? oriented = OrientedBlock(world, byPlayer, blockSel);
 
     // A missing state is an authoring mistake: refuse the placement rather than dereference null.
     if (oriented == null) {
@@ -109,7 +106,7 @@ public partial class BlockBehaviorExOrientable : BlockBehavior {
           + "placement refused. Declare the variant group from ExOrientations.{3}.",
         block.Code,
         VariantKey,
-        token,
+        TokenFor(byPlayer, blockSel),
         _scheme.Name
       );
       failureCode = "cantplace";
@@ -121,6 +118,18 @@ public partial class BlockBehaviorExOrientable : BlockBehavior {
     oriented.DoPlaceBlock(world, byPlayer, blockSel, itemstack);
     return true;
   }
+
+  /// <summary>The variant a placement by <paramref name="byPlayer"/> at <paramref name="blockSel"/> puts down:
+  /// the block wearing <see cref="TokenFor"/>'s token.</summary>
+  /// <returns>Null when the block has no such variant.</returns>
+  internal Block? OrientedBlock(
+    IWorldAccessor world,
+    IPlayer byPlayer,
+    BlockSelection blockSel
+  ) =>
+    world.BlockAccessor.GetBlock(
+      block.WithVariant(VariantKey, TokenFor(byPlayer, blockSel))
+    );
 
   /// <summary>The token the placement should wear.</summary>
   internal string TokenFor(IPlayer byPlayer, BlockSelection blockSel) {

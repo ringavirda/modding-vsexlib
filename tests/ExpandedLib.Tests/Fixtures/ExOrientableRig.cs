@@ -22,6 +22,7 @@ public sealed class ExOrientableRig {
   private readonly BlockBehaviorExOrientable _behaviour;
   private readonly string _variantKey;
   private readonly List<Block> _states;
+  private bool _placeByBlock;
 
   private ExOrientableRig(
     TestWorld world,
@@ -145,6 +146,79 @@ public sealed class ExOrientableRig {
     return rig;
   }
 
+  /// <summary>A <see cref="TurningMegablock"/> in the four sides declaring <c>ExOrientable</c> in network mode,
+  /// whose own placement turns it; <see cref="PlaceLooking"/> places through the block's
+  /// <c>TryPlaceBlock</c>, as the game does for it.</summary>
+  public static ExOrientableRig NetworkMegablock(string fillerOffsetsJson) {
+    var attributes = new JsonObject(
+      Newtonsoft.Json.Linq.JToken.Parse(
+        $$"""{"fillerOffsets":{{fillerOffsetsJson}}}"""
+      )
+    );
+    ExOrientableRig rig = WithVariants(
+      "exlib:turning",
+      "side",
+      ["n", "e", "s", "w"],
+      mode: "network",
+      newBlock: () => new TurningMegablock { Attributes = attributes }
+    );
+    rig.World.Register(
+      TestBlocks.Configure(
+        new BlockStructureFiller(),
+        StructureFillers.FillerCode.ToString(),
+        90
+      )
+    );
+    rig._placeByBlock = true;
+    return rig;
+  }
+
+  /// <summary>A megablock that turns itself in its own <c>TryPlaceBlock</c> by the facing the player looks
+  /// toward, as the iiex belly helve does.</summary>
+  private sealed class TurningMegablock : BlockFilledMegastructure {
+    public override Block? PlacedBlock(
+      IWorldAccessor world,
+      IPlayer byPlayer,
+      BlockSelection blockSel
+    ) =>
+      world.BlockAccessor.GetBlock(
+        CodeWithVariant(
+          "side",
+          SuggestedHVOrientation(byPlayer, blockSel)[0].Code[..1]
+        )
+      );
+
+    public override bool TryPlaceBlock(
+      IWorldAccessor world,
+      IPlayer byPlayer,
+      ItemStack itemstack,
+      BlockSelection blockSel,
+      ref string failureCode
+    ) {
+      Block placed = PlacedBlock(world, byPlayer, blockSel)!;
+      if (!placed.CanPlaceBlock(world, byPlayer, blockSel, ref failureCode))
+        return false;
+      placed.DoPlaceBlock(world, byPlayer, blockSel, itemstack);
+      return true;
+    }
+  }
+
+  /// <summary>Every cell within three of <see cref="Pos"/> that holds a block, relative to <see cref="Pos"/>
+  /// as <c>x,y,z</c>, sorted.</summary>
+  public string[] StandingCells() =>
+    [
+      .. Enumerable
+        .Range(-3, 7)
+        .SelectMany(x =>
+          Enumerable
+            .Range(-3, 7)
+            .SelectMany(y => Enumerable.Range(-3, 7).Select(z => (x, y, z)))
+        )
+        .Where(c => World.GetBlock(Pos.AddCopy(c.x, c.y, c.z)).BlockId != 0)
+        .Select(c => $"{c.x},{c.y},{c.z}")
+        .Order(),
+    ];
+
   /// <summary>Appends a behaviour built by <paramref name="make"/> to every state's block.</summary>
   public ExOrientableRig WithBehaviour(System.Func<Block, BlockBehavior> make) {
     foreach (Block state in _states) {
@@ -204,14 +278,22 @@ public sealed class ExOrientableRig {
 
     var handling = EnumHandling.PassThrough;
     string failure = "";
-    bool placed = _behaviour.TryPlaceBlock(
-      World.World,
-      player,
-      new ItemStack(_placer),
-      selection,
-      ref handling,
-      ref failure
-    );
+    bool placed = _placeByBlock
+      ? _placer.TryPlaceBlock(
+        World.World,
+        player,
+        new ItemStack(_placer),
+        selection,
+        ref failure
+      )
+      : _behaviour.TryPlaceBlock(
+        World.World,
+        player,
+        new ItemStack(_placer),
+        selection,
+        ref handling,
+        ref failure
+      );
 
     FailureCode = placed ? null : failure;
     CaptureLoggedErrors();
@@ -252,6 +334,7 @@ public sealed class ExOrientableRig {
       Pos.Z + 0.5 - (look.Normali.Z * 5)
     );
     return CollectibleBehaviorMegablockPreview.AimKey(
+      World.World,
       _placer,
       player,
       new BlockSelection {

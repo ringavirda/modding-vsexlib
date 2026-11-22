@@ -1,3 +1,6 @@
+using System.Collections.Generic;
+using ExpandedLib.Blocks;
+using ExpandedLib.Helpers;
 using ExpandedLib.Registries;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
@@ -40,22 +43,88 @@ public class BlockBehaviorMultiblockStructure : BlockBehavior {
     return anchor is { StructureComplete: false } ? anchor : null;
   }
 
+  /// <summary>The unfinished part whose outline this client shows and the player it is drawn for, null when
+  /// none is. Client only and process-wide: one outline shows at a time in the shared highlight slot, so any
+  /// other draw or clear of that slot resets it.</summary>
+  internal static (BlockPos Principal, IPlayer Player)? ShownPart;
+
+  /// <summary>
+  /// The principal position and block of an unfinished staged part at <paramref name="pos"/>: the construction
+  /// of the block there, or of the principal a filler cell there points to, with stages left to build.
+  /// </summary>
+  /// <returns>Null when the cell holds no such part.</returns>
+  internal static (BlockPos Principal, Block Block)? UnfinishedPartAt(
+    IWorldAccessor world,
+    BlockPos pos
+  ) {
+    BlockPos principal = pos;
+    BlockEntity? entity = world.BlockAccessor.GetBlockEntity(pos);
+    if (entity is BlockEntityStructureFiller { Principal: { } linked }) {
+      principal = linked;
+      entity = world.BlockAccessor.GetBlockEntity(linked);
+    }
+    return
+      entity?.GetBehavior<ExRightClickConstructable>() is { IsComplete: false }
+      ? (principal.Copy(), world.BlockAccessor.GetBlock(principal))
+      : null;
+  }
+
+  /// <summary>Draws, or clears when it is already drawn, the outline of the unfinished part at
+  /// <paramref name="principal"/>: its whole footprint when the block is a megablock with filler offsets, else
+  /// the principal cell alone, all in the open tint.</summary>
+  private static void ToggleOutline(
+    IWorldAccessor world,
+    IPlayer byPlayer,
+    BlockPos principal,
+    Block block
+  ) {
+    if (ShownPart is { } shown && shown.Principal.Equals(principal)) {
+      BlockEntityMultiblockStructure.HighlightOutline(world, byPlayer, []);
+      return;
+    }
+
+    List<(BlockPos At, int Color, bool Principal)> outline =
+      block is BlockFilledMegastructure host
+      && StructureFillers.ReadOffsets(host.FillerOffsets).Count > 0
+        ? StructureFillers.PartOutline(
+          host,
+          principal,
+          host.StructureAngle,
+          ProjectionColors.Open
+        )
+        : [(principal.Copy(), ProjectionColors.Open, true)];
+    BlockEntityMultiblockStructure.HighlightOutline(world, byPlayer, outline);
+    ShownPart = (principal.Copy(), byPlayer);
+  }
+
+  /// <summary>Clears the part outline when it shows the part at <paramref name="principal"/>, for a part that
+  /// is finished or removed. Does nothing when another part or none is shown.</summary>
+  internal static void DropPartOutline(IWorldAccessor world, BlockPos principal) {
+    if (ShownPart is { } shown && shown.Principal.Equals(principal))
+      BlockEntityMultiblockStructure.HighlightOutline(world, shown.Player, []);
+  }
+
   /// <summary>
   /// Toggles the build-outline projection when the player gestures over an incomplete anchor at
-  /// <paramref name="pos"/>; returns whether the click was consumed.
+  /// <paramref name="pos"/>, else outlines an unfinished staged part there that no incomplete anchor owns;
+  /// returns whether the click was consumed.
   /// </summary>
   public static bool TryToggleProjection(
     IWorldAccessor world,
     IPlayer byPlayer,
     BlockPos pos
   ) {
-    if (
-      !IsProjectionGesture(byPlayer)
-      || ResolveIncompleteAnchor(world, pos) is not { } anchor
-    )
+    if (!IsProjectionGesture(byPlayer))
       return false;
 
-    anchor.Interact(byPlayer);
+    if (ResolveIncompleteAnchor(world, pos) is { } anchor)
+      anchor.Interact(byPlayer);
+    else if (UnfinishedPartAt(world, pos) is var (principal, block)) {
+      if (world.Side == EnumAppSide.Client)
+        ToggleOutline(world, byPlayer, principal, block);
+    } else
+      return false;
+
     (byPlayer as IClientPlayer)?.TriggerFpAnimation(
       EnumHandInteract.HeldItemInteract
     );
