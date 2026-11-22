@@ -20,8 +20,7 @@ public static class MultiblockLaw {
   /// <summary>Sets every variant of each block of <paramref name="domain"/> whose entity is a
   /// <see cref="BlockEntityMultiblockStructure"/> with a layout at a fresh cell through the
   /// accessor's <c>SetBlock</c>, runs its <see cref="Block.OnBlockPlaced"/>, fills the cells its
-  /// entity reports missing, finishes its staged parts, the anchor included, and runs one monitor
-  /// tick.</summary>
+  /// entity reports missing, finishes staged parts, anchor included, and ticks the monitor once.</summary>
   /// <remarks>The rig stands at the angle the variant's <c>side</c> (else <c>orientation</c>) gives
   /// through <see cref="ExOrientation.AngleFromSide"/>, plus the offset the blocktype's first variant
   /// turns by. A non-<c>game</c> cell takes the first registered block that satisfies it, else stays
