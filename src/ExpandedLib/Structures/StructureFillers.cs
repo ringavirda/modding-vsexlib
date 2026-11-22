@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Linq;
 using ExpandedLib.Blocks;
 using ExpandedLib.Helpers;
 using Vintagestory.API.Common;
@@ -225,6 +226,23 @@ public static class StructureFillers {
       cells.Add((cell.Pos, false));
     return cells;
   }
+
+  /// <summary>The cells of a megablock part tinted <paramref name="color"/>, as the build outline lists them.</summary>
+  /// <param name="part">The part's block; its filler offsets are read.</param>
+  /// <param name="principalPos">World position of the part's principal cell.</param>
+  /// <param name="angle">Turn in degrees (0, 90, 180 or 270) of the placed part.</param>
+  /// <param name="color">ARGB tint of every cell.</param>
+  /// <returns>One entry per <see cref="PartCells"/> cell, the principal flagged; new positions.</returns>
+  internal static List<(BlockPos At, int Color, bool Principal)> PartOutline(
+    IFillerHost part,
+    BlockPos principalPos,
+    int angle,
+    int color
+  ) =>
+    [
+      .. PartCells(part, principalPos, angle)
+        .Select(c => (c.At, color, c.Principal)),
+    ];
 
   /// <summary>
   /// Rotates each declared behaviour's north-orientation connector face into the placed orientation.

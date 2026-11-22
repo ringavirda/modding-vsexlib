@@ -1,3 +1,6 @@
+using System.Collections.Generic;
+using ExpandedLib.Blocks;
+using ExpandedLib.Helpers;
 using ExpandedLib.Registries;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
@@ -40,22 +43,80 @@ public class BlockBehaviorMultiblockStructure : BlockBehavior {
     return anchor is { StructureComplete: false } ? anchor : null;
   }
 
+  private static BlockPos? _shownPart;
+
+  /// <summary>
+  /// The principal position and block of an unfinished staged part at <paramref name="pos"/>: the construction
+  /// of the block there, or of the principal a filler cell there points to, with stages left to build.
+  /// </summary>
+  /// <returns>Null when the cell holds no such part.</returns>
+  internal static (BlockPos Principal, Block Block)? UnfinishedPartAt(
+    IWorldAccessor world,
+    BlockPos pos
+  ) {
+    BlockPos principal = pos;
+    BlockEntity? entity = world.BlockAccessor.GetBlockEntity(pos);
+    if (entity is BlockEntityStructureFiller { Principal: { } linked }) {
+      principal = linked;
+      entity = world.BlockAccessor.GetBlockEntity(linked);
+    }
+    return
+      entity?.GetBehavior<ExRightClickConstructable>() is { IsComplete: false }
+      ? (principal.Copy(), world.BlockAccessor.GetBlock(principal))
+      : null;
+  }
+
+  /// <summary>Draws, or clears when it is already drawn, the outline of the unfinished part at
+  /// <paramref name="principal"/>: its whole footprint when the block is a megablock with filler offsets, else
+  /// the principal cell alone, all in the open tint.</summary>
+  private static void ToggleOutline(
+    IWorldAccessor world,
+    IPlayer byPlayer,
+    BlockPos principal,
+    Block block
+  ) {
+    if (_shownPart != null && _shownPart.Equals(principal)) {
+      BlockEntityMultiblockStructure.HighlightOutline(world, byPlayer, []);
+      _shownPart = null;
+      return;
+    }
+
+    List<(BlockPos At, int Color, bool Principal)> outline =
+      block is BlockFilledMegastructure host
+      && StructureFillers.ReadOffsets(host.FillerOffsets).Count > 0
+        ? StructureFillers.PartOutline(
+          host,
+          principal,
+          host.StructureAngle,
+          ProjectionColors.Open
+        )
+        : [(principal.Copy(), ProjectionColors.Open, true)];
+    BlockEntityMultiblockStructure.HighlightOutline(world, byPlayer, outline);
+    _shownPart = principal.Copy();
+  }
+
   /// <summary>
   /// Toggles the build-outline projection when the player gestures over an incomplete anchor at
-  /// <paramref name="pos"/>; returns whether the click was consumed.
+  /// <paramref name="pos"/>, else over an unfinished staged part there that no incomplete anchor owns, which
+  /// outlines the part's footprint (a second gesture on the same part clears it); returns whether the click was
+  /// consumed.
   /// </summary>
   public static bool TryToggleProjection(
     IWorldAccessor world,
     IPlayer byPlayer,
     BlockPos pos
   ) {
-    if (
-      !IsProjectionGesture(byPlayer)
-      || ResolveIncompleteAnchor(world, pos) is not { } anchor
-    )
+    if (!IsProjectionGesture(byPlayer))
       return false;
 
-    anchor.Interact(byPlayer);
+    if (ResolveIncompleteAnchor(world, pos) is { } anchor)
+      anchor.Interact(byPlayer);
+    else if (UnfinishedPartAt(world, pos) is var (principal, block)) {
+      if (world.Side == EnumAppSide.Client)
+        ToggleOutline(world, byPlayer, principal, block);
+    } else
+      return false;
+
     (byPlayer as IClientPlayer)?.TriggerFpAnimation(
       EnumHandInteract.HeldItemInteract
     );

@@ -679,6 +679,7 @@ virtual ExpandedLib.Networks.BlockNetworkNode.ShapeConnectorAt(Vintagestory.API.
 virtual ExpandedLib.Structures.BlockEntityMultiblockMachine.FastForwardMode.get -> ExpandedLib.FastForwarding.FastForwardMode
 virtual ExpandedLib.Structures.BlockEntityMultiblockMachine.GameStepHours.get -> double
 virtual ExpandedLib.Structures.BlockEntityMultiblockMachine.MaxGameHoursPerTick.get -> double
+virtual ExpandedLib.Structures.BlockFilledMegastructure.PlacedBlock(Vintagestory.API.Common.IWorldAccessor! world, Vintagestory.API.Common.IPlayer! byPlayer, Vintagestory.API.Common.BlockSelection! blockSel) -> Vintagestory.API.Common.Block?
 ~override ExpandedLib.Networks.BlockNetworkNode.GetInterface<T>(Vintagestory.API.Common.IWorldAccessor! world, Vintagestory.API.MathTools.BlockPos! pos) -> T
 ~override ExpandedLib.Structures.BlockFilledMegastructure.GetInterface<T>(Vintagestory.API.Common.IWorldAccessor! world, Vintagestory.API.MathTools.BlockPos! pos) -> T
 ExpandedLib.Structures.IFillerNeighbourTarget

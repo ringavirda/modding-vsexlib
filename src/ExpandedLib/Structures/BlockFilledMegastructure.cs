@@ -69,6 +69,24 @@ public class BlockFilledMegastructure
   ) => ControlOutline.Render(this, api, blockSel, renderBoxHandler);
 #endif
 
+  /// <summary>The variant a placement of this block by <paramref name="byPlayer"/> puts down. The preview reads
+  /// the footprint from it, so a block whose <c>TryPlaceBlock</c> turns itself overrides this and places what
+  /// it returns.</summary>
+  /// <param name="world">The world the placement is in; read only.</param>
+  /// <param name="byPlayer">The player placing.</param>
+  /// <param name="blockSel">The placement selection: already offset across the face when the aimed block is
+  /// not replaceable, with <c>DidOffset</c> set as vanilla sets it.</param>
+  /// <returns>The block the default turns to: the variant the player's look picks when the block declares
+  /// <c>ExOrientable</c> in player mode, else this block. Null when that variant is missing.</returns>
+  public virtual Block? PlacedBlock(
+    IWorldAccessor world,
+    IPlayer byPlayer,
+    BlockSelection blockSel
+  ) =>
+    GetBehavior<BlockBehaviorExOrientable>() is { IsNetworkOriented: false } o
+      ? o.OrientedBlock(world, byPlayer, blockSel)
+      : this;
+
   /// <summary>The block's world footprint cells for a principal at <paramref name="pos"/>.</summary>
   protected List<FillerCell> FootprintCells(BlockPos pos) =>
     StructureFillers.FootprintCells((IFillerHost)this, pos, StructureAngle);

@@ -38,6 +38,49 @@ public class MegablockPreviewTests {
     Assert.Equal(["0,0,-1", "0,0,0", "0,1,0"], Of(west));
   }
 
+  // Fails (mutant: Footprint reads the turn from ExOrientable alone, so a network-mode block previews its
+  // stack's variant; mutant: PlacedBlock's default returns this, so a player-mode block previews unturned): the
+  // cells the preview names differ from the cells the placement fills at e, s and w.
+  [Theory]
+  [InlineData("north", false)]
+  [InlineData("east", false)]
+  [InlineData("south", false)]
+  [InlineData("west", false)]
+  [InlineData("north", true)]
+  [InlineData("east", true)]
+  [InlineData("south", true)]
+  [InlineData("west", true)]
+  public void The_preview_fills_the_cells_placement_fills(
+    string heading,
+    bool network
+  ) {
+    var rig = network
+      ? ExOrientableRig.NetworkMegablock(Footprint)
+      : ExOrientableRig.Megablock(Footprint);
+
+    var (clear, refuse) = rig.PreviewLooking(heading);
+    Assert.Empty(refuse);
+    Assert.True(rig.PlaceLooking(heading));
+
+    Assert.Equal(Of(clear), rig.StandingCells());
+  }
+
+  // Fails when AimKey leaves the placed variant out: looking another way turns the footprint of a network-mode
+  // block, and the preview would stay on the old cells.
+  [Fact]
+  public void The_aim_key_changes_with_the_placed_turn() {
+    var rig = ExOrientableRig.NetworkMegablock(Footprint);
+
+    string[] keys =
+    [
+      .. new[] { "north", "east", "south", "west" }.Select(h =>
+        rig.AimKeyLooking(h)
+      ),
+    ];
+
+    Assert.Equal(4, keys.Distinct().Count());
+  }
+
   // Fails when a cell holding a block the filler replaces is reported as refusing.
   [Fact]
   public void A_replaceable_cell_is_clear_and_a_solid_one_is_refused() {

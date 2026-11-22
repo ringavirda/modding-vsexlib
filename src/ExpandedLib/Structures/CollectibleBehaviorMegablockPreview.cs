@@ -25,9 +25,9 @@ public class CollectibleBehaviorMegablockPreview(CollectibleObject collObj)
   /// reserve, split by what the room check decides.</summary>
   /// <param name="world">The world the placement is in; read only.</param>
   /// <param name="held">The block item held; a block that is not a <see cref="BlockFilledMegastructure"/> gives
-  /// two empty lists. A block declaring <c>ExOrientable</c> in player mode is turned to the variant the
-  /// player's look picks, as its placement does.</param>
-  /// <param name="player">The player aiming; its yaw picks the turn.</param>
+  /// two empty lists. It is turned to the variant its <see cref="BlockFilledMegastructure.PlacedBlock"/>
+  /// returns, as its placement turns.</param>
+  /// <param name="player">The player aiming; the placed variant is chosen for it.</param>
   /// <param name="selection">The block looked at and the face aimed at; the placement is on the aimed cell
   /// when the block there is replaceable by <paramref name="held"/>, else on the cell across the face.</param>
   /// <returns><c>Clear</c>: the principal cell and the reserved cells that take the footprint.
@@ -44,26 +44,11 @@ public class CollectibleBehaviorMegablockPreview(CollectibleObject collObj)
   ) {
     List<BlockPos> clear = [];
     List<BlockPos> refuse = [];
-    if (held is not BlockFilledMegastructure)
+    if (held is not BlockFilledMegastructure start)
       return (clear, refuse);
 
-    BlockSelection placing = selection.Clone();
-    if (!world.BlockAccessor.GetBlock(placing.Position).IsReplacableBy(held)) {
-      placing.Position = placing.Position.AddCopy(placing.Face);
-      placing.DidOffset = true;
-    }
-
-    var orientable = held.GetBehavior<BlockBehaviorExOrientable>();
-    Block placed = held;
-    if (orientable is { IsNetworkOriented: false }) {
-      placed =
-        world.BlockAccessor.GetBlock(
-          held.WithVariant(
-            orientable.VariantKey,
-            orientable.TokenFor(player, placing)
-          )
-        ) ?? held;
-    }
+    BlockSelection placing = PlacingSelection(world, held, selection);
+    Block? placed = start.PlacedBlock(world, player, placing);
     if (placed is not BlockFilledMegastructure mega)
       return (clear, refuse);
 
@@ -90,24 +75,44 @@ public class CollectibleBehaviorMegablockPreview(CollectibleObject collObj)
   }
 
   /// <summary>What the footprint of <paramref name="held"/> aimed at <paramref name="selection"/> depends on
-  /// besides the aimed cell: the aimed face and, for a block declaring <c>ExOrientable</c> in player mode, the
-  /// turn token the player's look picks.</summary>
+  /// besides the aimed cell: the aimed face and the variant its <see cref="BlockFilledMegastructure.PlacedBlock"/>
+  /// returns.</summary>
+  /// <param name="world">The world the placement is in; read only.</param>
   /// <param name="held">The block item held.</param>
-  /// <param name="player">The player aiming; its yaw picks the turn.</param>
+  /// <param name="player">The player aiming; the placed variant is chosen for it.</param>
   /// <param name="selection">The block looked at; null when none.</param>
   /// <returns>A key that differs whenever the footprint can; empty when nothing is selected.</returns>
   internal static string AimKey(
+    IWorldAccessor world,
     Block held,
     IPlayer player,
     BlockSelection? selection
   ) {
     if (selection == null)
       return "";
-    var orientable = held.GetBehavior<BlockBehaviorExOrientable>();
-    string turn = orientable is { IsNetworkOriented: false }
-      ? orientable.TokenFor(player, selection)
-      : "";
-    return selection.Face?.Code + "|" + turn;
+    Block? placed = held is BlockFilledMegastructure mega
+      ? mega.PlacedBlock(
+        world,
+        player,
+        PlacingSelection(world, held, selection)
+      )
+      : null;
+    return selection.Face?.Code + "|" + placed?.Code;
+  }
+
+  /// <summary>The selection a placement of <paramref name="held"/> is made with: the aimed cell when its block
+  /// is replaceable by <paramref name="held"/>, else the cell across the face, with <c>DidOffset</c> set.</summary>
+  private static BlockSelection PlacingSelection(
+    IWorldAccessor world,
+    Block held,
+    BlockSelection selection
+  ) {
+    BlockSelection placing = selection.Clone();
+    if (!world.BlockAccessor.GetBlock(placing.Position).IsReplacableBy(held)) {
+      placing.Position = placing.Position.AddCopy(placing.Face);
+      placing.DidOffset = true;
+    }
+    return placing;
   }
 
   /// <summary>Drives the preview of the held megablock from the held tick; built on the first call. Client side
@@ -118,7 +123,7 @@ public class CollectibleBehaviorMegablockPreview(CollectibleObject collObj)
       "exlib:megablock-preview-" + collObj.Code
     );
     BlockSelection? selection = player.CurrentBlockSelection;
-    string key = AimKey((Block)collObj, player, selection);
+    string key = AimKey(capi.World, (Block)collObj, player, selection);
     if (key != _aimKey)
       _preview.Clear();
     _aimKey = key;

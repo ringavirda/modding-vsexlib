@@ -510,10 +510,19 @@ public abstract class BlockEntityMultiblockStructure
   }
 
   /// <summary>Tints every cell <see cref="IncompleteOutline"/> names for <paramref name="player"/>.</summary>
-  private void HighlightIncompleteSafe(IPlayer player) {
-    List<(BlockPos At, int Color, bool Principal)> outline =
-      IncompleteOutline();
-    Api.World.HighlightBlocks(
+  private void HighlightIncompleteSafe(IPlayer player) =>
+    HighlightOutline(Api.World, player, IncompleteOutline());
+
+  /// <summary>Draws <paramref name="outline"/> for <paramref name="player"/> into
+  /// <see cref="MultiblockStructure.HighlightSlotId"/>, a part's principal cell at the stronger alpha; an empty
+  /// outline clears the slot. Client side only.</summary>
+  /// <param name="outline">World positions, ARGB tints and whether the cell is a part's principal.</param>
+  internal static void HighlightOutline(
+    IWorldAccessor world,
+    IPlayer player,
+    List<(BlockPos At, int Color, bool Principal)> outline
+  ) =>
+    world.HighlightBlocks(
       player,
       MultiblockStructure.HighlightSlotId,
       [.. outline.Select(c => c.At)],
@@ -523,7 +532,6 @@ public abstract class BlockEntityMultiblockStructure
         ),
       ]
     );
-  }
 
   /// <summary>The build outline: every cell <see cref="IncompleteBlockCount"/> names with its tint, a missing
   /// megablock part drawn as its whole footprint with the principal cell flagged.</summary>
@@ -545,14 +553,7 @@ public abstract class BlockEntityMultiblockStructure
         cell.Unfinished && host is BlockFilledMegastructure standing
           ? standing.StructureAngle
           : _structureInitAngle;
-      foreach (
-        (BlockPos at, bool principal) in StructureFillers.PartCells(
-          host,
-          cell.At,
-          angle
-        )
-      )
-        parts.Add((at, color, principal));
+      parts.AddRange(StructureFillers.PartOutline(host, cell.At, angle, color));
     }
 
     var outline = new List<(BlockPos At, int Color, bool Principal)>(parts);
