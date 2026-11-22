@@ -723,6 +723,8 @@ const ExpandedLib.ExlibLang.MetalstateHardened = "exlib:metalstate-hardened" -> 
 virtual ExpandedLib.Networks.BlockNetworkNode.GetTurnedRotations(string! orientation, string? turn, out float rotX, out float rotY, out float rotZ) -> void
 virtual ExpandedLib.Networks.BlockNetworkNode.IsValidNonNetworkConnection(Vintagestory.API.Common.IBlockAccessor! world, Vintagestory.API.MathTools.BlockPos! pos, Vintagestory.API.Common.Block! neighborBlock, Vintagestory.API.MathTools.BlockFacing! face) -> bool
 const ExpandedLib.ExlibLang.FitsoneblockToolong = "exlib:fitsoneblock-toolong" -> string!
+ExpandedLib.Definitions.IExBlockDefDecorator
+ExpandedLib.Definitions.IExBlockDefDecorator.Decorate(ExpandedLib.Definitions.ExBlockDef! def) -> void
 ExpandedLib.Definitions.IExItemDefDecorator
 ExpandedLib.Definitions.IExItemDefDecorator.Decorate(ExpandedLib.Definitions.ExItemDef! def) -> void
 static ExpandedLib.Definitions.ExDefinitions.DiscoverDecorators(System.Reflection.Assembly! asm) -> void
