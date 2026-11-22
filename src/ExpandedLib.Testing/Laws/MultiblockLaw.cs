@@ -155,8 +155,8 @@ public static class MultiblockLaw {
   /// <summary>Stands the structure <paramref name="block"/> anchors up formed at
   /// <paramref name="at"/>: the anchor placed as <see cref="BlockLaws.EntityCase.Place"/> places a
   /// block, each cell it reports missing filled as <see cref="Run"/> fills it and then placed the
-  /// same way unless an earlier placement has replaced it (a megablock's fillers), with its entity, the <c>game</c> cells raised by <see cref="StructureRig"/> at the
-  /// angle the anchor turns its layout to, and one monitor tick.</summary>
+  /// same way unless an earlier placement replaced it, the <c>game</c> cells raised by
+  /// <see cref="StructureRig"/> at the anchor's layout angle, staged parts finished, one monitor tick.</summary>
   /// <param name="registered">The blocks cells are filled from (<see cref="Registered"/>).</param>
   /// <param name="faults">Where a placement's throw or log goes, keyed by the placed block's code;
   /// null leaves it unjudged.</param>
@@ -200,7 +200,11 @@ public static class MultiblockLaw {
       )
         return null;
     }
-    StructureRig.Around(world, anchor, anchor.LayoutAngle).Raise();
+    StructureRig rig = StructureRig
+      .Around(world, anchor, anchor.LayoutAngle)
+      .Raise();
+    foreach ((BlockPos part, _) in rig.UnfinishedParts().ToList())
+      rig.FinishConstruction(part);
     anchor.DriveMonitorTick();
     return anchor.StructureComplete ? step : null;
   }

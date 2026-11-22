@@ -642,6 +642,47 @@ public class BlockLawsTests {
       );
   }
 
+#if GAME_GE_1_22
+  // Fails when Formed leaves a staged part unfinished: the monitor then counts the part missing
+  // and no case is returned.
+  [Fact]
+  public void A_formed_structure_holds_its_staged_part_finished()
+  {
+    ExBlockDef staged = ExBlockDef
+      .Create("test", "staged")
+      .EntityClass("test-plain")
+      .Behavior("BlockEntityInteract")
+      .Construction(c =>
+        c.Stage(s => s.Require("game:stick", 1))
+          .Stage(s => s.Require("game:stick", 2))
+      );
+    TestWorld world = Stand(
+      staged,
+      Structure("framed", "test-sideframe", "test:staged")
+    );
+    Block block = world.World.GetBlock(new AssetLocation("test:framed-n"));
+    var at = new BlockPos(64, 64, 64);
+
+    BlockLaws.EntityCase? formed = MultiblockLaw.Formed(
+      world,
+      block,
+      at,
+      MultiblockLaw.Registered(world),
+      null
+    );
+
+    Assert.NotNull(formed);
+    BlockPos part = MultiblockLaw
+      .FormedCells(world, formed)
+      .First(c => world.GetBlock(c).Code.Path == "staged");
+    Assert.True(
+      world
+        .GetBlockEntity(part)!
+        .GetBehavior<ExpandedLib.Blocks.ExRightClickConstructable>()
+        .IsComplete
+    );
+  }
+#endif
   #endregion
 
 #if GAME_GE_1_22
