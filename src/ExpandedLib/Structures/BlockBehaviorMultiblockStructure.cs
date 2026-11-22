@@ -21,14 +21,18 @@ public class BlockBehaviorMultiblockStructure : BlockBehavior {
     return controls != null && controls.CtrlKey && controls.ShiftKey;
   }
 
-  /// <summary>Resolves the incomplete multiblock anchor for the block at <paramref name="pos"/>, or null.</summary>
+  /// <summary>
+  /// Resolves the incomplete multiblock anchor for the block at <paramref name="pos"/>, or null. A filler
+  /// cell resolves through its <see cref="BlockEntityStructureFiller.Principal"/>, followed once.
+  /// </summary>
   public static BlockEntityMultiblockStructure? ResolveIncompleteAnchor(
     IWorldAccessor world,
     BlockPos pos
   ) {
-    BlockEntityMultiblockStructure? anchor = world.BlockAccessor.GetBlockEntity(
-      pos
-    ) switch {
+    BlockEntity? entity = world.BlockAccessor.GetBlockEntity(pos);
+    if (entity is BlockEntityStructureFiller { Principal: { } principal })
+      entity = world.BlockAccessor.GetBlockEntity(principal);
+    BlockEntityMultiblockStructure? anchor = entity switch {
       BlockEntityMultiblockStructure structure => structure,
       IMultiblockComponent component => component.ResolveOwningAnchor(),
       _ => null,

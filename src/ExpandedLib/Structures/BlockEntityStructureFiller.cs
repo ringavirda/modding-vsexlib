@@ -50,6 +50,28 @@ public class BlockEntityStructureFiller : BlockEntity {
     ApplyHostedBehaviors();
   }
 
+  /// <summary>
+  /// Finds a block entity of type <typeparamref name="T"/> at <paramref name="pos"/>, looking through a
+  /// filler to its principal. Reads only.
+  /// </summary>
+  /// <typeparam name="T">The block entity type wanted.</typeparam>
+  /// <param name="world">The world whose block accessor is read.</param>
+  /// <param name="pos">The cell to look at.</param>
+  /// <returns>
+  /// The <typeparamref name="T"/> at <paramref name="pos"/>; else, when <paramref name="pos"/> holds a
+  /// filler, its principal's entity as <typeparamref name="T"/>; else null (including a filler with no
+  /// principal or whose principal is another type).
+  /// </returns>
+  public static T? PrincipalEntityAt<T>(IWorldAccessor world, BlockPos pos)
+    where T : BlockEntity {
+    BlockEntity? entity = world.BlockAccessor.GetBlockEntity(pos);
+    if (entity is T direct)
+      return direct;
+    return entity is BlockEntityStructureFiller { Principal: { } principal }
+      ? world.BlockAccessor.GetBlockEntity(principal) as T
+      : null;
+  }
+
   /// <summary>Stores the cell's hosted-behaviour declarations and recreates them. Null clears any existing ones.</summary>
   public void SetHostedBehaviors(FillerBehavior[]? behaviors) {
     HostedBehaviors = behaviors is { Length: > 0 } ? behaviors : null;

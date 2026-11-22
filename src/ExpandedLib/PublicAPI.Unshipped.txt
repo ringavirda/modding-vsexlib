@@ -926,3 +926,4 @@ ExpandedLib.Helpers.IHandbookOperatingHelp.GetHandbookOperatingHelp(Vintagestory
 ExpandedLib.Structures.BlockEntityMultiblockStructure.MissingCell.Unfinished.get -> bool
 ExpandedLib.Structures.BlockEntityMultiblockStructure.MissingCell.Unfinished.init -> void
 ExpandedLib.Blocks.ExRightClickConstructable.StageCount.get -> int
+static ExpandedLib.Structures.BlockEntityStructureFiller.PrincipalEntityAt<T>(Vintagestory.API.Common.IWorldAccessor! world, Vintagestory.API.MathTools.BlockPos! pos) -> T?
