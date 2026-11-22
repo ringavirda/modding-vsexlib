@@ -934,3 +934,5 @@ static ExpandedLib.Structures.BlockEntityStructureFiller.PrincipalEntityAt<T>(Vi
 ExpandedLib.Structures.CollectibleBehaviorMegablockPreview
 ExpandedLib.Structures.CollectibleBehaviorMegablockPreview.CollectibleBehaviorMegablockPreview(Vintagestory.API.Common.CollectibleObject! collObj) -> void
 static ExpandedLib.Structures.CollectibleBehaviorMegablockPreview.Footprint(Vintagestory.API.Common.IWorldAccessor! world, Vintagestory.API.Common.Block! held, Vintagestory.API.Common.IPlayer! player, Vintagestory.API.Common.BlockSelection! selection) -> (System.Collections.Generic.IReadOnlyList<Vintagestory.API.MathTools.BlockPos!>! Clear, System.Collections.Generic.IReadOnlyList<Vintagestory.API.MathTools.BlockPos!>! Refuse)
+ExpandedLib.Definitions.ExItemDef.MoveCreativeTab(string! from, string! to) -> ExpandedLib.Definitions.ExItemDef!
+ExpandedLib.Definitions.ExBlockDef.MoveCreativeTab(string! from, string! to) -> ExpandedLib.Definitions.ExBlockDef!

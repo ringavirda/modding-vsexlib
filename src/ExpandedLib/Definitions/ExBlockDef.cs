@@ -502,6 +502,25 @@ public sealed class ExBlockDef : IExDef {
   public ExBlockDef CreativeCommon(params string[] selectors) =>
     CreativeTab("general", selectors).CreativeTab(_domain, selectors);
 
+  /// <summary>Moves the selector list of <c>creativeinventory.{from}</c> to <paramref name="to"/>,
+  /// appending to a list already there. Does nothing when <paramref name="from"/> is absent or
+  /// equals <paramref name="to"/>; the other tabs are untouched.</summary>
+  public ExBlockDef MoveCreativeTab(string from, string to) {
+    if (
+      from != to
+      && _root["creativeinventory"] is JObject tabs
+      && tabs[from] is JArray moved
+    ) {
+      tabs.Remove(from);
+      if (tabs[to] is JArray existing)
+        foreach (JToken selector in moved)
+          existing.Add(selector);
+      else
+        tabs[to] = moved;
+    }
+    return this;
+  }
+
   #endregion
 
   #region Variant groups + *ByType maps

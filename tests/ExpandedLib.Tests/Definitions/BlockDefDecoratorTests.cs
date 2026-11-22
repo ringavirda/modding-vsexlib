@@ -75,4 +75,37 @@ public class BlockDefDecoratorTests : IDisposable {
       Decorated(ExDefinitions.Blocks.Single(d => d.Code == "other-block"))
     );
   }
+
+  // Fails when a move drops the source tab's selectors, leaves the source key, replaces rather than
+  // appends to a target already listed, or touches a tab it was not asked to.
+  [Fact]
+  public void MoveCreativeTab_moves_and_appends() {
+    ExBlockDef block = ExBlockDef
+      .Create("test", "mv")
+      .CreativeTab("general", "*")
+      .CreativeTab("test", "a")
+      .CreativeTab("parts", "b");
+    block.MoveCreativeTab("test", "parts");
+    var tabs = (Newtonsoft.Json.Linq.JObject)
+      block.ToJson()["creativeinventory"]!;
+    Assert.Null(tabs["test"]);
+    Assert.Equal(["b", "a"], tabs["parts"]!.Select(t => (string)t!));
+    Assert.Equal(["*"], tabs["general"]!.Select(t => (string)t!));
+
+    ExItemDef item = ExItemDef
+      .Create("test", "mv")
+      .CreativeTab("test", "x")
+      .CreativeTab("parts", "y");
+    item.MoveCreativeTab("test", "parts").MoveCreativeTab("absent", "parts");
+    var itemTabs = (Newtonsoft.Json.Linq.JObject)
+      item.ToJson()["creativeinventory"]!;
+    Assert.Null(itemTabs["test"]);
+    Assert.Equal(["y", "x"], itemTabs["parts"]!.Select(t => (string)t!));
+
+    Assert.Null(
+      ExItemDef.Create("test", "bare").MoveCreativeTab("a", "b").ToJson()[
+        "creativeinventory"
+      ]
+    );
+  }
 }
