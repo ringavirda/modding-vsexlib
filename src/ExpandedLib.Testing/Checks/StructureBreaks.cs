@@ -883,6 +883,23 @@ public static class StructureBreaks
     foreach ((string code, EnumItemClass type, _) in paid)
       if (!code.Contains('*') && !code.Contains('{'))
         Resolvable(world, code, type);
+    for (int i = 1; i <= built; i++)
+      foreach (
+        ExConstructionIngredient given in rcc.Stages[i].ReturnStacks ?? []
+      )
+      {
+        string code = Filled(given.Code.ToString(), rcc.StoredWildCards);
+        int left = given.Quantity;
+        for (int p = 0; p < paid.Count && left > 0; p++)
+        {
+          if (paid[p].Code != code)
+            continue;
+          int take = Math.Min(left, paid[p].Quantity);
+          paid[p] = (code, paid[p].Type, paid[p].Quantity - take);
+          left -= take;
+        }
+      }
+    paid.RemoveAll(p => p.Quantity <= 0);
     if (built >= 1)
       foreach ((string code, _, int quantity) in paid)
         if (behavior.IsBrokenDropLost(code))

@@ -813,6 +813,24 @@ public class StructureBreaksTests
     );
   }
 
+  // Fails when the expected drops are not netted against a built stage's returned stacks: the two
+  // planks the second stage gives back are expected again on every break after it.
+  [Fact]
+  public void A_stage_giving_materials_back_is_expected_to_drop_them_no_more()
+  {
+    StructureBreaks.Result result = Run(
+      Mega("centring")
+        .EntityClass("test-plain")
+        .Construction(c =>
+          c.Stage(s => s.Require("game:stick", 1))
+            .Stage(s => s.Require("game:plank-oak", 2))
+            .Stage(s => s.Returns("game:plank-oak", 2))
+        )
+    );
+
+    Assert.True(result.Failures.Count == 0, string.Join("\n", result.Failures));
+  }
+
   #endregion
 
   private static TestWorld LoadFixture() =>
