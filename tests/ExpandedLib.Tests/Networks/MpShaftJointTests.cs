@@ -18,7 +18,7 @@ namespace ExpandedLib.Tests;
 /// <see cref="BlockNetworkModSystem.CanPlaceMember"/>.
 /// </summary>
 public class MpShaftJointTests {
-  private sealed class Cell
+  private class Cell
     : BlockEntity,
       IMpEnergyStorage,
       IMpEnergyProducer,
@@ -32,6 +32,21 @@ public class MpShaftJointTests {
     public float DriveTorque(float speed) => Drive;
 
     public float LoadTorque(float speed) => Load;
+  }
+
+  private sealed class RatedCell : Cell, IMpEnergySegment {
+    public MpShaftSize Size => MpShaftSize.Main;
+
+    public float RatingNm => 100f;
+
+    public float RatingAcross(BlockFacing face) =>
+      face == BlockFacing.SOUTH ? 40f : RatingNm;
+
+    public float StandingNm => 0f;
+
+    public float StiffnessNmPerRad => 1e6f;
+
+    public float Strain { get; set; }
   }
 
   private sealed class HeavyCell : BlockEntity, IMpEnergyStorage {
@@ -228,6 +243,24 @@ public class MpShaftJointTests {
   }
 
   #region Joints
+
+  // Fails when a joint end is rated by the neighbour's face or by none (mutants: RatingAt returns -1; the key-first
+  // arms of the face and rating swapped in MpShaftJoints.Gather).
+  [Fact]
+  public void Joints_EachEndIsRatedByTheFaceItCrosses() {
+    var w = NewWorld();
+    var a = new Cell { Drive = 60f };
+    var f = new RatedCell();
+    var d = new Cell { Load = 60f };
+    Put(w, A, a, new CellMember(a, "e"));
+    Put(w, F, f, new CellMember(f, "ws"));
+    Put(w, D, d, new CellMember(d, "n"));
+
+    Tick(w);
+
+    var store = Run(w).Store;
+    Assert.Equal(1.5f, store.NodeLoad(store.IndexOf(NodeKey.Centre(F))), 2);
+  }
 
   // Fails when the run builds no joints from the graph on a topology change.
   [Fact]

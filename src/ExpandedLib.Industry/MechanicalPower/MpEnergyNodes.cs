@@ -68,6 +68,12 @@ public interface IMpEnergySegment {
   /// <summary>Working torque (N*m) the segment carries without taking set.</summary>
   float RatingNm { get; }
 
+  /// <summary>Working torque (N*m) the segment carries without taking set through the joint on <paramref name="face"/>,
+  /// in the units of <see cref="RatingNm"/>. <see cref="RatingNm"/> by default, so a segment rated as one piece keeps
+  /// its behaviour. Read when the run builds its joints, on a topology change, not on every step.</summary>
+  /// <param name="face">The face of the segment's own cell the joint crosses.</param>
+  float RatingAcross(BlockFacing face) => RatingNm;
+
   /// <summary>Coulomb standing torque (N*m) of the segment's journals, constant with speed.</summary>
   float StandingNm { get; }
 
@@ -89,6 +95,28 @@ public interface IMpEnergySegment {
   /// <see cref="UltimateNm"/> and shaft failure is on; the block entity breaks the shaft. Does nothing
   /// by default.</summary>
   void Part() { }
+}
+
+/// <summary>A segment whose geared faces are rated and worn apart from the rest of the cell: the strain of a mesh face
+/// is its own, and a face that wears out strips instead of parting the cell. The implementer is also an
+/// <see cref="IMpEnergySegment"/>.</summary>
+public interface IMpEnergyMeshes {
+  /// <summary>The faces of the cell that carry a mesh, as the joints cross them now; empty for none. The faces are
+  /// those <see cref="IMpEnergySegment.RatingAcross"/> is asked about.</summary>
+  IReadOnlyCollection<BlockFacing> MeshFaces { get; }
+
+  /// <summary>Accumulated strain of the mesh on <paramref name="face"/>, 0 to 1; saved with the block by the
+  /// implementer. Rises at (load - 1) per <c>MpStrainTauHours</c> of in-game time while the face is past its
+  /// rating and never falls.</summary>
+  float MeshStrain(BlockFacing face);
+
+  /// <summary>Takes the strain the torque path worked out for the mesh on <paramref name="face"/>; the block entity
+  /// keeps it and marks itself dirty.</summary>
+  void SetMeshStrain(BlockFacing face, float strain);
+
+  /// <summary>Called each step while the mesh on <paramref name="face"/> is at strain 1 or its joint carries at least
+  /// <see cref="IMpEnergySegment.UltimateNm"/>, and shaft failure is on; the block entity strips the mesh.</summary>
+  void Strip(BlockFacing face);
 }
 
 /// <summary>A flywheel whose rim strains when the run turns it past its rim limit.</summary>

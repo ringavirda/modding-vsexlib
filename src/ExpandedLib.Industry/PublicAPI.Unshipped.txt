@@ -543,6 +543,11 @@ ExpandedLib.Industry.MechanicalPower.IMpEnergyLink.WornOut.get -> bool
 ExpandedLib.Industry.MechanicalPower.IMpEnergyLinkSource
 ExpandedLib.Industry.MechanicalPower.IMpEnergyLinkSource.LinksAt(Vintagestory.API.Common.IBlockAccessor! world, Vintagestory.API.MathTools.BlockPos! pos) -> System.Collections.Generic.IEnumerable<ExpandedLib.Industry.MechanicalPower.IMpEnergyLink!>!
 ExpandedLib.Industry.MechanicalPower.IMpEnergyProducer.DriveSlope(float speed) -> float
+ExpandedLib.Industry.MechanicalPower.IMpEnergyMeshes
+ExpandedLib.Industry.MechanicalPower.IMpEnergyMeshes.MeshFaces.get -> System.Collections.Generic.IReadOnlyCollection<Vintagestory.API.MathTools.BlockFacing!>!
+ExpandedLib.Industry.MechanicalPower.IMpEnergyMeshes.MeshStrain(Vintagestory.API.MathTools.BlockFacing! face) -> float
+ExpandedLib.Industry.MechanicalPower.IMpEnergyMeshes.SetMeshStrain(Vintagestory.API.MathTools.BlockFacing! face, float strain) -> void
+ExpandedLib.Industry.MechanicalPower.IMpEnergyMeshes.Strip(Vintagestory.API.MathTools.BlockFacing! face) -> void
 ExpandedLib.Industry.MechanicalPower.IMpEnergyRim
 ExpandedLib.Industry.MechanicalPower.IMpEnergyRim.Burst() -> void
 ExpandedLib.Industry.MechanicalPower.IMpEnergyRim.RimLimitRadS.get -> float
@@ -551,6 +556,7 @@ ExpandedLib.Industry.MechanicalPower.IMpEnergyRim.RimStrain.set -> void
 ExpandedLib.Industry.MechanicalPower.IMpEnergySegment
 ExpandedLib.Industry.MechanicalPower.IMpEnergySegment.Part() -> void
 ExpandedLib.Industry.MechanicalPower.IMpEnergySegment.RatingNm.get -> float
+ExpandedLib.Industry.MechanicalPower.IMpEnergySegment.RatingAcross(Vintagestory.API.MathTools.BlockFacing! face) -> float
 ExpandedLib.Industry.MechanicalPower.IMpEnergySegment.Size.get -> ExpandedLib.Industry.MechanicalPower.MpShaftSize
 ExpandedLib.Industry.MechanicalPower.IMpEnergySegment.StandingNm.get -> float
 ExpandedLib.Industry.MechanicalPower.IMpEnergySegment.StiffnessNmPerRad.get -> float
