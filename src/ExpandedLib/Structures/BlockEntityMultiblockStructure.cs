@@ -346,7 +346,7 @@ public abstract class BlockEntityMultiblockStructure
         return;
       }
       // Air-satisfied or filler slots are not player-gathered.
-      if (IsAutoFilled(cell.Wanted))
+      if (IsAutoFilled(cell))
         return;
       missingByCode.TryGetValue(cell.Wanted, out int count);
       missingByCode[cell.Wanted] = count + 1;
@@ -541,11 +541,15 @@ public abstract class BlockEntityMultiblockStructure
         singles.Add((cell.At, color, false));
         continue;
       }
+      int angle =
+        cell.Unfinished && host is BlockFilledMegastructure standing
+          ? standing.StructureAngle
+          : _structureInitAngle;
       foreach (
         (BlockPos at, bool principal) in StructureFillers.PartCells(
           host,
           cell.At,
-          _structureInitAngle
+          angle
         )
       )
         parts.Add((at, color, principal));
@@ -592,10 +596,11 @@ public abstract class BlockEntityMultiblockStructure
 
   private static readonly AssetLocation AirCode = new("game:air");
 
-  /// <summary>True when a slot is satisfied without the player gathering a block.</summary>
-  private static bool IsAutoFilled(AssetLocation wantBlockCode) =>
-    WildcardUtil.Match(wantBlockCode, AirCode)
-    || WildcardUtil.Match(wantBlockCode, StructureFillers.FillerCode);
+  /// <summary>True when a slot is satisfied without the player gathering a block: a filler cell, or an air cell
+  /// that holds air. A solid block in an air cell is not.</summary>
+  internal static bool IsAutoFilled(MissingCell cell) =>
+    WildcardUtil.Match(cell.Wanted, StructureFillers.FillerCode)
+    || (WildcardUtil.Match(cell.Wanted, AirCode) && cell.Actual.Id == 0);
 
   /// <summary>Shows the player a chat breakdown of every block still missing and how many of each.</summary>
   private void ShowMissingBlocksReport(

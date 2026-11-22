@@ -1,6 +1,7 @@
 using System.Linq;
 using ExpandedLib.Structures;
 using ExpandedLib.Testing;
+using NSubstitute;
 using Vintagestory.API.Common;
 using Vintagestory.API.MathTools;
 using Xunit;
@@ -68,6 +69,42 @@ public class MegablockPreviewTests {
 
     Assert.Equal(["0,1,0", "0,2,0", "1,1,0"], Of(clear));
     Assert.Empty(refuse);
+  }
+
+  // Fails when the aimed face is left out of the key: the footprint across the face moves with it, so the
+  // preview would stay on the old cells while the player aims at the same block.
+  [Fact]
+  public void The_aim_key_changes_with_the_aimed_face() {
+    var rig = ExOrientableRig.Megablock(Footprint);
+
+    Assert.NotEqual(
+      rig.AimKeyLooking("north", "up"),
+      rig.AimKeyLooking("north", "east")
+    );
+  }
+
+  // Fails when the player's turn token is left out of the key: looking another way turns the footprint.
+  [Fact]
+  public void The_aim_key_changes_with_the_turn_the_look_picks() {
+    var rig = ExOrientableRig.Megablock(Footprint);
+
+    Assert.NotEqual(rig.AimKeyLooking("north"), rig.AimKeyLooking("west"));
+  }
+
+  // Fails when Attach returns before registering the held tick for a block that already lists the behaviour.
+  [Fact]
+  public void A_block_that_lists_the_behaviour_still_gets_the_held_tick() {
+    var world = new TestWorld();
+    var block = new BlockFilledMegastructure();
+    var listed = new CollectibleBehaviorMegablockPreview(block);
+    block.CollectibleBehaviors = [listed];
+
+    CollectibleBehaviorMegablockPreview.Attach(block, world.ClientApi);
+
+    world
+      .ClientApi.Event.Received(1)
+      .RegisterGameTickListener(Arg.Any<System.Action<float>>(), 50, 0);
+    Assert.Same(listed, Assert.Single(block.CollectibleBehaviors));
   }
 
   [Fact]

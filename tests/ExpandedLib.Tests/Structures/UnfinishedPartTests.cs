@@ -157,6 +157,28 @@ public class UnfinishedPartTests {
       .TriggerIngameError(machine, "incomplete", "missing 1");
   }
 
+  // Fails when an air-wanted cell holding a solid block is treated as auto-filled: the structure stays
+  // incomplete with a count of 0 and no line.
+  [Fact]
+  public void A_solid_block_in_an_air_cell_is_counted() {
+    var anchor = new BlockPos(11400, 10, 0);
+    var (world, machine, wall) = Stand(anchor);
+    Block air = TestBlocks.Configure(new Block(), "game:air", 0);
+    Block stone = TestBlocks.Configure(new Block(), "exlib:teststone", 3);
+
+    var cell = new BlockEntityMultiblockStructure.MissingCell(
+      stone,
+      new AssetLocation("game:air"),
+      wall,
+      null
+    );
+
+    Assert.False(BlockEntityMultiblockStructure.IsAutoFilled(cell));
+    Assert.True(
+      BlockEntityMultiblockStructure.IsAutoFilled(cell with { Actual = air })
+    );
+  }
+
   // Fails when StageCount reads Stages.Length, counting the placing stage.
   [Fact]
   public void StageCount_ExcludesPlacing() {

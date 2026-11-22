@@ -19,6 +19,7 @@ namespace ExpandedLib.Structures;
 public class CollectibleBehaviorMegablockPreview(CollectibleObject collObj)
   : CollectibleBehavior(collObj) {
   private ExCoursePreview? _preview;
+  private string? _aimKey;
 
   /// <summary>The cells a placement of <paramref name="held"/> aimed at <paramref name="selection"/> would
   /// reserve, split by what the room check decides.</summary>
@@ -88,17 +89,43 @@ public class CollectibleBehaviorMegablockPreview(CollectibleObject collObj)
     return (clear, refuse);
   }
 
+  /// <summary>What the footprint of <paramref name="held"/> aimed at <paramref name="selection"/> depends on
+  /// besides the aimed cell: the aimed face and, for a block declaring <c>ExOrientable</c> in player mode, the
+  /// turn token the player's look picks.</summary>
+  /// <param name="held">The block item held.</param>
+  /// <param name="player">The player aiming; its yaw picks the turn.</param>
+  /// <param name="selection">The block looked at; null when none.</param>
+  /// <returns>A key that differs whenever the footprint can; empty when nothing is selected.</returns>
+  internal static string AimKey(
+    Block held,
+    IPlayer player,
+    BlockSelection? selection
+  ) {
+    if (selection == null)
+      return "";
+    var orientable = held.GetBehavior<BlockBehaviorExOrientable>();
+    string turn = orientable is { IsNetworkOriented: false }
+      ? orientable.TokenFor(player, selection)
+      : "";
+    return selection.Face?.Code + "|" + turn;
+  }
+
   /// <summary>Drives the preview of the held megablock from the held tick; built on the first call. Client side
   /// only.</summary>
   internal void Preview(ICoreClientAPI capi, IPlayer player) {
     _preview ??= new ExCoursePreview(
       capi,
-      "exlib:megablock-preview-" + collObj.Code.Path
+      "exlib:megablock-preview-" + collObj.Code
     );
+    BlockSelection? selection = player.CurrentBlockSelection;
+    string key = AimKey((Block)collObj, player, selection);
+    if (key != _aimKey)
+      _preview.Clear();
+    _aimKey = key;
     _preview.Drive(
       player,
       collObj,
-      player.CurrentBlockSelection,
+      selection,
       sel => {
         (IReadOnlyList<BlockPos> clear, IReadOnlyList<BlockPos> refuse) =
           Footprint(capi.World, (Block)collObj, player, sel);
@@ -110,14 +137,13 @@ public class CollectibleBehaviorMegablockPreview(CollectibleObject collObj)
   /// <summary>Gives <paramref name="block"/> the behaviour when it has none and registers its held tick. Client
   /// side only; run from the block's <c>OnLoaded</c>.</summary>
   internal static void Attach(Block block, ICoreClientAPI capi) {
-    if (
-      block.GetCollectibleBehavior<CollectibleBehaviorMegablockPreview>(false)
-      != null
-    )
-      return;
-    var behavior = new CollectibleBehaviorMegablockPreview(block);
-    behavior.Initialize(new JsonObject(new JObject()));
-    block.CollectibleBehaviors = [.. block.CollectibleBehaviors, behavior];
+    var behavior =
+      block.GetCollectibleBehavior<CollectibleBehaviorMegablockPreview>(false);
+    if (behavior == null) {
+      behavior = new CollectibleBehaviorMegablockPreview(block);
+      behavior.Initialize(new JsonObject(new JObject()));
+      block.CollectibleBehaviors = [.. block.CollectibleBehaviors, behavior];
+    }
     capi.Event.RegisterGameTickListener(
       _ => {
         if (

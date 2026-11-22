@@ -29,12 +29,17 @@ public class PartProjectionTests {
       );
 
   private sealed class ColouredPart : BlockFilledMegastructure {
+    public int Angle;
+
+    public override int StructureAngle => Angle;
+
     public override int GetColor(ICoreClientAPI capi, BlockPos pos) => 0x336699;
   }
 
-  private static BlockFilledMegastructure Part() =>
+  private static BlockFilledMegastructure Part(int angle = 0) =>
     TestBlocks.Configure(
       new ColouredPart {
+        Angle = angle,
         Attributes = new JsonObject(
           JToken.Parse($$"""{"fillerOffsets":{{Footprint}}}""")
         ),
@@ -46,7 +51,8 @@ public class PartProjectionTests {
   private static (TestMegablock Machine, BlockPos Part) Stand(
     BlockPos anchor,
     bool placePart,
-    bool unfinished = false
+    bool unfinished = false,
+    int partAngle = 0
   ) {
     var world = new TestWorld();
     var machine = new TestMegablock();
@@ -54,7 +60,7 @@ public class PartProjectionTests {
     world.Place(anchor, core, machine);
     world.Attach(machine);
     machine.Block = core;
-    BlockFilledMegastructure part = Part();
+    BlockFilledMegastructure part = Part(partAngle);
     world.Register(part);
     BlockPos at = anchor.AddCopy(1, 0, 0);
     StructureRig rig = StructureRig.Around(world, machine, Def());
@@ -111,6 +117,26 @@ public class PartProjectionTests {
     Assert.Equal(3, outline.Count);
     Assert.All(outline, c => Assert.Equal(ProjectionColors.Open, c.Color));
     Assert.Equal(at, Assert.Single(outline, c => c.Principal).At);
+  }
+
+  // Fails when a standing unfinished part is turned by the layout's angle instead of its own.
+  [Fact]
+  public void An_unfinished_part_turns_by_its_own_angle() {
+    var (machine, at) = Stand(
+      new BlockPos(12300, 10, 0),
+      placePart: true,
+      unfinished: true,
+      partAngle: 90
+    );
+
+    var outline = machine.IncompleteOutline();
+
+    Assert.Equal(
+      new[] { at, at.UpCopy(), at.AddCopy(0, 0, -1) }
+        .Select(p => p.ToString())
+        .Order(),
+      outline.Select(c => c.At.ToString()).Order()
+    );
   }
 
   // Fails when the footprint is not turned to the layout's angle.
