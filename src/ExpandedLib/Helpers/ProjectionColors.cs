@@ -43,6 +43,9 @@ internal static class ProjectionColors {
   internal static int Of(int blockColor) =>
     (blockColor & 0xFFFFFF) | (Alpha << 24);
 
+  /// <summary>Keeps the RGB of <paramref name="color"/> and raises the alpha to mark a part's principal cell.</summary>
+  internal static int Marked(int color) => (color & 0xFFFFFF) | (0xC0 << 24);
+
   /// <summary>Gives each channel of <paramref name="color"/> as 0..1 for a shader tint, reading red from the low byte, unlike <c>ColorUtil.ToRGBAVec4f</c>.</summary>
   internal static Vec4f Tint(int color) =>
     new(

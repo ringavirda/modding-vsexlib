@@ -509,25 +509,74 @@ public abstract class BlockEntityMultiblockStructure
     return map;
   }
 
-  /// <summary>Tints every cell <see cref="IncompleteBlockCount"/> names for <paramref name="player"/>.</summary>
+  /// <summary>Tints every cell <see cref="IncompleteOutline"/> names for <paramref name="player"/>.</summary>
   private void HighlightIncompleteSafe(IPlayer player) {
-    List<(BlockPos At, int Color)> outline = IncompleteOutline();
+    List<(BlockPos At, int Color, bool Principal)> outline =
+      IncompleteOutline();
     Api.World.HighlightBlocks(
       player,
       MultiblockStructure.HighlightSlotId,
       [.. outline.Select(c => c.At)],
-      [.. outline.Select(c => c.Color)]
+      [
+        .. outline.Select(c =>
+          c.Principal ? ProjectionColors.Marked(c.Color) : c.Color
+        ),
+      ]
     );
   }
 
-  /// <summary>The build outline: every cell <see cref="IncompleteBlockCount"/> names, a misfaced
-  /// connector included, with its tint. An occupied cell is red; an empty one takes the wanted block's
-  /// colour, or a neutral blue when the wanted code resolves to no block.</summary>
-  /// <returns>World positions and ARGB tints; empty when the structure is complete or not loaded.</returns>
-  internal List<(BlockPos At, int Color)> IncompleteOutline() {
-    var outline = new List<(BlockPos At, int Color)>();
-    IncompleteBlockCount(cell => outline.Add((cell.At, OutlineColor(cell))));
+  /// <summary>The build outline: every cell <see cref="IncompleteBlockCount"/> names with its tint, a missing
+  /// megablock part drawn as its whole footprint with the principal cell flagged.</summary>
+  /// <returns>World positions, ARGB tints and whether the cell is a part's principal; empty when the structure
+  /// is complete or not loaded.</returns>
+  internal List<(BlockPos At, int Color, bool Principal)> IncompleteOutline() {
+    var missing = new List<MissingCell>();
+    IncompleteBlockCount(missing.Add);
+
+    var parts = new List<(BlockPos At, int Color, bool Principal)>();
+    var singles = new List<(BlockPos At, int Color, bool Principal)>();
+    foreach (MissingCell cell in missing) {
+      int color = cell.Unfinished ? ProjectionColors.Open : OutlineColor(cell);
+      if (PartHostOf(cell) is not { } host) {
+        singles.Add((cell.At, color, false));
+        continue;
+      }
+      foreach (
+        (BlockPos at, bool principal) in StructureFillers.PartCells(
+          host,
+          cell.At,
+          _structureInitAngle
+        )
+      )
+        parts.Add((at, color, principal));
+    }
+
+    var outline = new List<(BlockPos At, int Color, bool Principal)>(parts);
+    foreach (var single in singles)
+      if (!parts.Any(p => p.At.Equals(single.At)))
+        outline.Add(single);
     return outline;
+  }
+
+  /// <summary>The megablock part a missing cell stands for, or null when the cell is no part: the standing block
+  /// of an unfinished cell, else the block the layout wants there, when it is a
+  /// <see cref="BlockFilledMegastructure"/> with filler cells.</summary>
+  private IFillerHost? PartHostOf(MissingCell cell) {
+    if (cell.OutwardFace != null)
+      return null;
+
+    Block? block = cell.Unfinished ? cell.Actual : null;
+    if (block == null) {
+      Block[] matches = Api.World.SearchBlocks(cell.Wanted);
+      if (matches.Length == 0)
+        return null;
+      block = matches[0];
+    }
+    return
+      block is BlockFilledMegastructure host
+      && StructureFillers.ReadOffsets(host.FillerOffsets).Count > 0
+      ? host
+      : null;
   }
 
   private int OutlineColor(MissingCell cell) {

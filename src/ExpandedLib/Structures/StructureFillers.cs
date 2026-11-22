@@ -206,6 +206,26 @@ public static class StructureFillers {
     return cells;
   }
 
+  /// <summary>The cells a megablock part covers, for drawing a missing part whole.</summary>
+  /// <param name="part">The part's block; its filler offsets are read.</param>
+  /// <param name="principalPos">World position of the part's principal cell.</param>
+  /// <param name="angle">Turn in degrees (0, 90, 180 or 270) of the placed part.</param>
+  /// <returns>The principal cell first, flagged, then every <see cref="FootprintCells"/> cell, all world
+  /// positions; new lists and positions.</returns>
+  internal static List<(BlockPos At, bool Principal)> PartCells(
+    IFillerHost part,
+    BlockPos principalPos,
+    int angle
+  ) {
+    var cells = new List<(BlockPos At, bool Principal)>
+    {
+      (principalPos.Copy(), true),
+    };
+    foreach (FillerCell cell in FootprintCells(part, principalPos, angle))
+      cells.Add((cell.Pos, false));
+    return cells;
+  }
+
   /// <summary>
   /// Rotates each declared behaviour's north-orientation connector face into the placed orientation.
   /// Returns the same array reference when there is nothing to rotate.
