@@ -6,6 +6,7 @@ using System.Runtime.CompilerServices;
 using ExpandedLib.Helpers;
 using ExpandedLib.Machines;
 using ExpandedLib.Registries;
+using ExpandedLib.Structures;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Datastructures;
@@ -234,6 +235,14 @@ public class ExRightClickConstructable
   ) {
     base.FromTreeAttributes(tree, world);
     rcc.FromTreeAttributes(tree);
+    if (IsComplete && world.Side == EnumAppSide.Client)
+      BlockBehaviorMultiblockStructure.DropPartOutline(world, Pos);
+  }
+
+  public override void OnBlockRemoved() {
+    base.OnBlockRemoved();
+    if (Api?.Side == EnumAppSide.Client)
+      BlockBehaviorMultiblockStructure.DropPartOutline(Api.World, Pos);
   }
 
   public override void ToTreeAttributes(ITreeAttribute tree) {

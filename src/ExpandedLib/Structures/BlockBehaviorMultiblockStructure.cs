@@ -43,7 +43,10 @@ public class BlockBehaviorMultiblockStructure : BlockBehavior {
     return anchor is { StructureComplete: false } ? anchor : null;
   }
 
-  private static BlockPos? _shownPart;
+  /// <summary>The unfinished part whose outline this client shows and the player it is drawn for, null when
+  /// none is. Client only and process-wide: one outline shows at a time in the shared highlight slot, so any
+  /// other draw or clear of that slot resets it.</summary>
+  internal static (BlockPos Principal, IPlayer Player)? ShownPart;
 
   /// <summary>
   /// The principal position and block of an unfinished staged part at <paramref name="pos"/>: the construction
@@ -75,9 +78,8 @@ public class BlockBehaviorMultiblockStructure : BlockBehavior {
     BlockPos principal,
     Block block
   ) {
-    if (_shownPart != null && _shownPart.Equals(principal)) {
+    if (ShownPart is { } shown && shown.Principal.Equals(principal)) {
       BlockEntityMultiblockStructure.HighlightOutline(world, byPlayer, []);
-      _shownPart = null;
       return;
     }
 
@@ -92,7 +94,14 @@ public class BlockBehaviorMultiblockStructure : BlockBehavior {
         )
         : [(principal.Copy(), ProjectionColors.Open, true)];
     BlockEntityMultiblockStructure.HighlightOutline(world, byPlayer, outline);
-    _shownPart = principal.Copy();
+    ShownPart = (principal.Copy(), byPlayer);
+  }
+
+  /// <summary>Clears the part outline when it shows the part at <paramref name="principal"/>, for a part that
+  /// is finished or removed. Does nothing when another part or none is shown.</summary>
+  internal static void DropPartOutline(IWorldAccessor world, BlockPos principal) {
+    if (ShownPart is { } shown && shown.Principal.Equals(principal))
+      BlockEntityMultiblockStructure.HighlightOutline(world, shown.Player, []);
   }
 
   /// <summary>

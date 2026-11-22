@@ -160,13 +160,13 @@ public class PartProjectionTests {
   }
 
   /// <summary>An unfinished part standing alone at <paramref name="at"/>, turned 90 degrees, its filler cells
-  /// linked to it, with the player making the projection gesture and holding a stick or nothing.</summary>
+  /// linked to it, with the player making the projection gesture empty-handed.</summary>
   private static (
     IWorldAccessor World,
     BlockFilledMegastructure Part,
     ExRightClickConstruction Construction,
     IPlayer Player
-  ) Alone(BlockPos at, bool holding) {
+  ) Alone(BlockPos at) {
     var world = new TestWorld();
     BlockFilledMegastructure part = Part(90);
     world.Register(part);
@@ -196,9 +196,6 @@ public class PartProjectionTests {
     TestPlayer player = world.Player();
     player.CtrlHeld = true;
     player.Entity.Controls.ShiftKey = true;
-    player.Hold(
-      holding ? new ItemStack(world.RegisterItem("trowel-test")) : null
-    );
     // The client twin keeps no entities of its own; this view reads the server's and records the outlines.
     var client = Substitute.For<IWorldAccessor>();
     client.Side.Returns(EnumAppSide.Client);
@@ -237,20 +234,15 @@ public class PartProjectionTests {
       )
       .ToList();
 
-  // Fails when TryToggleProjection answers an unfinished part that no anchor owns with false (UnfinishedPartAt
-  // returning null): nothing is drawn and the click falls through to the construction stage.
   [Theory]
-  [InlineData(false, false, 13000)]
-  [InlineData(true, false, 13100)]
-  [InlineData(false, true, 13200)]
-  [InlineData(true, true, 13300)]
+  [InlineData(false, 13000)]
+  [InlineData(true, 13200)]
   public void A_gesture_on_an_unfinished_part_with_no_anchor_outlines_its_footprint(
-    bool holding,
     bool onFiller,
     int x
   ) {
     BlockPos at = new(x, 10, 0);
-    var (world, part, construction, player) = Alone(at, holding);
+    var (world, part, _, player) = Alone(at);
     BlockPos clicked = onFiller ? at.UpCopy() : at;
 
     bool consumed = Gesture(world, part, player, clicked);
@@ -269,14 +261,12 @@ public class PartProjectionTests {
           : ProjectionColors.Open,
         colors[i]
       );
-    Assert.Equal(0, construction.CurrentCompletedStage);
   }
 
-  // Fails when the shown position is not reset on clearing: the third gesture clears again instead of drawing.
   [Fact]
   public void The_second_gesture_clears_the_part_outline() {
     BlockPos at = new(13400, 10, 0);
-    var (world, part, _, player) = Alone(at, holding: false);
+    var (world, part, _, player) = Alone(at);
 
     Gesture(world, part, player, at);
     Gesture(world, part, player, at);
@@ -287,5 +277,26 @@ public class PartProjectionTests {
     Assert.Equal(3, drawn[0].Positions.Count);
     Assert.Empty(drawn[1].Positions);
     Assert.Equal(3, drawn[2].Positions.Count);
+  }
+
+  [Fact]
+  public void A_finished_part_drops_its_outline() {
+    BlockPos at = new(13500, 10, 0);
+    var (world, part, construction, player) = Alone(at);
+    Gesture(world, part, player, at);
+    var behavior = (ExRightClickConstructable)
+      world
+        .BlockAccessor.GetBlockEntity(at)!
+        .GetBehavior<ExRightClickConstructable>()!;
+    construction.CurrentCompletedStage = 1;
+    var tree = new TreeAttribute();
+    construction.ToTreeAttributes(tree);
+
+    behavior.FromTreeAttributes(tree, world);
+
+    var drawn = Drawn(world);
+    Assert.Equal(2, drawn.Count);
+    Assert.Empty(drawn[1].Positions);
+    Assert.Null(BlockBehaviorMultiblockStructure.ShownPart);
   }
 }

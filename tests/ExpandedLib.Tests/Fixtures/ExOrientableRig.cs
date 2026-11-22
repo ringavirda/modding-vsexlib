@@ -173,8 +173,8 @@ public sealed class ExOrientableRig {
     return rig;
   }
 
-  /// <summary>A megablock that turns itself in its own <c>TryPlaceBlock</c> by the facing the player stands
-  /// on, as the iiex belly helve does.</summary>
+  /// <summary>A megablock that turns itself in its own <c>TryPlaceBlock</c> by the facing the player looks
+  /// toward, as the iiex belly helve does.</summary>
   private sealed class TurningMegablock : BlockFilledMegastructure {
     public override Block? PlacedBlock(
       IWorldAccessor world,

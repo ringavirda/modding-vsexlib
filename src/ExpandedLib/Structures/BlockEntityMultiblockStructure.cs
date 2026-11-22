@@ -515,13 +515,15 @@ public abstract class BlockEntityMultiblockStructure
 
   /// <summary>Draws <paramref name="outline"/> for <paramref name="player"/> into
   /// <see cref="MultiblockStructure.HighlightSlotId"/>, a part's principal cell at the stronger alpha; an empty
-  /// outline clears the slot. Client side only.</summary>
+  /// outline clears the slot, and either resets <see cref="BlockBehaviorMultiblockStructure.ShownPart"/>.
+  /// Client side only.</summary>
   /// <param name="outline">World positions, ARGB tints and whether the cell is a part's principal.</param>
   internal static void HighlightOutline(
     IWorldAccessor world,
     IPlayer player,
     List<(BlockPos At, int Color, bool Principal)> outline
-  ) =>
+  ) {
+    BlockBehaviorMultiblockStructure.ShownPart = null;
     world.HighlightBlocks(
       player,
       MultiblockStructure.HighlightSlotId,
@@ -532,6 +534,7 @@ public abstract class BlockEntityMultiblockStructure
         ),
       ]
     );
+  }
 
   /// <summary>The build outline: every cell <see cref="IncompleteBlockCount"/> names with its tint, a missing
   /// megablock part drawn as its whole footprint with the principal cell flagged.</summary>
