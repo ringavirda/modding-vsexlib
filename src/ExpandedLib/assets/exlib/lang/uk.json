@@ -1,6 +1,7 @@
 {
   "structure-missing-header": "Конструкцію не завершено! Ще потрібно:",
   "structure-missing-line": "  {0} x {1}",
+  "structure-missing-stage": "  {0}: етап {1} з {2}",
   "structure-misfacing-header": "Конструкцію не завершено! Розверніть назовні:",
   "structure-misfacing-line": "  {0} у {1} має виходити на {2}",
   "multiblock-incomplete": "Конструкцію не завершено. Бракує або неправильно встановлено блоків: {0}.",

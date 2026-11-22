@@ -131,7 +131,11 @@ public abstract class BlockEntityMultiblockStructure
     AssetLocation Wanted,
     BlockPos At,
     string? OutwardFace
-  );
+  ) {
+    /// <summary>True when the wanted block stands but its <see cref="ExRightClickConstructable"/> has stages left
+    /// to build; <see cref="OutwardFace"/> is then null. False by default.</summary>
+    public bool Unfinished { get; init; }
+  }
 
   /// <summary>Whether losing the structure also unregisters the production tick. True by default.</summary>
   protected virtual bool StopsProductionOnStructureLost => true;
@@ -331,7 +335,12 @@ public abstract class BlockEntityMultiblockStructure
     // Tallies missing blocks by wanted code; a misfacing connector is tallied apart from a missing block.
     var missingByCode = new Dictionary<AssetLocation, int>();
     var misfacing = new List<MissingCell>();
-    int missingCount = IncompleteBlockCount(cell => {
+    var unfinished = new List<MissingCell>();
+    int incomplete = IncompleteBlockCount(cell => {
+      if (cell.Unfinished) {
+        unfinished.Add(cell);
+        return;
+      }
       if (cell.OutwardFace != null) {
         misfacing.Add(cell);
         return;
@@ -342,8 +351,11 @@ public abstract class BlockEntityMultiblockStructure
       missingByCode.TryGetValue(cell.Wanted, out int count);
       missingByCode[cell.Wanted] = count + 1;
     });
+    // The reported count is the list the player reads; fillers and air-satisfied cells are in `incomplete` only.
+    int missingCount =
+      missingByCode.Values.Sum() + misfacing.Count + unfinished.Count;
     bool wasComplete = StructureComplete;
-    StructureComplete = missingCount == 0;
+    StructureComplete = incomplete == 0;
 
     if (Api.Side == EnumAppSide.Server) {
       if (StructureComplete && !wasComplete) {
@@ -359,8 +371,13 @@ public abstract class BlockEntityMultiblockStructure
     }
 
     if (Api is ICoreClientAPI clientApi) {
-      if (missingCount > 0) {
-        ShowMissingBlocksReport(clientApi, missingByCode, misfacing);
+      if (incomplete > 0) {
+        ShowMissingBlocksReport(
+          clientApi,
+          missingByCode,
+          misfacing,
+          unfinished
+        );
         _highlightedStructure = _structure;
         clientApi.TriggerIngameError(
           this,
@@ -376,7 +393,9 @@ public abstract class BlockEntityMultiblockStructure
     }
   }
 
-  /// <summary>Number of structure cells not yet satisfied.</summary>
+  /// <summary>Number of structure cells not yet satisfied: a wrong or missing block, a misfaced connector, or a
+  /// right block whose <see cref="ExRightClickConstructable"/> is not complete (reported once, with
+  /// <see cref="MissingCell.Unfinished"/> set; the anchor's own cell included).</summary>
   /// <param name="onMissing">Called per unsatisfied cell, with the wanted code already rotated.</param>
   /// <returns>The count of unsatisfied cells, or 0 when the structure is not loaded.</returns>
   protected internal int IncompleteBlockCount(
@@ -414,10 +433,27 @@ public abstract class BlockEntityMultiblockStructure
       ) {
         missing++;
         onMissing?.Invoke(new MissingCell(actual, wanted, at, face));
+        continue;
+      }
+
+      if (UnfinishedPart(at) != null) {
+        missing++;
+        onMissing?.Invoke(
+          new MissingCell(actual, wanted, at, null) { Unfinished = true }
+        );
       }
     }
     return missing;
   }
+
+  /// <summary>The construction behaviour at <paramref name="at"/> when it has stages left to build, else null.</summary>
+  private ExRightClickConstructable? UnfinishedPart(BlockPos at) =>
+    Api
+      .World.BlockAccessor.GetBlockEntity(at)
+      ?.GetBehavior<ExRightClickConstructable>()
+      is { IsComplete: false } part
+      ? part
+      : null;
 
   /// <summary>The first outward face a connector cell demands that its occupant does not answer, or null.</summary>
   private string? UnopenedFace(
@@ -516,16 +552,21 @@ public abstract class BlockEntityMultiblockStructure
   private void ShowMissingBlocksReport(
     ICoreClientAPI clientApi,
     Dictionary<AssetLocation, int> missingByCode,
-    IReadOnlyList<MissingCell> misfacing
+    IReadOnlyList<MissingCell> misfacing,
+    IReadOnlyList<MissingCell> unfinished
   ) {
-    if (missingByCode.Count == 0 && misfacing.Count == 0)
+    if (
+      missingByCode.Count == 0
+      && misfacing.Count == 0
+      && unfinished.Count == 0
+    )
       return;
 
     // Strings come from exlib's own domain via the generated ExlibLang accessors.
     var sb = new StringBuilder();
     sb.Append(
       Lang.Get(
-        missingByCode.Count > 0
+        missingByCode.Count > 0 || unfinished.Count > 0
           ? ExlibLang.StructureMissingHeader
           : ExlibLang.StructureMisfacingHeader
       )
@@ -542,6 +583,21 @@ public abstract class BlockEntityMultiblockStructure
           ExlibLang.StructureMissingLine,
           entry.Value,
           ResolveBlockName(entry.Key)
+        )
+      );
+    }
+
+    // One line per unfinished part, naming its stage.
+    foreach (MissingCell cell in unfinished) {
+      if (UnfinishedPart(cell.At) is not { } part)
+        continue;
+      sb.Append('\n');
+      sb.Append(
+        Lang.Get(
+          ExlibLang.StructureMissingStage,
+          new ItemStack(cell.Actual).GetName(),
+          part.CurrentCompletedStage,
+          part.StageCount
         )
       );
     }

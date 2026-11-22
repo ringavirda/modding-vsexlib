@@ -923,3 +923,6 @@ override ExpandedLib.Machines.BlockEntityMachineStation.GetBlockInfo(Vintagestor
 ExpandedLib.Definitions.ExBlockDef.HandbookPage(string! pageCode) -> ExpandedLib.Definitions.ExBlockDef!
 ExpandedLib.Helpers.IHandbookOperatingHelp
 ExpandedLib.Helpers.IHandbookOperatingHelp.GetHandbookOperatingHelp(Vintagestory.API.Client.ICoreClientAPI! capi) -> ExpandedLib.Helpers.HandbookControl![]!
+ExpandedLib.Structures.BlockEntityMultiblockStructure.MissingCell.Unfinished.get -> bool
+ExpandedLib.Structures.BlockEntityMultiblockStructure.MissingCell.Unfinished.init -> void
+ExpandedLib.Blocks.ExRightClickConstructable.StageCount.get -> int

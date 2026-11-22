@@ -1,6 +1,7 @@
 {
   "structure-missing-header": "Structure incomplete! Still needed:",
   "structure-missing-line": "  {0} x {1}",
+  "structure-missing-stage": "  {0}: stage {1} of {2}",
   "structure-misfacing-header": "Structure incomplete! Turn these to face outward:",
   "structure-misfacing-line": "  {0} at {1} must open to the {2}",
   "multiblock-incomplete": "Structure is not complete. {0} blocks are missing or incorrect.",

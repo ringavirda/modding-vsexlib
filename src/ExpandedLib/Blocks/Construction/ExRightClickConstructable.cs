@@ -36,6 +36,10 @@ public class ExRightClickConstructable
   /// <summary>Whether every stage is built.</summary>
   public bool IsComplete => rcc.CurrentCompletedStage == rcc.Stages.Length - 1;
 
+  /// <summary>The number of stages after placing, so a finished part reads
+  /// <see cref="CurrentCompletedStage"/> equal to this.</summary>
+  public int StageCount => rcc.Stages.Length - 1;
+
   /// <summary>The index of the last stage built, 0 before any is paid.</summary>
   public int CurrentCompletedStage => rcc.CurrentCompletedStage;
 

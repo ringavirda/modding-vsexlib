@@ -1,6 +1,7 @@
 {
   "structure-missing-header": "Конструкция не завершена! Ещё нужно:",
   "structure-missing-line": "  {0} x {1}",
+  "structure-missing-stage": "  {0}: этап {1} из {2}",
   "structure-misfacing-header": "Конструкция не завершена! Разверните наружу:",
   "structure-misfacing-line": "  {0} в {1} должен выходить на {2}",
   "multiblock-incomplete": "Конструкция не завершена. Не хватает или неверно установлено блоков: {0}.",
