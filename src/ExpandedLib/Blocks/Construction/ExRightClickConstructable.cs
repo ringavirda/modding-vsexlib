@@ -245,6 +245,12 @@ public class ExRightClickConstructable
       BlockBehaviorMultiblockStructure.DropPartOutline(Api.World, Pos);
   }
 
+  public override void OnBlockUnloaded() {
+    base.OnBlockUnloaded();
+    if (Api?.Side == EnumAppSide.Client)
+      BlockBehaviorMultiblockStructure.DropPartOutline(Api.World, Pos);
+  }
+
   public override void ToTreeAttributes(ITreeAttribute tree) {
     rcc.ToTreeAttributes(tree);
     base.ToTreeAttributes(tree);

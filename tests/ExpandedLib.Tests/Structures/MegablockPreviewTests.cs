@@ -38,9 +38,8 @@ public class MegablockPreviewTests {
     Assert.Equal(["0,0,-1", "0,0,0", "0,1,0"], Of(west));
   }
 
-  // Fails (mutant: Footprint reads the turn from ExOrientable alone, so a network-mode block previews its
-  // stack's variant; mutant: PlacedBlock's default returns this, so a player-mode block previews unturned): the
-  // cells the preview names differ from the cells the placement fills at e, s and w.
+  // Fails when Footprint reads the turn from ExOrientable alone or PlacedBlock's default returns this: the
+  // preview's cells differ from the placement's at e, s and w.
   [Theory]
   [InlineData("north", false)]
   [InlineData("east", false)]

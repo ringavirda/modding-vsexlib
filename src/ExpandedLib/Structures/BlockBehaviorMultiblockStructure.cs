@@ -106,9 +106,8 @@ public class BlockBehaviorMultiblockStructure : BlockBehavior {
 
   /// <summary>
   /// Toggles the build-outline projection when the player gestures over an incomplete anchor at
-  /// <paramref name="pos"/>, else over an unfinished staged part there that no incomplete anchor owns, which
-  /// outlines the part's footprint (a second gesture on the same part clears it); returns whether the click was
-  /// consumed.
+  /// <paramref name="pos"/>, else outlines an unfinished staged part there that no incomplete anchor owns;
+  /// returns whether the click was consumed.
   /// </summary>
   public static bool TryToggleProjection(
     IWorldAccessor world,
