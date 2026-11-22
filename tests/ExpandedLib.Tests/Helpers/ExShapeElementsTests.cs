@@ -1,6 +1,7 @@
 using System.Linq;
 using ExpandedLib.Helpers;
 using Vintagestory.API.Common;
+using Vintagestory.API.Util;
 using Xunit;
 
 namespace ExpandedLib.Tests;
@@ -167,6 +168,23 @@ public class ExShapeElementsTests {
       "#charcoal",
       copy.Elements[0].Children![0].FacesResolved![0].Texture
     );
+  }
+
+  [Fact]
+  public void Retexturing_matches_a_shape_loaded_from_json() {
+    // Shape's OnDeserialized hook trims the '#' from every face texture.
+    Shape loaded = JsonUtil.FromString<Shape>(
+      """
+      {"elements": [{"name": "Bed", "from": [0, 0, 0], "to": [1, 1, 1],
+        "faces": {"north": {"texture": "#coke"}, "up": {"texture": "#brick"}}}]}
+      """
+    );
+    Assert.Equal("coke", loaded.Elements[0].FacesResolved![0].Texture);
+
+    Shape copy = ExShapeElements.Retextured(loaded, "coke", "charcoal");
+
+    Assert.Equal("charcoal", copy.Elements[0].FacesResolved![0].Texture);
+    Assert.Equal("brick", copy.Elements[0].FacesResolved![4].Texture);
   }
 
   [Fact]

@@ -95,9 +95,11 @@ public static class ExShapeElements {
   }
 
   /// <summary>Returns a copy of <paramref name="shape"/> with every face pointing at texture key <paramref name="from"/> repointed at <paramref name="to"/>; <paramref name="to"/> must be a key the blocktype declares.</summary>
+  /// <remarks>A key matches with or without its leading '#': a shape loaded from JSON has it
+  /// trimmed, a shape built in code may keep it. A repointed face keeps the form it had.</remarks>
   public static Shape Retextured(Shape shape, string from, string to) {
     Shape copy = shape.Clone();
-    RetextureLevel(copy.Elements, "#" + from, "#" + to);
+    RetextureLevel(copy.Elements, from.TrimStart('#'), to.TrimStart('#'));
     return copy;
   }
 
@@ -109,8 +111,8 @@ public static class ExShapeElements {
     foreach (ShapeElement el in elements ?? []) {
       ShapeElementFace[] faces = el.FacesResolved ?? [];
       for (int i = 0; i < faces.Length; i++)
-        if (faces[i]?.Texture == from)
-          faces[i] = Repointed(faces[i], to);
+        if (faces[i]?.Texture is string key && key.TrimStart('#') == from)
+          faces[i] = Repointed(faces[i], key.StartsWith('#') ? "#" + to : to);
       RetextureLevel(el.Children, from, to);
     }
   }
