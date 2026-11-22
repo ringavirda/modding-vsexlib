@@ -1,0 +1,14 @@
+{
+  "code": "finishedpart",
+  "class": "SetupFitBlock",
+  "entityClass": "SetupFitFrame",
+  "behaviors": [ { "name": "BlockEntityInteract" } ],
+  "entityBehaviors": [
+    {
+      "name": "ExRightClickConstructable",
+      "properties": {
+        "stages": [ {} ]
+      }
+    }
+  ]
+}

@@ -1,0 +1,21 @@
+{
+  "code": "plainanchor",
+  "class": "ExFilledMegastructure",
+  "entityClass": "ExMultiblock",
+  "behaviors": [ { "name": "BlockEntityInteract" } ],
+  "attributes": {
+    "fillerOffsets": [],
+    "multiblockLayout": {
+      "legend": { "C": "setupstaged:plainanchor", "P": "setupstaged:stagedpart" },
+      "layers": [["CP"]]
+    }
+  },
+  "entityBehaviors": [
+    {
+      "name": "ExRightClickConstructable",
+      "properties": {
+        "stages": [ {} ]
+      }
+    }
+  ]
+}

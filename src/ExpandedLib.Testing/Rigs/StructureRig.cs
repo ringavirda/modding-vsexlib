@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using ExpandedLib.Blocks;
 using ExpandedLib.Definitions;
 using ExpandedLib.Helpers;
 using ExpandedLib.Scenarios;
@@ -228,12 +229,40 @@ public sealed class StructureRig {
   }
 
   /// <summary>
-  /// <see cref="Raise"/> + <see cref="TestWorld.Initialize"/> + <see cref="AwaitCompletion"/>, throwing
+  /// The layout cells whose block entity carries an <see cref="ExRightClickConstructable"/> with
+  /// stages left, the anchor's own cell included, with that construction.
+  /// </summary>
+  internal IEnumerable<(
+    BlockPos Pos,
+    ExRightClickConstructable Part
+  )> UnfinishedParts() {
+    foreach ((BlockPos pos, _) in Cells)
+      if (
+        _world.GetBlockEntity(pos)?.GetBehavior<ExRightClickConstructable>() is { IsComplete: false } part
+      )
+        yield return (pos, part);
+  }
+
+  private void FinishConstruction(BlockPos at) {
+    if (
+      _world.GetBlockEntity(at)?.GetBehavior<ExRightClickConstructable>() is { } part
+    )
+      part.Construction.CurrentCompletedStage =
+        part.Construction.Stages.Length - 1;
+  }
+
+  /// <summary>
+  /// <see cref="Raise"/>s, finishes every layout part still unfinished, then
+  /// <see cref="TestWorld.Initialize"/> + <see cref="AwaitCompletion"/>, throwing
   /// with the anchor's missing-cell report if the machine does not complete.
   /// </summary>
+  /// <remarks>No player pays here: the anchor's own construction and an <see cref="Occupy"/>ed
+  /// part's are set to their last stage.</remarks>
   /// <exception cref="InvalidOperationException">The machine does not complete.</exception>
   public StructureRig Complete() {
     Raise();
+    foreach ((BlockPos at, _) in UnfinishedParts())
+      FinishConstruction(at);
     _world.Initialize(_anchor);
     if (!AwaitCompletion())
       throw new InvalidOperationException(
@@ -253,14 +282,22 @@ public sealed class StructureRig {
       var lines = new List<string>();
       _anchor.IncompleteBlockCount(cell =>
         lines.Add(
-          cell.OutwardFace is string face
+          cell.Unfinished
+            ? $"\n  {cell.At}: {cell.Actual.Code} is at stage {PartStage(cell.At)}"
+          : cell.OutwardFace is string face
             ? $"\n  {cell.At}: wants '{cell.Wanted}' open to '{face}', has '{cell.Actual.Code}'"
-            : $"\n  {cell.At}: wants '{cell.Wanted}', has '{cell.Actual.Code}'"
+          : $"\n  {cell.At}: wants '{cell.Wanted}', has '{cell.Actual.Code}'"
         )
       );
       return string.Concat(lines);
     }
   }
+
+  private string PartStage(BlockPos at) =>
+    _world.GetBlockEntity(at)?.GetBehavior<ExRightClickConstructable>()
+      is { } part
+      ? $"{part.CurrentCompletedStage} of {part.StageCount}"
+      : "unknown";
 
   /// <summary>
   /// A stand-in for a connector cell: a network node whose connector faces are exactly the ones the

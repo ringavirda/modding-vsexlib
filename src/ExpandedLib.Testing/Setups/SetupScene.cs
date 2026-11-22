@@ -717,6 +717,7 @@ public sealed partial class SetupScene : IDisposable
     if (SetupStructureCheck.IsMultiblock(block, be))
     {
       var multiblock = (BlockEntityMultiblockStructure)be;
+      CompleteConstruction(be, pos, where, to, materials);
       StructureRig rig = StructureRig
         .Around(World, multiblock, multiblock.LayoutAngle)
         .Raise();
@@ -731,6 +732,9 @@ public sealed partial class SetupScene : IDisposable
         if (!carried)
           DrawBlock(where, raised, at, Describe(pos));
       }
+      foreach (var (at, _) in rig.UnfinishedParts())
+        if (!at.Equals(pos))
+          CompleteConstruction(World.GetBlockEntity(at)!, at, where);
       HashSet<long> own = _listeners.GetValueOrDefault(pos) ?? [];
       for (int i = 0; i < 2 && !multiblock.StructureComplete; i++)
         World.AdvanceBlockEntityTime(3000, own);
@@ -741,7 +745,7 @@ public sealed partial class SetupScene : IDisposable
         );
       completed = true;
     }
-    if (CompleteConstruction(be, pos, where, to, materials))
+    else if (CompleteConstruction(be, pos, where, to, materials))
       completed = true;
     if (!completed)
       throw Fail(

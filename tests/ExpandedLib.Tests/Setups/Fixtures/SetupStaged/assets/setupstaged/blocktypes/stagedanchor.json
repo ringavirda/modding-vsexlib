@@ -1,0 +1,28 @@
+{
+  "code": "stagedanchor",
+  "class": "ExFilledMegastructure",
+  "entityClass": "ExMultiblock",
+  "behaviors": [ { "name": "BlockEntityInteract" } ],
+  "attributes": {
+    "fillerOffsets": [],
+    "multiblockLayout": {
+      "legend": { "C": "setupstaged:stagedanchor", "P": "setupstaged:finishedpart" },
+      "layers": [["CP"]]
+    }
+  },
+  "entityBehaviors": [
+    {
+      "name": "ExRightClickConstructable",
+      "properties": {
+        "stages": [
+          {},
+          {
+            "requireStacks": [
+              { "type": "item", "code": "game:stick", "quantity": 2 }
+            ]
+          }
+        ]
+      }
+    }
+  ]
+}
