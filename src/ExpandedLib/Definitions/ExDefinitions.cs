@@ -47,6 +47,7 @@ public static class ExDefinitions {
 
   // Instances, in discovery order; each is applied once to every item def object.
   private static readonly List<IExItemDefDecorator> _decorators = [];
+  private static readonly List<IExBlockDefDecorator> _blockDecorators = [];
 
   // The location of every block, item and recipe def actually injected, recorded by RecordInjected.
   private static readonly HashSet<string> _injected = new(
@@ -64,6 +65,7 @@ public static class ExDefinitions {
     RegisterBlock(def, Assembly.GetCallingAssembly());
 
   internal static void RegisterBlock(ExBlockDef def, Assembly providerAssembly) {
+    DecorateBlock(def);
     TrackProvider(_blockProviders, def.Location.ToString(), providerAssembly);
     _blocks.Register(def);
   }
@@ -132,6 +134,7 @@ public static class ExDefinitions {
     _recipeProviders.Clear();
     _contributors.Clear();
     _decorators.Clear();
+    _blockDecorators.Clear();
     _injected.Clear();
     InjectionRan = false;
   }
@@ -211,9 +214,10 @@ public static class ExDefinitions {
     }
   }
 
-  /// <summary>Scans <paramref name="asm"/> for concrete <see cref="IExItemDefDecorator"/> types with a
-  /// parameterless constructor and keeps one instance of each. A def already registered is decorated
-  /// by each new decorator at once; one registered later is decorated as it registers.</summary>
+  /// <summary>Scans <paramref name="asm"/> for concrete <see cref="IExItemDefDecorator"/> and
+  /// <see cref="IExBlockDefDecorator"/> types with a parameterless constructor and keeps one instance
+  /// of each. A def already registered is decorated by each new decorator at once; one registered
+  /// later is decorated as it registers.</summary>
   [EditorBrowsable(EditorBrowsableState.Never)]
   public static void DiscoverDecorators(Assembly asm) {
     foreach (IExItemDefDecorator decorator in DecoratorsIn(asm)) {
@@ -223,6 +227,32 @@ public static class ExDefinitions {
       foreach (ExItemDef def in _items.Values)
         decorator.Decorate(def);
     }
+    foreach (IExBlockDefDecorator decorator in BlockDecoratorsIn(asm)) {
+      if (_blockDecorators.Exists(d => d.GetType() == decorator.GetType()))
+        continue;
+      _blockDecorators.Add(decorator);
+      foreach (ExBlockDef def in _blocks.Values)
+        decorator.Decorate(def);
+    }
+  }
+
+  // A fresh instance of every concrete block decorator of asm that has a parameterless constructor.
+  internal static IEnumerable<IExBlockDefDecorator> BlockDecoratorsIn(
+    Assembly asm
+  ) {
+    foreach (Type type in ReflectionScan.GetCandidateTypes(asm))
+      if (
+        typeof(IExBlockDefDecorator).IsAssignableFrom(type)
+        && !type.IsInterface
+        && !type.IsAbstract
+        && type.GetConstructor(Type.EmptyTypes) != null
+      )
+        yield return (IExBlockDefDecorator)Activator.CreateInstance(type)!;
+  }
+
+  private static void DecorateBlock(ExBlockDef def) {
+    foreach (IExBlockDefDecorator decorator in _blockDecorators)
+      decorator.Decorate(def);
   }
 
   // A fresh instance of every concrete decorator of asm that has a parameterless constructor.
@@ -243,7 +273,7 @@ public static class ExDefinitions {
       decorator.Decorate(def);
   }
 
-  /// <summary>Decorates <paramref name="defs"/>' item defs with the registered decorators and any of
+  /// <summary>Decorates <paramref name="defs"/>' item and block defs with the registered decorators and any of
   /// <paramref name="asm"/> not yet registered, for a def set built without registering.</summary>
   internal static void DecorateCollected(IEnumerable<IExDef> defs, Assembly asm) {
     var all = new List<IExItemDefDecorator>(_decorators);
@@ -252,6 +282,14 @@ public static class ExDefinitions {
         all.Add(extra);
     foreach (ExItemDef def in defs.OfType<ExItemDef>())
       foreach (IExItemDefDecorator decorator in all)
+        decorator.Decorate(def);
+
+    var allBlocks = new List<IExBlockDefDecorator>(_blockDecorators);
+    foreach (IExBlockDefDecorator extra in BlockDecoratorsIn(asm))
+      if (!allBlocks.Exists(d => d.GetType() == extra.GetType()))
+        allBlocks.Add(extra);
+    foreach (ExBlockDef def in defs.OfType<ExBlockDef>())
+      foreach (IExBlockDefDecorator decorator in allBlocks)
         decorator.Decorate(def);
   }
 
