@@ -73,6 +73,7 @@ public sealed class ConstructionStage {
   private readonly JObject _stage = new();
   private readonly IReadOnlyCollection<string> _stored;
   private JArray? _requireStacks;
+  private JArray? _returnStacks;
 
   /// <summary>A stage that follows no paid stage storing a key.</summary>
   public ConstructionStage()
@@ -91,6 +92,26 @@ public sealed class ConstructionStage {
   /// <summary>The shape elements this stage hides again. Sets <c>removeElements</c>.</summary>
   public ConstructionStage RemoveElements(params string[] elements) {
     _stage["removeElements"] = new JArray(elements);
+    return this;
+  }
+
+  /// <summary>Gives the player <paramref name="quantity"/> of an item when this stage is built, after
+  /// its requirements are taken. Sets <c>returnStacks</c>; accumulates across calls.</summary>
+  /// <remarks>A stack the player's inventory cannot take falls at the block. A <c>{key}</c>
+  /// placeholder in <paramref name="code"/> is filled from the variants earlier paid stages stored,
+  /// and a stack whose key was never stored is not given. A creative player holding Ctrl is given
+  /// nothing. The drops of a broken block leave out what the stage gave back.</remarks>
+  /// <param name="code">Item code with a domain, <c>game:plank-{wood}</c> say.</param>
+  /// <param name="quantity">Items given, 1 or more.</param>
+  public ConstructionStage Returns(string code, int quantity) {
+    var stack = new JObject {
+      ["type"] = "item",
+      ["code"] = code,
+      ["quantity"] = quantity,
+    };
+    _returnStacks ??= new JArray();
+    _returnStacks.Add(stack);
+    _stage["returnStacks"] = _returnStacks;
     return this;
   }
 

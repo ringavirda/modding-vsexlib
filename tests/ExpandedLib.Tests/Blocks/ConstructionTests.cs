@@ -774,6 +774,92 @@ public class ConstructionTests {
 
   #endregion
 
+  #region Stages that give materials back
+
+  // Stage 1 takes four planks, storing wood when the code is a wildcard; stage 2 asks for nothing and
+  // gives four planks back.
+  private static Site Centring(string paidCode, string returnedCode) {
+    var world = new TestWorld();
+    foreach (string wood in new[] { "oak", "pine" })
+      world.RegisterItem($"game:plank-{wood}").VariantStrict["wood"] = wood;
+    var be = new StubBlockEntity {
+      Block = TestBlocks.Configure(new Block(), "stub:centring", 5002),
+      Pos = new BlockPos(0, 0, 0, 0),
+    };
+    be.Initialize(world.Api);
+    var behavior = new ExRightClickConstructable(be);
+    JObject properties = new Definitions.ConstructionStages()
+      .Stage(_ => { })
+      .Stage(s =>
+        s.Require(
+          paidCode,
+          4,
+          storeWildCard: paidCode.Contains('*') ? "wood" : null
+        )
+      )
+      .Stage(s => s.Returns(returnedCode, 4))
+      .Build();
+    behavior.Initialize(world.Api, new JsonObject(properties));
+    TestPlayer payer = world.Player();
+    payer.GameMode = EnumGameMode.Survival;
+    return new Site(world, behavior, payer);
+  }
+
+  private static int Planks(Site site, string code) =>
+    site
+      .Payer.Hotbar.Where(s => s.Itemstack?.Collectible.Code.ToString() == code)
+      .Sum(s => s.StackSize);
+
+  // Fails when a built stage gives nothing back: the hotbar holds no plank after the second stage.
+  [Fact]
+  public void ReturningStage_GivesPlanks() {
+    Site site = Centring("game:plank-oak", "game:plank-oak");
+    Offer(site, "game:plank-oak 4");
+    Assert.Equal(1, Interact(site));
+    Assert.Equal(0, Planks(site, "game:plank-oak"));
+
+    Assert.Equal(2, Interact(site));
+
+    Assert.Equal(4, Planks(site, "game:plank-oak"));
+  }
+
+  // Fails when the drops are not netted against what a built stage gave back: the broken block
+  // scatters the four planks it paid though the player holds them again.
+  [Fact]
+  public void Break_AfterReturn_DropsNoPlanks() {
+    Site site = Centring("game:plank-oak", "game:plank-oak");
+    Offer(site, "game:plank-oak 4");
+    Interact(site);
+    Assert.Equal(
+      4,
+      Total(
+        site.Behavior.GetConstructionDrops(1f, new Random(1)),
+        "game:plank-oak"
+      )
+    );
+    Interact(site);
+
+    ItemStack[] drops = site.Behavior.GetConstructionDrops(1f, new Random(1));
+
+    Assert.Equal(0, Total(drops, "game:plank-oak"));
+  }
+
+  // Fails when a returned code is not filled from the stored wildcards: pine paid, so oak planks or
+  // none would be given.
+  [Fact]
+  public void Return_FillsStoredWildcard() {
+    Site site = Centring("game:plank-*", "game:plank-{wood}");
+    Offer(site, "game:plank-pine 4");
+    Interact(site);
+
+    Assert.Equal(2, Interact(site));
+
+    Assert.Equal(4, Planks(site, "game:plank-pine"));
+    Assert.Equal(0, Planks(site, "game:plank-oak"));
+  }
+
+  #endregion
+
   #region ConstructedAnimator.IsConstructed
 
   private static ExRightClickConstructable CompletedRcc(BlockEntity be) {

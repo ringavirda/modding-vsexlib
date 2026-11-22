@@ -26,6 +26,15 @@ public class ExConstructionStage {
   public string[]? AddElements;
   public string[]? RemoveElements;
   public ExConstructionIngredient[]? RequireStacks;
+
+  /// <summary>The materials given to the player when this stage is built, after its
+  /// <see cref="RequireStacks"/> are taken; null or empty for none.</summary>
+  /// <remarks>A stack the player's inventory cannot take falls at the block. A stored wildcard fills a
+  /// <c>{key}</c> placeholder as in <see cref="RequireStacks"/>; a stack whose key was never stored
+  /// is not given. A creative player holding Ctrl is given nothing. The drops of a broken block leave
+  /// out what a built stage gave back.</remarks>
+  public ExConstructionIngredient[]? ReturnStacks;
+
   public string ActionLangCode = "rollers-construct";
 
   /// <summary>Item code the main-hand stack must match, wildcards allowed (<c>game:hammer-*</c>); null
@@ -228,6 +237,41 @@ public class ExRightClickConstruction {
     holds.Clear();
   }
 
+  private void GiveReturns(EntityAgent byEntity) {
+    if (
+      CreativeInstant(byEntity)
+      || (byEntity as EntityPlayer)?.Player is not { } player
+    )
+      return;
+    foreach (ItemStack stack in ResolveReturns(CurrentCompletedStage)) {
+      if (player.InventoryManager.TryGiveItemstack(stack, true))
+        continue;
+      api.World.SpawnItemEntity(
+        stack,
+        positionForSound?.Invoke() ?? player.Entity.Pos.XYZ
+      );
+    }
+  }
+
+  // Stacks of stage's returnStacks with the stored wildcards filled; one that does not resolve is
+  // left out.
+  private List<ItemStack> ResolveReturns(int stage) {
+    var list = new List<ItemStack>();
+    foreach (var ingredient in Stages[stage].ReturnStacks ?? []) {
+      var resolved = ingredient.Clone();
+      foreach (var wc in StoredWildCards)
+        resolved.FillPlaceHolder(wc.Key, wc.Value);
+      if (
+        resolved.Resolve(
+          api.World,
+          $"Return stack for construction stage {stage} on {codeForErrorLogging}"
+        )
+      )
+        list.Add(resolved.ResolvedItemStack.Clone());
+    }
+    return list;
+  }
+
   private static bool CreativeInstant(EntityAgent byEntity) =>
     (byEntity as EntityPlayer)?.Player is { } player
     && player.WorldData.CurrentGameMode == EnumGameMode.Creative
@@ -241,8 +285,10 @@ public class ExRightClickConstruction {
       return false;
     if (!TryConsumeIngredients(byEntity, handslot))
       return false;
-    if (CurrentCompletedStage < Stages.Length - 1)
+    if (CurrentCompletedStage < Stages.Length - 1) {
       BuildStage();
+      GiveReturns(byEntity);
+    }
     return true;
   }
 
@@ -330,6 +376,7 @@ public class ExRightClickConstruction {
       return StageHoldProgress.Idle;
     CraftToolWear.Apply(hand, api.World.Rand);
     BuildStage();
+    GiveReturns(byEntity);
     return StageHoldProgress.Built;
   }
 
@@ -498,7 +545,9 @@ public class ExRightClickConstruction {
 
   /// <summary>The materials of every completed stage, inclusive of the last built, each ingredient
   /// resolved with the stored variants and its stack size scaled by <paramref name="dropRatio"/>
-  /// and rounded at random.</summary>
+  /// and rounded at random. What a built stage's <see cref="ExConstructionStage.ReturnStacks"/>
+  /// gave back is taken off the matching stacks first, so a stack wholly given back is left
+  /// out.</summary>
   /// <param name="dropRatio">The fraction of each stack returned, 0..1.</param>
   /// <param name="rnd">The rounding source; required, a null one fails on the first stack.</param>
   /// <returns>The stacks, empty below stage 1. An ingredient that does not resolve is
@@ -544,17 +593,28 @@ public class ExRightClickConstruction {
             api.World,
             $"Drop stack for construction stage {i} on {codeForErrorLogging}"
           )
-        ) {
-          var stack = resolved.ResolvedItemStack.Clone();
-          if (lost == null || lost(stack.Collectible.Code.ToString()))
-            stack.StackSize = GameMath.RoundRandom(
-              rnd,
-              stack.StackSize * dropRatio
-            );
-          list.Add(stack);
-        }
+        )
+          list.Add(resolved.ResolvedItemStack.Clone());
       }
     }
+
+    for (int i = 1; i <= CurrentCompletedStage; i++)
+      foreach (ItemStack given in ResolveReturns(i))
+        foreach (ItemStack held in list) {
+          int take = Math.Min(held.StackSize, given.StackSize);
+          if (take <= 0 || !held.Collectible.Code.Equals(given.Collectible.Code))
+            continue;
+          held.StackSize -= take;
+          given.StackSize -= take;
+        }
+    list.RemoveAll(stack => stack.StackSize <= 0);
+
+    foreach (ItemStack stack in list)
+      if (lost == null || lost(stack.Collectible.Code.ToString()))
+        stack.StackSize = GameMath.RoundRandom(
+          rnd,
+          stack.StackSize * dropRatio
+        );
     return list.ToArray();
   }
 

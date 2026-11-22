@@ -166,6 +166,7 @@ ExpandedLib.Blocks.DoorLeaf.Shut.get -> Vintagestory.API.MathTools.Cuboidf![]!
 ExpandedLib.Blocks.DoorLeaf.Shut.init -> void
 ExpandedLib.Blocks.ExConstructionStage.Animation -> string?
 ExpandedLib.Blocks.ExConstructionStage.Hits -> int
+ExpandedLib.Blocks.ExConstructionStage.ReturnStacks -> ExpandedLib.Blocks.ExConstructionIngredient![]?
 ExpandedLib.Blocks.ExConstructionStage.Sound -> string?
 ExpandedLib.Blocks.ExConstructionStage.Steps -> ExpandedLib.Blocks.ExConstructionToolStep![]?
 ExpandedLib.Blocks.ExConstructionStage.Tool -> string?
@@ -292,6 +293,7 @@ ExpandedLib.Checks.GatheredSources.Source.Pattern.init -> void
 ExpandedLib.Checks.GatheredSources.Source.Source(Vintagestory.API.Common.EnumItemClass Type, string! Pattern, string! How) -> void
 ExpandedLib.Checks.GatheredSources.Source.Type.get -> Vintagestory.API.Common.EnumItemClass
 ExpandedLib.Checks.GatheredSources.Source.Type.init -> void
+ExpandedLib.Definitions.ConstructionStage.Returns(string! code, int quantity) -> ExpandedLib.Definitions.ConstructionStage!
 ExpandedLib.Definitions.ConstructionStage.Tool(string! tool, int hits = 2, string? animation = null, string? sound = null) -> ExpandedLib.Definitions.ConstructionStage!
 ExpandedLib.Definitions.ConstructionStages.BrokenDropsLost(params string![]! codes) -> ExpandedLib.Definitions.ConstructionStages!
 ExpandedLib.Definitions.ExBlockDef.ClipAction(ExpandedLib.Blocks.ClipAction! action) -> ExpandedLib.Definitions.ExBlockDef!
