@@ -1,5 +1,7 @@
 using System;
+using System.Collections.Generic;
 using ExpandedLib.Industry.Pipes;
+using Vintagestory.API.MathTools;
 
 namespace ExpandedLib.Industry.MechanicalPower;
 
@@ -76,10 +78,32 @@ internal sealed partial class MpShaftStore {
     return MathF.Max(EndLoad(edge, a), EndLoad(edge, b));
   }
 
-  private float EndLoad(int edge, int node) =>
-    _rating[node] <= 0f || _ratio[node] == 0f
+  private float EndLoad(int edge, int node) {
+    var (a, _, _, _, _) = _edges[edge];
+    var ends = _ends[edge];
+    float own = node == a ? ends.RatingA : ends.RatingB;
+    float rating = own >= 0f ? own : _rating[node];
+    return rating <= 0f || _ratio[node] == 0f
       ? 0f
-      : MathF.Abs(_edgeTorque[edge] / _ratio[node]) / _rating[node];
+      : MathF.Abs(_edgeTorque[edge] / _ratio[node]) / rating;
+  }
+
+  /// <summary>The joints of the node after the last <see cref="SolveTorquePath"/>: the face the joint crosses on the node's cell (null for a joint that crosses none), its load as <see cref="EdgeLoad"/> reads the node's end, and its torque at the node's own speed in N*m. Empty before the first solve of the present joints and for a node of ratio 0.</summary>
+  public IEnumerable<(BlockFacing? Face, float Load, float TorqueNm)> Joints(
+    int node
+  ) {
+    if (_pathTopology != _topology || _ratio[node] == 0f)
+      yield break;
+    for (int i = _adjacencyStart[node]; i < _adjacencyStart[node + 1]; i++) {
+      int e = _adjacencyEdge[i];
+      var ends = _ends[e];
+      yield return (
+        _edges[e].A == node ? ends.FaceA : ends.FaceB,
+        EndLoad(e, node),
+        MathF.Abs(_edgeTorque[e] / _ratio[node])
+      );
+    }
+  }
 
   /// <summary>Works out where the torque of the last <see cref="Step"/> flowed: subtree sums for a run with no ring, <c>K phi = e</c> by stiffness for a ring, both at the group's reference speed.</summary>
   public void SolveTorquePath() {

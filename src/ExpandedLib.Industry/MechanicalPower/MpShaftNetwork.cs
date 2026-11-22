@@ -383,8 +383,37 @@ internal sealed class MpShaftNetwork(BlockNetworkModSystem system)
     List<Action>? failed = null;
     foreach (var cell in Store.Nodes.GroupBy(n => EntityOf(world, n.Key.Pos))) {
       var be = cell.Key;
-      float load = cell.Max(n => Store.NodeLoad(n.Value));
-      float torque = cell.Max(n => Store.NodeTorque(n.Value));
+      var meshes = be is IMpEnergyMeshes m && be is IMpEnergySegment ? m : null;
+      var meshFaces = meshes?.MeshFaces ?? [];
+      float load = 0f;
+      float torque = 0f;
+      var faceLoad = new Dictionary<BlockFacing, float>();
+      var faceTorque = new Dictionary<BlockFacing, float>();
+      foreach (var n in cell) {
+        if (meshFaces.Count == 0) {
+          load = MathF.Max(load, Store.NodeLoad(n.Value));
+          torque = MathF.Max(torque, Store.NodeTorque(n.Value));
+          continue;
+        }
+        float own = 0f;
+        float ownTorque = 0f;
+        foreach (var (face, jointLoad, jointTorque) in Store.Joints(n.Value))
+          if (face != null && meshFaces.Contains(face)) {
+            faceLoad[face] = MathF.Max(
+              faceLoad.GetValueOrDefault(face),
+              jointLoad
+            );
+            faceTorque[face] = MathF.Max(
+              faceTorque.GetValueOrDefault(face),
+              jointTorque
+            );
+          } else {
+            own = MathF.Max(own, jointLoad);
+            ownTorque = MathF.Max(ownTorque, jointTorque);
+          }
+        load = MathF.Max(load, own);
+        torque = MathF.Max(torque, ownTorque);
+      }
       float speed = cell.Max(n => MathF.Abs(Store.NodeSpeed(n.Value)));
       if (be is IMpEnergySegment segment) {
         float over = load - 1f;
@@ -395,6 +424,21 @@ internal sealed class MpShaftNetwork(BlockNetworkModSystem system)
           segment.Strain = 1f;
         if (failure && segment.Strain >= 1f)
           (failed ??= []).Add(segment.Part);
+        if (meshes != null)
+          foreach (BlockFacing face in meshFaces) {
+            float faceOver = faceLoad.GetValueOrDefault(face) - 1f;
+            float strain = meshes.MeshStrain(face);
+            if (faceOver > 0f)
+              strain = MathF.Min(1f, strain + faceOver * hours / tau);
+            if (ultimate > 0f && faceTorque.GetValueOrDefault(face) >= ultimate)
+              strain = 1f;
+            if (strain != meshes.MeshStrain(face))
+              meshes.SetMeshStrain(face, strain);
+            if (failure && strain >= 1f) {
+              BlockFacing stripped = face;
+              (failed ??= []).Add(() => meshes.Strip(stripped));
+            }
+          }
       }
       if (be is IMpEnergyRim { RimLimitRadS: > 0f } rim) {
         float over = speed / rim.RimLimitRadS - 1f;

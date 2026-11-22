@@ -7,14 +7,20 @@ using Vintagestory.API.MathTools;
 
 namespace ExpandedLib.Industry.MechanicalPower;
 
-/// <summary>One shaft joint the graph asks of an "mpshaft" run, as <see cref="MpShaftStore.TryAddEdge"/> takes it.</summary>
+/// <summary>One shaft joint the graph asks of an "mpshaft" run, as <see cref="MpShaftStore.TryAddEdge"/> takes it. A
+/// crossing joint carries the face each end crosses on its own cell and the rating each end's segment gives across
+/// it; a link joint has no face and a negative rating, which leaves the node's rating to apply.</summary>
 internal readonly record struct MpShaftJoint(
   NodeKey Input,
   NodeKey Output,
   float Ratio,
   int Sign,
   float Stiffness,
-  IMpEnergyLink? Link
+  IMpEnergyLink? Link,
+  BlockFacing? InputFace = null,
+  BlockFacing? OutputFace = null,
+  float InputRatingNm = -1f,
+  float OutputRatingNm = -1f
 );
 
 /// <summary>Reads the joints of an "mpshaft" run off the world: a unit joint across every face crossing two members share, and the geared joint of each engaged link.</summary>
@@ -53,7 +59,12 @@ internal static class MpShaftJoints {
           if (!other.Crossings(world, near).Contains(back))
             continue;
           var pair = Order(key, near);
-          if (seen.Add(pair))
+          if (seen.Add(pair)) {
+            bool keyFirst = pair.Item1.Equals(key);
+            BlockFacing keyFace = crossing.Face;
+            BlockFacing nearFace = back.Face;
+            float keyRating = RatingAt(world, key.Pos, keyFace);
+            float nearRating = RatingAt(world, beside, nearFace);
             joints.Add(
               new MpShaftJoint(
                 pair.Item1,
@@ -61,9 +72,14 @@ internal static class MpShaftJoints {
                 1f,
                 1,
                 Stiffness(world, key.Pos, beside),
-                null
+                null,
+                keyFirst ? keyFace : nearFace,
+                keyFirst ? nearFace : keyFace,
+                keyFirst ? keyRating : nearRating,
+                keyFirst ? nearRating : keyRating
               )
             );
+          }
         }
       }
     }
@@ -115,13 +131,26 @@ internal static class MpShaftJoints {
           output,
           joint.Ratio,
           joint.Sign,
-          joint.Stiffness
+          joint.Stiffness,
+          joint.InputFace,
+          joint.OutputFace,
+          joint.InputRatingNm,
+          joint.OutputRatingNm
         )
       )
         refused.Add(joint);
     }
     return refused;
   }
+
+  private static float RatingAt(
+    IBlockAccessor world,
+    BlockPos pos,
+    BlockFacing face
+  ) =>
+    world.GetBlockEntity(pos) is IMpEnergySegment segment
+      ? segment.RatingAcross(face)
+      : -1f;
 
   private static (NodeKey, NodeKey) Order(NodeKey a, NodeKey b) =>
     (a.Pos.X, a.Pos.Y, a.Pos.Z, a.Slot).CompareTo(

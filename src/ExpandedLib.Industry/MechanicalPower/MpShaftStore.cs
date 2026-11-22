@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using ExpandedLib.Networks;
+using Vintagestory.API.MathTools;
 
 namespace ExpandedLib.Industry.MechanicalPower;
 
@@ -46,6 +47,14 @@ internal sealed partial class MpShaftStore {
     int Sign,
     float Stiffness
   )> _edges = [];
+
+  // Per joint, parallel to _edges: the face each end crosses and the rating each end carries; a negative rating leaves the node's own.
+  private readonly List<(
+    BlockFacing? FaceA,
+    BlockFacing? FaceB,
+    float RatingA,
+    float RatingB
+  )> _ends = [];
 
   private readonly Dictionary<(int, int), int> _edgeIndex = [];
 
@@ -136,9 +145,17 @@ internal sealed partial class MpShaftStore {
   public int EdgeIndex(int a, int b) =>
     _edgeIndex.TryGetValue(a < b ? (a, b) : (b, a), out int edge) ? edge : -1;
 
-  private void AddEdge(int a, int b, float ratio, int sign, float stiffness) {
+  private void AddEdge(
+    int a,
+    int b,
+    float ratio,
+    int sign,
+    float stiffness,
+    (BlockFacing? FaceA, BlockFacing? FaceB, float RatingA, float RatingB) ends
+  ) {
     _edgeIndex.TryAdd(a < b ? (a, b) : (b, a), _edges.Count);
     _edges.Add((a, b, ratio, sign, stiffness));
+    _ends.Add(ends);
   }
 
   /// <summary>A copy holding the same nodes, groups with their speeds, and joints in their order, sharing nothing with this store.</summary>
@@ -191,13 +208,21 @@ internal sealed partial class MpShaftStore {
   /// <param name="ratio">Input speed over output speed in magnitude, above zero.</param>
   /// <param name="sign">+1 when the output turns the same way as the input, -1 against it.</param>
   /// <param name="stiffness">Torsional stiffness G J / L of the joint in N*m per rad, above zero; only the ratios between the joints of one ring matter.</param>
+  /// <param name="inputFace">The face of the input node's cell the joint crosses, or null for a joint that crosses none.</param>
+  /// <param name="outputFace">The face of the output node's cell the joint crosses, or null.</param>
+  /// <param name="inputRatingNm">Working torque (N*m, at the input node's own speed) the joint's input end carries; negative leaves the node's own rating (<see cref="SetRating"/>) to apply, zero marks the end unrated.</param>
+  /// <param name="outputRatingNm">The same for the output end.</param>
   /// <returns>False, with the store unchanged, when the joint closes a ring whose ratio or sign product is not 1.</returns>
   public bool TryAddEdge(
     int input,
     int output,
     float ratio,
     int sign,
-    float stiffness = 1f
+    float stiffness = 1f,
+    BlockFacing? inputFace = null,
+    BlockFacing? outputFace = null,
+    float inputRatingNm = -1f,
+    float outputRatingNm = -1f
   ) {
     float expected = _ratio[input] * (sign < 0 ? -1f : 1f) / ratio;
     if (_group[input] == _group[output]) {
@@ -211,7 +236,14 @@ internal sealed partial class MpShaftStore {
         return false;
       JoinGroups(_group[input], _group[output], expected / _ratio[output]);
     }
-    AddEdge(input, output, ratio, sign < 0 ? -1 : 1, stiffness);
+    AddEdge(
+      input,
+      output,
+      ratio,
+      sign < 0 ? -1 : 1,
+      stiffness,
+      (inputFace, outputFace, inputRatingNm, outputRatingNm)
+    );
     _topology++;
     return true;
   }
@@ -395,9 +427,11 @@ internal sealed partial class MpShaftStore {
   }
 
   private void CopyEdges(MpShaftStore source, Dictionary<int, int> map) {
-    foreach (var (a, b, ratio, sign, stiffness) in source._edges)
+    for (int e = 0; e < source._edges.Count; e++) {
+      var (a, b, ratio, sign, stiffness) = source._edges[e];
       if (map.TryGetValue(a, out int na) && map.TryGetValue(b, out int nb))
-        AddEdge(na, nb, ratio, sign, stiffness);
+        AddEdge(na, nb, ratio, sign, stiffness, source._ends[e]);
+    }
     _topology++;
   }
 
